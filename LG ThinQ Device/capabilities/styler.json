@@ -1,0 +1,97 @@
+{
+  "capabilities": [
+    {
+      "ident": "STYLER_OPERATION",
+      "name": "Stylerbetrieb",
+      "type": "integer",
+      "presentation": { "kind": "buttons", "options": [
+        { "value": 1, "caption": "Start" },
+        { "value": 2, "caption": "Pause" },
+        { "value": 3, "caption": "Stop" }
+      ] },
+      "create": { "when": "profileHasAny", "keys": ["operation.stylerOperationMode", "stylerOperationMode", "operation.mode"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["operation.stylerOperationMode.mode", "stylerOperationMode.mode", "operation.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["operation.stylerOperationMode", "stylerOperationMode", "operation.mode"], "map": { "START": 1, "PAUSE": 2, "STOP": 3 }, "mapCaseInsensitive": true },
+      "write": { "enumMap": {
+        "1": { "operation.stylerOperationMode": "START" },
+        "2": { "operation.stylerOperationMode": "PAUSE" },
+        "3": { "operation.stylerOperationMode": "STOP" }
+      } }
+    },
+
+    {
+      "ident": "POWER",
+      "name": "Power",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["operation.power", "power", "is_on"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["operation.power", "power", "is_on"], "map": { "ON": true, "1": true, "TRUE": true, "OFF": false, "0": false, "FALSE": false } }
+    },
+
+    {
+      "ident": "RUN_STATE",
+      "name": "Programmstatus",
+      "type": "string",
+      "presentation": { "kind": "value" },
+      "create": { "when": "profileHasAny", "keys": ["currentState", "state.runState", "runState", "process.state"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["currentState", "state.runState", "runState", "process.state"] }
+    },
+
+    {
+      "ident": "REMAIN_MIN",
+      "name": "Restzeit",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " min" },
+      "create": { "when": "profileHasAny", "keys": ["remainTime", "remainTime.minute", "remainTimeInMinute", "remainMinute"] },
+      "action": { "enableWhen": "always", "reassertOn": ["status"] },
+      "read": {
+        "composite": { "combine": "hm_to_minutes", "parts": [ { "path": "remainTime.hour" }, { "path": "remainTime.minute" } ] },
+        "sources": ["remainTimeInMinute", "remainMinute"]
+      }
+    },
+
+    {
+      "ident": "PROGRESS",
+      "name": "Fortschritt",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " %" },
+      "create": { "when": "statusHasAny", "keys": ["progress", "progressPercent"] },
+      "action": { "enableWhen": "always", "reassertOn": ["status"] },
+      "read": { "sources": ["progress", "progressPercent"] }
+    },
+
+    {
+      "ident": "DOOR_OPEN",
+      "name": "Tür offen",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "Offen", "captionOff": "Zu" },
+      "create": { "when": "profileHasAny", "keys": ["doorOpen", "door", "door.status"] },
+      "action": { "enableWhen": "always", "reassertOn": ["status"] },
+      "read": { "sources": ["doorOpen", "door", "door.status"], "string_true": ["OPEN", "ON", "TRUE", "1"], "string_false": ["CLOSE", "CLOSED", "OFF", "FALSE", "0"] }
+    },
+
+    {
+      "ident": "CHILD_LOCK",
+      "name": "Kindersicherung",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["childLock", "childLock.enabled", "lock.child"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["childLock.mode", "childLock.enabled.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["childLock", "childLock.enabled", "lock.child"] },
+      "write": { "template": { "childLock": { "enabled": "@bool" } } }
+    },
+
+    {
+      "ident": "PROGRAM",
+      "name": "Programm",
+      "type": "string",
+      "presentation": { "kind": "value" },
+      "create": { "when": "profileHasAny", "keys": ["course", "program", "cycle", "state.course" ] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["course.mode", "program.mode", "cycle.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["course", "program", "cycle", "state.course"] },
+      "write": { "template": { "course": "@string" } }
+    }
+  ]
+}

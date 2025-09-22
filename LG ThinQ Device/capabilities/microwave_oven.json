@@ -1,0 +1,174 @@
+{
+  "capabilities": [
+    {
+      "ident": "MICROWAVE_OPERATION",
+      "name": "Mikrowellenbetrieb",
+      "type": "integer",
+      "presentation": { "kind": "buttons", "options": [
+        { "value": 0, "caption": "Stop", "color": 16711680 },
+        { "value": 1, "caption": "Start", "color": 52651 },
+        { "value": 2, "caption": "Pause", "color": 16026947 }
+      ] },
+      "create": { "when": "profileHasAny", "keys": [
+        "operation.microwaveOperationMode",
+        "microwaveOperationMode",
+        "operation.mode"
+      ] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": [
+        "operation.microwaveOperationMode.mode",
+        "microwaveOperationMode.mode",
+        "operation.mode"
+      ], "reassertOn": ["setup", "status"] },
+      "read": { "sources": [
+        "operation.microwaveOperationMode",
+        "microwaveOperationMode",
+        "operation.mode"
+      ], "map": { "START": 1, "PAUSE": 2, "STOP": 0 }, "mapCaseInsensitive": true },
+      "write": { "enumMap": {
+        "1": { "operation.microwaveOperationMode": "START" },
+        "2": { "operation.microwaveOperationMode": "PAUSE" },
+        "0": { "operation.microwaveOperationMode": "STOP" }
+      } }
+    },
+
+    {
+      "ident": "MW_MODE",
+      "name": "Modus",
+      "type": "integer",
+      "presentation": { "kind": "buttons", "options": [
+        { "value": 1, "caption": "Mikro", "color": 52651 },
+        { "value": 2, "caption": "Grill", "color": 16026947 },
+        { "value": 3, "caption": "Heißluft", "color": 3442154 },
+        { "value": 4, "caption": "Kombi", "color": 16753920 },
+        { "value": 5, "caption": "Auftauen", "color": 8421504 }
+      ] },
+      "create": { "when": "profileHasAny", "keys": ["microwaveJobMode.currentJobMode", "cookMode", "operation.mode", "mode"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["microwaveJobMode.currentJobMode.mode", "cookMode.mode", "operation.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["microwaveJobMode.currentJobMode", "cookMode", "operation.mode", "mode"], "map": { "MICRO": 1, "GRILL": 2, "CONVECTION": 3, "COMBI": 4, "DEFROST": 5 }, "mapCaseInsensitive": true },
+      "write": { "enumMap": {
+        "1": { "microwaveJobMode.currentJobMode": "MICRO" },
+        "2": { "microwaveJobMode.currentJobMode": "GRILL" },
+        "3": { "microwaveJobMode.currentJobMode": "CONVECTION" },
+        "4": { "microwaveJobMode.currentJobMode": "COMBI" },
+        "5": { "microwaveJobMode.currentJobMode": "DEFROST" }
+      } }
+    },
+
+    {
+      "ident": "MW_POWER_LEVEL",
+      "name": "Leistungsstufe",
+      "type": "integer",
+      "presentation": { "kind": "slider", "range": { "min": 0, "max": 10, "step": 1, "digits": 0 } },
+      "create": { "when": "profileHasAny", "keys": ["microwave.powerLevel", "powerLevel", "power.level"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["microwave.powerLevel.mode", "powerLevel.mode", "power.level.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["microwave.powerLevel", "powerLevel", "power.level"] },
+      "write": { "template": { "microwave": { "powerLevel": "@int" } } }
+    },
+
+    {
+      "ident": "COOK_TIME_MIN",
+      "name": "Garzeit",
+      "type": "integer",
+      "presentation": { "kind": "slider", "range": { "min": 1, "max": 180, "step": 1, "digits": 0, "suffix": " min" } },
+      "create": { "when": "profileHasAny", "keys": ["cookTime", "cookTime.minute", "cookTimeInMinute"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["cookTime.mode", "cookTime.minute.mode"], "reassertOn": ["setup", "status"] },
+      "read": {
+        "composite": { "combine": "hm_to_minutes", "parts": [ { "path": "cookTime.hour" }, { "path": "cookTime.minute" } ] },
+        "sources": ["cookTimeInMinute", "cookTime.minute"]
+      },
+      "write": {
+        "composite": {
+          "decompose": "minutes_to_hm",
+          "targets": [ { "path": "cookTime.hour" }, { "path": "cookTime.minute" } ]
+        }
+      }
+    },
+
+    {
+      "ident": "RUN_STATE",
+      "name": "Status",
+      "type": "string",
+      "presentation": { "kind": "value" },
+      "create": { "when": "statusHasAny", "keys": ["runState.currentState", "currentState", "runState", "process.state", "state"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["runState.currentState", "currentState", "runState", "process.state", "state"] }
+    },
+
+    {
+      "ident": "REMAIN_MIN",
+      "name": "Restzeit",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " min" },
+      "create": { "when": "statusHasAny", "keys": ["remainTime", "remainTime.minute", "remainTimeInMinute", "remainMinute", "timer.remainMinute"] },
+      "action": { "enableWhen": "never" },
+      "read": {
+        "composite": { "combine": "hm_to_minutes", "parts": [ { "path": "remainTime.hour" }, { "path": "remainTime.minute" } ] },
+        "sources": ["remainTimeInMinute", "remainMinute", "timer.remainMinute"]
+      }
+    },
+
+    {
+      "ident": "PROGRESS",
+      "name": "Fortschritt",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " %" },
+      "create": { "when": "statusHasAny", "keys": ["progress", "process.progress"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["progress", "process.progress"] }
+    },
+
+    {
+      "ident": "LIGHT",
+      "name": "Licht",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["display.light", "light", "cavity.light"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["display.light.mode", "light.mode", "cavity.light.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["display.light", "light", "cavity.light"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
+      "write": { "template": { "display": { "light": "@onoff" } } }
+    },
+
+    {
+      "ident": "CHILD_LOCK",
+      "name": "Kindersicherung",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["childLock", "childLock.enabled", "lock.child"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["childLock.mode", "childLock.enabled.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["childLock", "childLock.enabled", "lock.child"] },
+      "write": { "template": { "childLock": { "enabled": "@bool" } } }
+    },
+
+    {
+      "ident": "DOOR_OPEN",
+      "name": "Tür offen",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "Offen", "captionOff": "Zu" },
+      "create": { "when": "statusHasAny", "keys": ["doorOpen", "door", "door.status"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["doorOpen", "door", "door.status"], "string_true": ["OPEN", "ON", "TRUE", "1"], "string_false": ["CLOSE", "CLOSED", "OFF", "FALSE", "0"] }
+    },
+
+    {
+      "ident": "TURNTABLE",
+      "name": "Drehteller",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["turntable", "plateRotation"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["turntable.mode", "plateRotation.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["turntable", "plateRotation"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
+      "write": { "template": { "turntable": "@onoff" } }
+    },
+
+    {
+      "ident": "BEEP",
+      "name": "Signalton",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["sound.beep", "beep", "sound"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["sound.beep.mode", "beep.mode", "sound.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["sound.beep", "beep", "sound"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
+      "write": { "template": { "sound": { "beep": "@onoff" } } }
+    }
+  ]
+}

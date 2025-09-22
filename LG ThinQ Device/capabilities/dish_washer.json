@@ -1,0 +1,143 @@
+{
+  "capabilities": [
+    {
+      "ident": "DISHWASHER_OPERATION",
+      "name": "Spülbetrieb",
+      "type": "integer",
+      "presentation": { "kind": "buttons", "options": [
+        { "value": 1, "caption": "Start", "color": 52651 },
+        { "value": 2, "caption": "Pause", "color": 16026947 },
+        { "value": 3, "caption": "Stop", "color": 16711680 }
+      ] },
+      "create": { "when": "profileHasAny", "keys": ["operation.dishWasherOperationMode", "operation.dishwasherOperationMode", "dishWasherOperationMode", "dishwasherOperationMode"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["operation.dishWasherOperationMode.mode", "operation.dishwasherOperationMode.mode", "dishWasherOperationMode.mode", "dishwasherOperationMode.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["operation.dishWasherOperationMode", "operation.dishwasherOperationMode", "dishWasherOperationMode", "dishwasherOperationMode"], "map": { "START": 1, "PAUSE": 2, "STOP": 3 }, "mapCaseInsensitive": true },
+      "write": { "enumMap": {
+        "1": { "operation.dishWasherOperationMode": "START" },
+        "2": { "operation.dishWasherOperationMode": "PAUSE" },
+        "3": { "operation.dishWasherOperationMode": "STOP" }
+      } }
+    },
+
+    {
+      "ident": "REMOTE_CONTROL_ENABLED",
+      "name": "Remote Control",
+      "type": "boolean",
+      "presentation": { "kind": "value" },
+      "create": { "when": "profileHasAny", "keys": ["remoteControlEnable.remoteControlEnabled"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["remoteControlEnable.remoteControlEnabled"] }
+    },
+
+    {
+      "ident": "DELAY_START_HOUR",
+      "name": "Startverzögerung (h)",
+      "type": "integer",
+      "presentation": { "kind": "slider", "range": { "min": 0, "max": 24, "step": 1, "digits": 0, "suffix": " h" } },
+      "create": { "when": "profileHasAny", "keys": ["timer.relativeHourToStart", "delayStartHour"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["timer.relativeHourToStart.mode", "delayStartHour.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["timer.relativeHourToStart", "delayStartHour"] },
+      "write": { "template": { "timer": { "relativeHourToStart": "@int" } } }
+    },
+
+    {
+      "ident": "TIMER_START_REL_HOUR",
+      "name": "Timer Start Stunde",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " h" },
+      "visibility": { "hidden": true },
+      "create": { "when": "profileHasAny", "keys": ["timer.relativeHourToStart"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["timer.relativeHourToStart"] }
+    },
+    {
+      "ident": "TIMER_START_REL_MIN",
+      "name": "Timer Start Minute",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " min" },
+      "visibility": { "hidden": true },
+      "create": { "when": "profileHasAny", "keys": ["timer.relativeMinuteToStart"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["timer.relativeMinuteToStart"] }
+    },
+
+    {
+      "ident": "TIMER_REMAIN_HOUR",
+      "name": "Restzeit (h)",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " h" },
+      "create": { "when": "profileHasAny", "keys": ["timer.remainHour"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["timer.remainHour"] }
+    },
+    {
+      "ident": "TIMER_REMAIN_MIN",
+      "name": "Restzeit (min)",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " min" },
+      "create": { "when": "profileHasAny", "keys": ["timer.remainMinute"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["timer.remainMinute"] }
+    },
+
+    {
+      "ident": "RUN_STATE",
+      "name": "Programmstatus",
+      "type": "string",
+      "presentation": { "kind": "value" },
+      "create": { "when": "statusHasAny", "keys": ["runState.currentState", "processState.currentState", "currentState", "runState", "processState", "state"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["runState.currentState", "processState.currentState", "currentState", "runState", "processState", "state"] }
+    },
+
+    {
+      "ident": "REMAIN_MIN",
+      "name": "Restzeit",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " min" },
+      "create": { "when": "statusHasAny", "keys": ["remainTimeHour", "remainingTimeHour", "remainHour", "remainTimeMinute", "remainingTimeMinute", "remainMinute", "remainingTime", "timer.remainMinute"] },
+      "action": { "enableWhen": "never" }
+    },
+
+    {
+      "ident": "PROGRESS",
+      "name": "Fortschritt",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " %" },
+      "create": { "when": "statusHasAny", "keys": ["process.progress", "progress"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["process.progress", "progress"] }
+    },
+
+    {
+      "ident": "DOOR_OPEN",
+      "name": "Tür offen",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "Offen", "captionOff": "Zu" },
+      "create": { "when": "statusHasAny", "keys": ["door_state.open", "door.open", "doorOpen", "doorlock", "doorLock", "door"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["door_state.open", "door.open", "doorOpen", "doorlock", "doorLock", "door"] }
+    },
+
+    {
+      "ident": "CHILD_LOCK",
+      "name": "Kindersicherung",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "statusHasAny", "keys": ["childLock", "child_lock"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["childLock", "child_lock"] }
+    },
+
+    {
+      "ident": "PROGRAM",
+      "name": "Programm",
+      "type": "string",
+      "presentation": { "kind": "value" },
+      "create": { "when": "profileHasAny", "keys": ["course", "program", "cycle", "state.course" ] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["course.mode", "program.mode", "cycle.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["course", "program", "cycle", "state.course"] },
+      "write": { "template": { "course": "@string" } }
+    }
+  ]
+}

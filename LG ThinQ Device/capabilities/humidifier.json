@@ -1,0 +1,154 @@
+{
+  "capabilities": [
+    {
+      "ident": "HUMIDIFIER_OPERATION",
+      "name": "Befeuchten",
+      "type": "integer",
+      "presentation": { "kind": "buttons", "options": [
+        { "value": 0, "caption": "Stop", "color": 16711680 },
+        { "value": 1, "caption": "Start", "color": 52651 },
+        { "value": 2, "caption": "Pause", "color": 16026947 }
+      ] },
+      "create": { "when": "profileHasAny", "keys": ["operation.humidifierOperationMode", "humidifierOperationMode", "operation.mode"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["operation.humidifierOperationMode.mode", "humidifierOperationMode.mode", "operation.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["operation.humidifierOperationMode", "humidifierOperationMode", "operation.mode"], "map": { "START": 1, "PAUSE": 2, "STOP": 0 }, "mapCaseInsensitive": true },
+      "write": { "enumMap": { "1": { "operation.humidifierOperationMode": "START" }, "2": { "operation.humidifierOperationMode": "PAUSE" }, "0": { "operation.humidifierOperationMode": "STOP" } } }
+    },
+
+    {
+      "ident": "POWER",
+      "name": "Power",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["operation.power", "power", "is_on"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["operation.power", "power", "is_on"], "map": { "ON": true, "1": true, "TRUE": true, "OFF": false, "0": false, "FALSE": false } }
+    },
+
+    {
+      "ident": "TARGET_HUMIDITY",
+      "name": "Ziel-Feuchte",
+      "type": "integer",
+      "presentation": {
+        "kind": "slider",
+        "suffix": " %",
+        "range": { "min": 30, "max": 70, "step": 5, "digits": 0 },
+        "rangeFromProfile": {
+          "min": ["humidity.target.value.w.min", "relativeHumidity.target.value.w.min", "targetHumidity.value.w.min", "humiditySetting.value.w.min"],
+          "max": ["humidity.target.value.w.max", "relativeHumidity.target.value.w.max", "targetHumidity.value.w.max", "humiditySetting.value.w.max"],
+          "step": ["humidity.target.value.w.step", "relativeHumidity.target.value.w.step", "targetHumidity.value.w.step", "humiditySetting.value.w.step"]
+        }
+      },
+      "create": { "when": "profileHasAny", "keys": ["humidity.target", "relativeHumidity.target", "targetHumidity", "humiditySetting"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["humidity.target.mode", "relativeHumidity.target.mode", "targetHumidity.mode", "humiditySetting.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["humidity.target", "relativeHumidity.target", "targetHumidity", "humiditySetting"] },
+      "write": { "template": { "humidity": { "target": "@int" } } }
+    },
+
+    {
+      "ident": "CURRENT_HUMIDITY",
+      "name": "Ist-Feuchte",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " %" },
+      "create": { "when": "statusHasAny", "keys": ["humidity.current", "currentHumidity", "relativeHumidity.current", "humidity", "humidityInPercent"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["humidity.current", "currentHumidity", "relativeHumidity.current", "humidity", "humidityInPercent"] }
+    },
+
+    {
+      "ident": "FAN_MODE",
+      "name": "Lüfterstufe",
+      "type": "integer",
+      "presentation": { "kind": "buttons", "options": [
+        { "value": 10, "caption": "Auto", "color": 52651 },
+        { "value": 11, "caption": "Niedrig", "color": 3442154 },
+        { "value": 12, "caption": "Mittel", "color": 16777215 },
+        { "value": 13, "caption": "Hoch", "color": 16026947 },
+        { "value": 14, "caption": "Turbo", "color": 16711680 }
+      ] },
+      "create": { "when": "profileHasAny", "keys": ["airFlow.windStrength", "fanSpeed", "windStrength", "fan.level"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["airFlow.windStrength.mode", "fanSpeed.mode", "fan.level.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["airFlow.windStrength", "fanSpeed", "windStrength", "fan.level"], "map": { "AUTO": 10, "LOW": 11, "MID": 12, "HIGH": 13, "TURBO": 14 }, "mapCaseInsensitive": true },
+      "write": { "enumMap": { "10": { "airFlow.windStrength": "AUTO", "fanSpeed": "AUTO", "fan.level": "AUTO" }, "11": { "airFlow.windStrength": "LOW", "fanSpeed": "LOW", "fan.level": "LOW" }, "12": { "airFlow.windStrength": "MID", "fanSpeed": "MID", "fan.level": "MID" }, "13": { "airFlow.windStrength": "HIGH", "fanSpeed": "HIGH", "fan.level": "HIGH" }, "14": { "airFlow.windStrength": "TURBO", "fanSpeed": "TURBO", "fan.level": "TURBO" } } }
+    },
+
+    {
+      "ident": "HUM_MODE",
+      "name": "Modus",
+      "type": "integer",
+      "presentation": { "kind": "buttons", "options": [
+        { "value": 1, "caption": "Auto", "color": 52651 },
+        { "value": 2, "caption": "Komfort", "color": 3442154 },
+        { "value": 3, "caption": "Schlaf", "color": 8421504 },
+        { "value": 4, "caption": "Turbo", "color": 16711680 },
+        { "value": 5, "caption": "Smart", "color": 16711935 }
+      ] },
+      "create": { "when": "profileHasAny", "keys": ["humidifierJobMode.currentJobMode", "operation.mode", "mode"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["humidifierJobMode.currentJobMode.mode", "operation.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["humidifierJobMode.currentJobMode", "operation.mode", "mode"], "map": { "AUTO": 1, "COMFORT": 2, "SLEEP": 3, "TURBO": 4, "SMART": 5 }, "mapCaseInsensitive": true },
+      "write": { "enumMap": { "1": { "humidifierJobMode.currentJobMode": "AUTO" }, "2": { "humidifierJobMode.currentJobMode": "COMFORT" }, "3": { "humidifierJobMode.currentJobMode": "SLEEP" }, "4": { "humidifierJobMode.currentJobMode": "TURBO" }, "5": { "humidifierJobMode.currentJobMode": "SMART" } } }
+    },
+
+    {
+      "ident": "TANK_LEVEL_PERCENT",
+      "name": "Tankstand",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " %" },
+      "create": { "when": "statusHasAny", "keys": ["tank.remainPercent", "waterTank.remainPercent", "tank.levelPercent"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["tank.remainPercent", "waterTank.remainPercent", "tank.levelPercent"] }
+    },
+
+    {
+      "ident": "TANK_EMPTY",
+      "name": "Tank leer",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "Leer", "captionOff": "OK" },
+      "create": { "when": "statusHasAny", "keys": ["tank.empty", "waterTank.empty", "water.shortage", "waterShortage"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["tank.empty", "waterTank.empty", "water.shortage", "waterShortage"], "string_true": ["TRUE", "1", "ON", "EMPTY"], "string_false": ["FALSE", "0", "OFF", "OK"] }
+    },
+
+    {
+      "ident": "FILTER_REMAIN_PERCENT",
+      "name": "Filter verbleibend",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " %" },
+      "create": { "when": "profileHasAny", "keys": ["filter.remainPercent", "filterRemainPercent", "filter.remain"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["filter.remainPercent", "filterRemainPercent", "filter.remain"] }
+    },
+
+    {
+      "ident": "STERILIZE",
+      "name": "Sterilisieren",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["sterilize", "uvSterilize", "sterilization"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["sterilize.mode", "uvSterilize.mode", "sterilization.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["sterilize", "uvSterilize", "sterilization"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
+      "write": { "template": { "sterilize": "@onoff" } }
+    },
+
+    {
+      "ident": "REMAIN_MIN",
+      "name": "Restzeit",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " min" },
+      "create": { "when": "profileHasAny", "keys": ["remainTime", "remainTime.minute", "remainTimeInMinute", "remainMinute", "timer.remainMinute"] },
+      "action": { "enableWhen": "never" },
+      "read": { "composite": { "combine": "hm_to_minutes", "parts": [ { "path": "remainTime.hour" }, { "path": "remainTime.minute" } ] }, "sources": ["remainTimeInMinute", "remainMinute", "timer.remainMinute"] }
+    },
+
+    {
+      "ident": "CHILD_LOCK",
+      "name": "Kindersicherung",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["childLock", "childLock.enabled", "lock.child"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["childLock.mode", "childLock.enabled.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["childLock", "childLock.enabled", "lock.child"] },
+      "write": { "template": { "childLock": { "enabled": "@bool" } } }
+    }
+  ]
+}

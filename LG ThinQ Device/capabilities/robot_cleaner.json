@@ -1,0 +1,117 @@
+{
+  "capabilities": [
+    {
+      "ident": "ROBOT_OPERATION",
+      "name": "Roboterbetrieb",
+      "type": "integer",
+      "presentation": { "kind": "buttons", "options": [
+        { "value": 1, "caption": "Start", "color": 52651 },
+        { "value": 2, "caption": "Pause", "color": 16026947 },
+        { "value": 3, "caption": "Stop", "color": 16711680 },
+        { "value": 4, "caption": "Home", "color": 3442154 }
+      ] },
+      "create": { "when": "profileHasAny", "keys": ["operation.robotCleanerOperationMode", "operation.mode", "robotCleanerOperationMode"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["operation.robotCleanerOperationMode.mode", "robotCleanerOperationMode.mode", "operation.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["operation.robotCleanerOperationMode", "robotCleanerOperationMode", "operation.mode"], "map": { "START": 1, "PAUSE": 2, "STOP": 3, "HOME": 4 }, "mapCaseInsensitive": true },
+      "write": { "enumMap": {
+        "1": { "operation.robotCleanerOperationMode": "START" },
+        "2": { "operation.robotCleanerOperationMode": "PAUSE" },
+        "3": { "operation.robotCleanerOperationMode": "STOP" },
+        "4": { "operation.robotCleanerOperationMode": "HOME" }
+      } }
+    },
+
+    {
+      "ident": "RUN_STATE",
+      "name": "Status",
+      "type": "string",
+      "presentation": { "kind": "value" },
+      "create": { "when": "statusHasAny", "keys": ["runState.currentState", "currentState", "state", "status", "processState.currentState"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["runState.currentState", "currentState", "state", "status", "processState.currentState"] }
+    },
+
+    {
+      "ident": "BATTERY_LEVEL",
+      "name": "Batterie",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " %" },
+      "create": { "when": "statusHasAny", "keys": ["battery.batteryLevel", "batteryLevel", "battery.level", "battery.levelInPercent"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["battery.batteryLevel", "batteryLevel", "battery.level", "battery.levelInPercent"] }
+    },
+
+    {
+      "ident": "DOCKED",
+      "name": "Angedockt",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "Docked", "captionOff": "Undocked" },
+      "create": { "when": "statusHasAny", "keys": ["dock.docked", "isDocked", "battery.charging", "chargingState"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["dock.docked", "isDocked", "battery.charging", "chargingState"], "string_true": ["TRUE", "1", "ON", "CHARGING"], "string_false": ["FALSE", "0", "OFF", "DISCHARGING"] }
+    },
+
+    {
+      "ident": "CLEANING_MODE",
+      "name": "Reinigungsmodus",
+      "type": "integer",
+      "presentation": { "kind": "buttons", "options": [
+        { "value": 1, "caption": "Auto", "color": 52651 },
+        { "value": 2, "caption": "Spot", "color": 3442154 },
+        { "value": 3, "caption": "Kante", "color": 16777215 },
+        { "value": 4, "caption": "Turbo", "color": 16711680 }
+      ] },
+      "create": { "when": "profileHasAny", "keys": ["cleaningMode", "mode", "pattern"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["cleaningMode.mode", "mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["cleaningMode", "mode", "pattern"], "map": { "AUTO": 1, "SPOT": 2, "EDGE": 3, "TURBO": 4 }, "mapCaseInsensitive": true },
+      "write": { "enumMap": {
+        "1": { "cleaningMode": "AUTO" },
+        "2": { "cleaningMode": "SPOT" },
+        "3": { "cleaningMode": "EDGE" },
+        "4": { "cleaningMode": "TURBO" }
+      } }
+    },
+
+    {
+      "ident": "SUCTION_LEVEL",
+      "name": "Saugstärke",
+      "type": "integer",
+      "presentation": { "kind": "buttons", "options": [
+        { "value": 10, "caption": "Auto", "color": 52651 },
+        { "value": 11, "caption": "Niedrig", "color": 3442154 },
+        { "value": 12, "caption": "Mittel", "color": 16777215 },
+        { "value": 13, "caption": "Hoch", "color": 16026947 },
+        { "value": 14, "caption": "Turbo", "color": 16711680 }
+      ] },
+      "create": { "when": "profileHasAny", "keys": ["suctionLevel", "suction", "fanSpeed", "airFlow.windStrength"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["suctionLevel.mode", "suction.mode", "fanSpeed.mode", "airFlow.windStrength.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["suctionLevel", "suction", "fanSpeed", "airFlow.windStrength"], "map": { "LOW": 11, "MID": 12, "HIGH": 13, "TURBO": 14, "AUTO": 10 }, "mapCaseInsensitive": true },
+      "write": { "enumMap": {
+        "10": { "fanSpeed": "AUTO", "airFlow.windStrength": "AUTO", "suctionLevel": "AUTO" },
+        "11": { "fanSpeed": "LOW",  "airFlow.windStrength": "LOW",  "suctionLevel": "LOW" },
+        "12": { "fanSpeed": "MID",  "airFlow.windStrength": "MID",  "suctionLevel": "MID" },
+        "13": { "fanSpeed": "HIGH", "airFlow.windStrength": "HIGH", "suctionLevel": "HIGH" },
+        "14": { "fanSpeed": "TURBO","airFlow.windStrength": "TURBO","suctionLevel": "TURBO" }
+      } }
+    },
+
+    {
+      "ident": "WATER_LEVEL",
+      "name": "Wasserstand (Mopp)",
+      "type": "integer",
+      "presentation": { "kind": "buttons", "options": [
+        { "value": 1, "caption": "Niedrig", "color": 3442154 },
+        { "value": 2, "caption": "Mittel", "color": 16777215 },
+        { "value": 3, "caption": "Hoch", "color": 16026947 }
+      ] },
+      "create": { "when": "profileHasAny", "keys": ["waterLevel", "mop.waterLevel"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["waterLevel.mode", "mop.waterLevel.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["waterLevel", "mop.waterLevel"], "map": { "LOW": 1, "MID": 2, "HIGH": 3 }, "mapCaseInsensitive": true },
+      "write": { "enumMap": {
+        "1": { "waterLevel": "LOW" },
+        "2": { "waterLevel": "MID" },
+        "3": { "waterLevel": "HIGH" }
+      } }
+    }
+  ]
+}

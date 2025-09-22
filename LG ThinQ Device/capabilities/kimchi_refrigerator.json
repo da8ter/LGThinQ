@@ -1,0 +1,123 @@
+{
+  "capabilities": [
+    {
+      "ident": "KIMCHI_MODE",
+      "name": "Kimchi Modus",
+      "type": "string",
+      "presentation": { "kind": "value" },
+      "create": { "when": "profileHasAny", "keys": ["kimchi.mode", "operation.kimchiMode", "kimchiJobMode.currentJobMode"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["kimchi.mode", "operation.kimchiMode", "kimchiJobMode.currentJobMode.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["kimchi.mode", "operation.kimchiMode", "kimchiJobMode.currentJobMode"] },
+      "write": { "template": { "kimchi": { "mode": "@string" } } }
+    },
+
+    {
+      "ident": "KIMCHI_LIGHT",
+      "name": "Licht",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["display.light", "light"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["display.light.mode", "light.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["display.light", "light"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
+      "write": { "template": { "display": { "light": "@onoff" } } }
+    },
+
+    {
+      "ident": "ZONE1_SET_TEMP",
+      "name": "Zone 1 Soll",
+      "type": "float",
+      "presentation": {
+        "kind": "slider",
+        "suffix": " °C",
+        "range": { "min": 0, "max": 15, "step": 1 },
+        "rangeFromProfile": {
+          "min": [
+            "zones.0.temperature.target.value.w.min",
+            "kimchi.temperature.0.target.value.w.min",
+            "temperature.zone1.target.value.w.min",
+            "upperTemperature.target.value.w.min"
+          ],
+          "max": [
+            "zones.0.temperature.target.value.w.max",
+            "kimchi.temperature.0.target.value.w.max",
+            "temperature.zone1.target.value.w.max",
+            "upperTemperature.target.value.w.max"
+          ],
+          "step": [
+            "zones.0.temperature.target.value.w.step",
+            "kimchi.temperature.0.target.value.w.step",
+            "temperature.zone1.target.value.w.step",
+            "upperTemperature.target.value.w.step"
+          ]
+        }
+      },
+      "create": { "when": "profileHasAny", "keys": ["zones.0.temperature.target", "kimchi.temperature.0.target", "temperature.zone1.target", "upperTemperature.target"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["zones.0.temperature.target.mode", "kimchi.temperature.0.target.mode", "temperature.zone1.target.mode", "upperTemperature.target.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["zones.0.temperature.target", "kimchi.temperature.0.target", "temperature.zone1.target", "upperTemperature.target"] },
+      "write": { "template": { "zones": { "0": { "temperature": { "target": "@float", "unit": "C" } } } } }
+    },
+    {
+      "ident": "ZONE1_CUR_TEMP",
+      "name": "Zone 1 Ist",
+      "type": "float",
+      "presentation": { "kind": "value", "suffix": " °C" },
+      "create": { "when": "statusHasAny", "keys": ["zones.0.temperature.current", "kimchi.temperature.0.current", "temperature.zone1.current", "upperTemperature.current"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["zones.0.temperature.current", "kimchi.temperature.0.current", "temperature.zone1.current", "upperTemperature.current"] }
+    },
+
+    {
+      "ident": "ZONE2_SET_TEMP",
+      "name": "Zone 2 Soll",
+      "type": "float",
+      "presentation": {
+        "kind": "slider",
+        "suffix": " °C",
+        "range": { "min": 0, "max": 15, "step": 1 },
+        "rangeFromProfile": {
+          "min": [
+            "zones.1.temperature.target.value.w.min",
+            "kimchi.temperature.1.target.value.w.min",
+            "temperature.zone2.target.value.w.min",
+            "lowerTemperature.target.value.w.min"
+          ],
+          "max": [
+            "zones.1.temperature.target.value.w.max",
+            "kimchi.temperature.1.target.value.w.max",
+            "temperature.zone2.target.value.w.max",
+            "lowerTemperature.target.value.w.max"
+          ],
+          "step": [
+            "zones.1.temperature.target.value.w.step",
+            "kimchi.temperature.1.target.value.w.step",
+            "temperature.zone2.target.value.w.step",
+            "lowerTemperature.target.value.w.step"
+          ]
+        }
+      },
+      "create": { "when": "profileHasAny", "keys": ["zones.1.temperature.target", "kimchi.temperature.1.target", "temperature.zone2.target", "lowerTemperature.target"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["zones.1.temperature.target.mode", "kimchi.temperature.1.target.mode", "temperature.zone2.target.mode", "lowerTemperature.target.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["zones.1.temperature.target", "kimchi.temperature.1.target", "temperature.zone2.target", "lowerTemperature.target"] },
+      "write": { "template": { "zones": { "1": { "temperature": { "target": "@float", "unit": "C" } } } } }
+    },
+    {
+      "ident": "ZONE2_CUR_TEMP",
+      "name": "Zone 2 Ist",
+      "type": "float",
+      "presentation": { "kind": "value", "suffix": " °C" },
+      "create": { "when": "statusHasAny", "keys": ["zones.1.temperature.current", "kimchi.temperature.1.current", "temperature.zone2.current", "lowerTemperature.current"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["zones.1.temperature.current", "kimchi.temperature.1.current", "temperature.zone2.current", "lowerTemperature.current"] }
+    },
+
+    {
+      "ident": "DOOR_OPEN",
+      "name": "Tür offen",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "Offen", "captionOff": "Zu" },
+      "create": { "when": "statusHasAny", "keys": ["doorOpen", "door", "door.status"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["doorOpen", "door", "door.status"], "string_true": ["OPEN", "ON", "TRUE", "1"], "string_false": ["CLOSE", "CLOSED", "OFF", "FALSE", "0"] }
+    }
+  ]
+}

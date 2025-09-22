@@ -1,0 +1,101 @@
+{
+  "capabilities": [
+    {
+      "ident": "VENT_OPERATION",
+      "name": "Ventilator Betrieb",
+      "type": "integer",
+      "presentation": { "kind": "buttons", "options": [
+        { "value": 0, "caption": "Stop", "color": 16711680 },
+        { "value": 1, "caption": "Start", "color": 52651 },
+        { "value": 2, "caption": "Pause", "color": 16026947 }
+      ] },
+      "create": { "when": "profileHasAny", "keys": ["operation.ventilatorOperationMode", "ventilatorOperationMode", "operation.mode"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["operation.ventilatorOperationMode.mode", "ventilatorOperationMode.mode", "operation.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["operation.ventilatorOperationMode", "ventilatorOperationMode", "operation.mode"], "map": { "START": 1, "PAUSE": 2, "STOP": 0 }, "mapCaseInsensitive": true },
+      "write": { "enumMap": {
+        "1": { "operation.ventilatorOperationMode": "START" },
+        "2": { "operation.ventilatorOperationMode": "PAUSE" },
+        "0": { "operation.ventilatorOperationMode": "STOP" }
+      } }
+    },
+
+    {
+      "ident": "POWER",
+      "name": "Power",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["operation.power", "power", "is_on"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["operation.power", "power", "is_on"], "map": { "ON": true, "1": true, "TRUE": true, "OFF": false, "0": false, "FALSE": false } }
+    },
+
+    {
+      "ident": "FAN_MODE",
+      "name": "Lüfterstufe",
+      "type": "integer",
+      "presentation": { "kind": "buttons", "options": [
+        { "value": 10, "caption": "Auto", "color": 52651 },
+        { "value": 11, "caption": "Niedrig", "color": 3442154 },
+        { "value": 12, "caption": "Mittel", "color": 16777215 },
+        { "value": 13, "caption": "Hoch", "color": 16026947 },
+        { "value": 14, "caption": "Turbo", "color": 16711680 }
+      ] },
+      "create": { "when": "profileHasAny", "keys": ["fanSpeed", "airFlow.windStrength", "windStrength", "fan.level"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["fanSpeed.mode", "airFlow.windStrength.mode", "fan.level.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["fanSpeed", "airFlow.windStrength", "windStrength", "fan.level"], "map": { "AUTO": 10, "LOW": 11, "MID": 12, "HIGH": 13, "TURBO": 14 }, "mapCaseInsensitive": true },
+      "write": { "enumMap": {
+        "10": { "fanSpeed": "AUTO",  "airFlow.windStrength": "AUTO",  "fan.level": "AUTO" },
+        "11": { "fanSpeed": "LOW",   "airFlow.windStrength": "LOW",   "fan.level": "LOW" },
+        "12": { "fanSpeed": "MID",   "airFlow.windStrength": "MID",   "fan.level": "MID" },
+        "13": { "fanSpeed": "HIGH",  "airFlow.windStrength": "HIGH",  "fan.level": "HIGH" },
+        "14": { "fanSpeed": "TURBO", "airFlow.windStrength": "TURBO", "fan.level": "TURBO" }
+      } }
+    },
+
+    {
+      "ident": "OSCILLATE",
+      "name": "Oszillation",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["windDirection.rotateLeftRight", "oscillation", "swing"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["windDirection.rotateLeftRight.mode", "oscillation.mode", "swing.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["windDirection.rotateLeftRight", "oscillation", "swing"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
+      "write": { "enumMap": { "1": { "windDirection.rotateLeftRight": true,  "oscillation": true,  "swing": "ON" }, "0": { "windDirection.rotateLeftRight": false, "oscillation": false, "swing": "OFF" } } }
+    },
+
+    {
+      "ident": "TIMER_REMAIN_MIN",
+      "name": "Timer Rest",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " min" },
+      "create": { "when": "profileHasAny", "keys": ["timer.remainMinute", "remainTimeInMinute", "remainMinute", "remainTime.minute"] },
+      "action": { "enableWhen": "never" },
+      "read": {
+        "composite": { "combine": "hm_to_minutes", "parts": [ { "path": "remainTime.hour" }, { "path": "remainTime.minute" } ] },
+        "sources": ["timer.remainMinute", "remainTimeInMinute", "remainMinute"]
+      }
+    },
+
+    {
+      "ident": "LIGHT",
+      "name": "Licht",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["display.light", "light"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["display.light.mode", "light.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["display.light", "light"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
+      "write": { "template": { "display": { "light": "@onoff" } } }
+    },
+
+    {
+      "ident": "CHILD_LOCK",
+      "name": "Kindersicherung",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["childLock", "childLock.enabled", "lock.child"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["childLock.mode", "childLock.enabled.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["childLock", "childLock.enabled", "lock.child"] },
+      "write": { "template": { "childLock": { "enabled": "@bool" } } }
+    }
+  ]
+}

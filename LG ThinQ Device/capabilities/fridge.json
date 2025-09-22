@@ -1,0 +1,102 @@
+{
+  "capabilities": [
+    {
+      "ident": "POWER_SAVE",
+      "name": "Power Save",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["powerSave.powerSaveEnabled"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["powerSave.powerSaveEnabled.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["powerSave.powerSaveEnabled"] },
+      "write": { "template": { "powerSave": { "powerSaveEnabled": "@bool" } } }
+    },
+    {
+      "ident": "FRIDGE_SET_TEMP",
+      "name": "Kühlschrank Soll",
+      "type": "integer",
+      "presentation": { "kind": "slider", "range": { "min": 0, "max": 7, "step": 1, "digits": 0, "suffix": " °C" } },
+      "create": { "when": "always" },
+      "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
+      "read": { "array": { "container": "temperature", "where": { "locationName": "MAIN" }, "path": "targetTemperature" } },
+      "write": { "arrayTemplate": { "container": "temperature", "where": { "locationName": "MAIN" }, "set": { "locationName": "MAIN", "targetTemperature": "@int", "unit": "C" } } }
+    },
+    {
+      "ident": "FREEZER_SET_TEMP",
+      "name": "Gefrier Soll",
+      "type": "integer",
+      "presentation": { "kind": "slider", "range": { "min": -21, "max": -16, "step": 1, "digits": 0, "suffix": " °C" } },
+      "create": { "when": "always" },
+      "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
+      "read": { "array": { "container": "temperature", "where": { "locationName": "FREEZER" }, "path": "targetTemperature" } },
+      "write": { "arrayTemplate": { "container": "temperature", "where": { "locationName": "FREEZER" }, "set": { "locationName": "FREEZER", "targetTemperature": "@int", "unit": "C" } } }
+    },
+    {
+      "ident": "ICE_PLUS",
+      "name": "Schnellgefrieren",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["refrigeration.expressMode"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["refrigeration.expressMode.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["refrigeration.expressMode", "expressFreeze", "icePlus", "express_frz"] },
+      "write": { "template": { "refrigeration": { "expressMode": "@bool" } } }
+    },
+    {
+      "ident": "EXPRESS_MODE_NAME",
+      "name": "Express Mode Name",
+      "type": "string",
+      "presentation": { "kind": "value" },
+      "create": { "when": "profileHasAny", "keys": ["refrigeration.expressModeName"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["refrigeration.expressModeName"] }
+    },
+    {
+      "ident": "FRESH_AIR_FILTER",
+      "name": "Frischluftfilter",
+      "type": "integer",
+      "presentation": { "kind": "buttons", "options": [
+        { "value": 0, "caption": "Aus", "color": 8421504 },
+        { "value": 1, "caption": "Auto", "color": 52651 }
+      ] },
+      "create": { "when": "profileHasAny", "keys": ["refrigeration.freshAirFilter"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["refrigeration.freshAirFilter.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["refrigeration.freshAirFilter"], "map": { "OFF": 0, "AUTO": 1 } },
+      "write": { "enumMap": { "0": { "refrigeration.freshAirFilter": "OFF" }, "1": { "refrigeration.freshAirFilter": "AUTO" } } }
+    },
+    {
+      "ident": "FRIDGE_TEMP",
+      "name": "Kühlschrank Temp",
+      "type": "float",
+      "presentation": { "kind": "value", "suffix": " °C", "digits": 1 },
+      "create": { "when": "profileHasAny", "keys": ["fridgeTemperature", "refTemp", "tempRefrigerator"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["fridgeTemperature", "refTemp", "tempRefrigerator"] }
+    },
+    {
+      "ident": "FREEZER_TEMP",
+      "name": "Gefrierschrank Temp",
+      "type": "float",
+      "presentation": { "kind": "value", "suffix": " °C", "digits": 0 },
+      "create": { "when": "profileHasAny", "keys": ["freezerTemperature", "frzTemp", "tempFreezer"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["freezerTemperature", "frzTemp", "tempFreezer"] }
+    },
+    {
+      "ident": "DOOR_FRIDGE",
+      "name": "Tür Kühlschrank",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "Offen", "captionOff": "Zu" },
+      "create": { "when": "statusHasAny", "keys": ["doorRefrigerator", "door_fridge", "refrigeratorDoorOpen"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["doorRefrigerator", "door_fridge", "refrigeratorDoorOpen"] }
+    },
+    {
+      "ident": "DOOR_FREEZER",
+      "name": "Tür Gefrier",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "Offen", "captionOff": "Zu" },
+      "create": { "when": "statusHasAny", "keys": ["doorFreezer", "door_freezer", "freezerDoorOpen"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["doorFreezer", "door_freezer", "freezerDoorOpen"] }
+    }
+  ]
+}

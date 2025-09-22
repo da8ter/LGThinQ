@@ -1,0 +1,20 @@
+{
+    "id": "{FCD02091-9189-0B0A-0C70-D607F1941C05}",
+    "name": "LG ThinQ",
+    "type": 2,
+    "vendor": "LG",
+    "aliases": [],
+    "parentRequirements": [
+        "{018EF6B5-AB94-40C6-AA53-46943E824ACF}",
+        "{043EA491-0325-4ADD-8FC2-A30C8EEB4D3F}"
+    ],
+    "childRequirements": [
+        "{5E9D1B64-0F44-4F21-9D74-09C5BB90FB2F}"
+    ],
+    "implemented": [
+        "{A1F438B3-2A68-4A2B-8FDB-7460F1B8B854}",
+        "{7F7632D9-FA40-4F38-8DEA-C83CD4325A32}"
+    ],
+    "prefix": "LGTQ",
+    "url": ""
+}

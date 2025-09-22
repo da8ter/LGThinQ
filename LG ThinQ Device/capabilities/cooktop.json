@@ -1,0 +1,84 @@
+{
+  "capabilities": [
+    {
+      "ident": "COOKTOP_LOCK",
+      "name": "Sperre",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "Gesperrt", "captionOff": "Frei" },
+      "create": { "when": "profileHasAny", "keys": ["childLock", "control.lock", "cooktop.lock", "lock.child"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["childLock.mode", "control.lock.mode", "cooktop.lock.mode", "lock.child.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["childLock", "control.lock", "cooktop.lock", "lock.child"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
+      "write": { "template": { "childLock": "@onoff" } }
+    },
+
+    {
+      "ident": "LEFT_FRONT_LEVEL",
+      "name": "Links vorn Stufe",
+      "type": "integer",
+      "presentation": { "kind": "slider", "range": { "min": 0, "max": 9, "step": 1, "digits": 0 } },
+      "create": { "when": "profileHasAny", "keys": ["heater.0.powerLevel", "elements.0.powerLevel", "burner.0.powerLevel", "zones.0.powerLevel"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["heater.0.powerLevel.mode", "elements.0.powerLevel.mode", "burner.0.powerLevel.mode", "zones.0.powerLevel.mode"], "reassertOn": ["setup", "status"] },
+      "read": {
+        "array": { "container": "heater", "where": { "locationName": "LEFT_FRONT" }, "path": "powerLevel" },
+        "sources": ["heater.0.powerLevel", "elements.0.powerLevel", "burner.0.powerLevel", "zones.0.powerLevel"]
+      },
+      "write": { "arrayTemplate": { "container": "heater", "where": { "locationName": "LEFT_FRONT" }, "set": { "locationName": "LEFT_FRONT", "powerLevel": "@int" } } }
+    },
+
+    {
+      "ident": "RIGHT_FRONT_LEVEL",
+      "name": "Rechts vorn Stufe",
+      "type": "integer",
+      "presentation": { "kind": "slider", "range": { "min": 0, "max": 9, "step": 1, "digits": 0 } },
+      "create": { "when": "profileHasAny", "keys": ["heater.1.powerLevel", "elements.1.powerLevel", "burner.1.powerLevel", "zones.1.powerLevel"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["heater.1.powerLevel.mode", "elements.1.powerLevel.mode", "burner.1.powerLevel.mode", "zones.1.powerLevel.mode"], "reassertOn": ["setup", "status"] },
+      "read": {
+        "array": { "container": "heater", "where": { "locationName": "RIGHT_FRONT" }, "path": "powerLevel" },
+        "sources": ["heater.1.powerLevel", "elements.1.powerLevel", "burner.1.powerLevel", "zones.1.powerLevel"]
+      },
+      "write": { "arrayTemplate": { "container": "heater", "where": { "locationName": "RIGHT_FRONT" }, "set": { "locationName": "RIGHT_FRONT", "powerLevel": "@int" } } }
+    },
+
+    {
+      "ident": "LEFT_REAR_LEVEL",
+      "name": "Links hinten Stufe",
+      "type": "integer",
+      "presentation": { "kind": "slider", "range": { "min": 0, "max": 9, "step": 1, "digits": 0 } },
+      "create": { "when": "profileHasAny", "keys": ["heater.2.powerLevel", "elements.2.powerLevel", "burner.2.powerLevel", "zones.2.powerLevel"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["heater.2.powerLevel.mode", "elements.2.powerLevel.mode", "burner.2.powerLevel.mode", "zones.2.powerLevel.mode"], "reassertOn": ["setup", "status"] },
+      "read": {
+        "array": { "container": "heater", "where": { "locationName": "LEFT_REAR" }, "path": "powerLevel" },
+        "sources": ["heater.2.powerLevel", "elements.2.powerLevel", "burner.2.powerLevel", "zones.2.powerLevel"]
+      },
+      "write": { "arrayTemplate": { "container": "heater", "where": { "locationName": "LEFT_REAR" }, "set": { "locationName": "LEFT_REAR", "powerLevel": "@int" } } }
+    },
+
+    {
+      "ident": "RIGHT_REAR_LEVEL",
+      "name": "Rechts hinten Stufe",
+      "type": "integer",
+      "presentation": { "kind": "slider", "range": { "min": 0, "max": 9, "step": 1, "digits": 0 } },
+      "create": { "when": "profileHasAny", "keys": ["heater.3.powerLevel", "elements.3.powerLevel", "burner.3.powerLevel", "zones.3.powerLevel"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["heater.3.powerLevel.mode", "elements.3.powerLevel.mode", "burner.3.powerLevel.mode", "zones.3.powerLevel.mode"], "reassertOn": ["setup", "status"] },
+      "read": {
+        "array": { "container": "heater", "where": { "locationName": "RIGHT_REAR" }, "path": "powerLevel" },
+        "sources": ["heater.3.powerLevel", "elements.3.powerLevel", "burner.3.powerLevel", "zones.3.powerLevel"]
+      },
+      "write": { "arrayTemplate": { "container": "heater", "where": { "locationName": "RIGHT_REAR" }, "set": { "locationName": "RIGHT_REAR", "powerLevel": "@int" } } }
+    },
+
+    {
+      "ident": "CENTER_LEVEL",
+      "name": "Mitte Stufe",
+      "type": "integer",
+      "presentation": { "kind": "slider", "range": { "min": 0, "max": 9, "step": 1, "digits": 0 } },
+      "create": { "when": "profileHasAny", "keys": ["heater.4.powerLevel", "elements.4.powerLevel", "burner.4.powerLevel", "zones.4.powerLevel"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["heater.4.powerLevel.mode", "elements.4.powerLevel.mode", "burner.4.powerLevel.mode", "zones.4.powerLevel.mode"], "reassertOn": ["setup", "status"] },
+      "read": {
+        "array": { "container": "heater", "where": { "locationName": "CENTER" }, "path": "powerLevel" },
+        "sources": ["heater.4.powerLevel", "elements.4.powerLevel", "burner.4.powerLevel", "zones.4.powerLevel"]
+      },
+      "write": { "arrayTemplate": { "container": "heater", "where": { "locationName": "CENTER" }, "set": { "locationName": "CENTER", "powerLevel": "@int" } } }
+    }
+  ]
+}

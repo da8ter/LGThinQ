@@ -1,0 +1,18 @@
+{
+  "elements": [
+    { "type": "Label", "label": "LG ThinQ Device Instance" },
+    { "type": "ValidationTextBox", "name": "Alias", "caption": "Alias", "width": "400px" },
+    { "type": "ValidationTextBox", "name": "DeviceID", "caption": "Device ID", "width": "500px", "enabled": false }
+  ],
+  "actions": [
+    { "type": "Button", "label": "Update status", "onClick": "LGTQD_UpdateStatus($id);" },
+    { "type": "Label", "label": "Diagnose & Support" },
+    { "type": "Button", "label": "Support-Paket (ZIP) erzeugen", "onClick": "LGTQD_ExportSupportBundle($id);" },
+    { "type": "Label", "label": "Hinweis: Die ZIP-Datei wird im Verzeichnis 'user/lgthinq_support' des Symcon-Servers gespeichert und ist über das WebFront unter /user/lgthinq_support/ abrufbar. Es werden nur Gerätespezifische Daten gespeichert. Persönliche Daten wie Device-ID oder Tocken werden anonymisiert" }
+  ],
+  "status": [
+    { "code": 101, "icon": "inactive", "caption": "Creating" },
+    { "code": 102, "icon": "active", "caption": "Ready" },
+    { "code": 104, "icon": "error", "caption": "Configuration incomplete" }
+  ]
+}

@@ -1,0 +1,223 @@
+{
+  "capabilities": [
+    {
+      "ident": "BOILER_OPERATION",
+      "name": "Betrieb",
+      "type": "integer",
+      "presentation": { "kind": "buttons", "options": [
+        { "value": 0, "caption": "Stop", "color": 16711680 },
+        { "value": 1, "caption": "Start", "color": 52651 },
+        { "value": 2, "caption": "Pause", "color": 16026947 }
+      ] },
+      "create": { "when": "profileHasAny", "keys": [
+        "operation.systemBoilerOperationMode",
+        "systemBoilerOperationMode",
+        "operation.boilerOperationMode",
+        "boilerOperationMode",
+        "operation.mode"
+      ] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": [
+        "operation.systemBoilerOperationMode.mode",
+        "systemBoilerOperationMode.mode",
+        "operation.boilerOperationMode.mode",
+        "boilerOperationMode.mode",
+        "operation.mode"
+      ], "reassertOn": ["setup", "status"] },
+      "read": { "sources": [
+        "operation.systemBoilerOperationMode",
+        "systemBoilerOperationMode",
+        "operation.boilerOperationMode",
+        "boilerOperationMode",
+        "operation.mode"
+      ], "map": { "START": 1, "PAUSE": 2, "STOP": 0 }, "mapCaseInsensitive": true },
+      "write": { "enumMap": {
+        "1": { "operation.systemBoilerOperationMode": "START" },
+        "2": { "operation.systemBoilerOperationMode": "PAUSE" },
+        "0": { "operation.systemBoilerOperationMode": "STOP" }
+      } }
+    },
+
+    {
+      "ident": "HEAT_MODE",
+      "name": "Heizmodus",
+      "type": "integer",
+      "presentation": { "kind": "buttons", "options": [
+        { "value": 1, "caption": "Auto", "color": 52651 },
+        { "value": 2, "caption": "Nur Heizen", "color": 16026947 },
+        { "value": 3, "caption": "Nur Warmwasser", "color": 3442154 },
+        { "value": 4, "caption": "Heizen+Wasser", "color": 16753920 },
+        { "value": 5, "caption": "Eco", "color": 8421504 }
+      ] },
+      "create": { "when": "profileHasAny", "keys": [
+        "heatingJobMode.currentJobMode",
+        "boilerJobMode.currentJobMode",
+        "heating.mode",
+        "operation.heatingMode",
+        "mode"
+      ] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": [
+        "heatingJobMode.currentJobMode.mode",
+        "boilerJobMode.currentJobMode.mode",
+        "heating.mode",
+        "operation.heatingMode"
+      ], "reassertOn": ["setup", "status"] },
+      "read": { "sources": [
+        "heatingJobMode.currentJobMode",
+        "boilerJobMode.currentJobMode",
+        "heating.mode",
+        "operation.heatingMode",
+        "mode"
+      ], "map": { "AUTO": 1, "HEAT_ONLY": 2, "HOT_WATER_ONLY": 3, "HEAT_AND_WATER": 4, "ECO": 5 }, "mapCaseInsensitive": true },
+      "write": { "enumMap": {
+        "1": { "heatingJobMode.currentJobMode": "AUTO" },
+        "2": { "heatingJobMode.currentJobMode": "HEAT_ONLY" },
+        "3": { "heatingJobMode.currentJobMode": "HOT_WATER_ONLY" },
+        "4": { "heatingJobMode.currentJobMode": "HEAT_AND_WATER" },
+        "5": { "heatingJobMode.currentJobMode": "ECO" }
+      } }
+    },
+
+    {
+      "ident": "TARGET_ROOM_TEMP",
+      "name": "Soll Raum",
+      "type": "float",
+      "presentation": {
+        "kind": "slider",
+        "suffix": " °C",
+        "range": { "min": 5, "max": 35, "step": 0.5 },
+        "rangeFromProfile": {
+          "min": [
+            "heating.target.value.w.min",
+            "room.targetTemperature.value.w.min",
+            "targetTemperature.value.w.min"
+          ],
+          "max": [
+            "heating.target.value.w.max",
+            "room.targetTemperature.value.w.max",
+            "targetTemperature.value.w.max"
+          ],
+          "step": [
+            "heating.target.value.w.step",
+            "room.targetTemperature.value.w.step",
+            "targetTemperature.value.w.step"
+          ]
+        }
+      },
+      "create": { "when": "profileHasAny", "keys": [
+        "heating.target", "room.targetTemperature", "targetTemperature"
+      ] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": [
+        "heating.target.mode", "room.targetTemperature.mode", "targetTemperature.mode"
+      ], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["heating.target", "room.targetTemperature", "targetTemperature"] },
+      "write": { "template": { "heating": { "target": "@float", "unit": "C" } } }
+    },
+
+    {
+      "ident": "TARGET_WATER_TEMP",
+      "name": "Soll Wasser",
+      "type": "float",
+      "presentation": {
+        "kind": "slider",
+        "suffix": " °C",
+        "range": { "min": 30, "max": 75, "step": 1 },
+        "rangeFromProfile": {
+          "min": [
+            "water.target.value.w.min",
+            "hotWater.target.value.w.min",
+            "dhw.target.value.w.min"
+          ],
+          "max": [
+            "water.target.value.w.max",
+            "hotWater.target.value.w.max",
+            "dhw.target.value.w.max"
+          ],
+          "step": [
+            "water.target.value.w.step",
+            "hotWater.target.value.w.step",
+            "dhw.target.value.w.step"
+          ]
+        }
+      },
+      "create": { "when": "profileHasAny", "keys": ["water.target", "hotWater.target", "dhw.target"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["water.target.mode", "hotWater.target.mode", "dhw.target.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["water.target", "hotWater.target", "dhw.target"] },
+      "write": { "template": { "water": { "target": "@float", "unit": "C" } } }
+    },
+
+    {
+      "ident": "ROOM_TEMP",
+      "name": "Raumtemperatur",
+      "type": "float",
+      "presentation": { "kind": "value", "suffix": " °C" },
+      "create": { "when": "statusHasAny", "keys": [
+        "temperature.room.current", "roomTemperature", "indoorTemperature", "air.temperature"
+      ] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["temperature.room.current", "roomTemperature", "indoorTemperature", "air.temperature"] }
+    },
+
+    {
+      "ident": "WATER_TEMP",
+      "name": "Wassertemperatur",
+      "type": "float",
+      "presentation": { "kind": "value", "suffix": " °C" },
+      "create": { "when": "statusHasAny", "keys": [
+        "temperature.water.current", "waterTemperature", "dhwTemperature", "hotWaterTemperature"
+      ] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["temperature.water.current", "waterTemperature", "dhwTemperature", "hotWaterTemperature"] }
+    },
+
+    {
+      "ident": "PUMP_ON",
+      "name": "Pumpe",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["pump.operation", "circulationPump.operation", "pump"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["pump.operation.mode", "circulationPump.operation.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["pump.operation", "circulationPump.operation", "pump"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
+      "write": { "template": { "pump": { "operation": "@onoff" } } }
+    },
+
+    {
+      "ident": "BURNER_ON",
+      "name": "Brenner",
+      "type": "boolean",
+      "presentation": { "kind": "value" },
+      "create": { "when": "statusHasAny", "keys": ["burner.operation", "burnerOn", "flame", "flameOn"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["burner.operation", "burnerOn", "flame", "flameOn"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] }
+    },
+
+    {
+      "ident": "PRESSURE_BAR",
+      "name": "Druck",
+      "type": "float",
+      "presentation": { "kind": "value", "suffix": " bar", "digits": 1 },
+      "create": { "when": "statusHasAny", "keys": ["pressure.value", "system.pressure", "boilerPressure"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["pressure.value", "system.pressure", "boilerPressure"] }
+    },
+
+    {
+      "ident": "ERROR_CODE",
+      "name": "Fehlercode",
+      "type": "string",
+      "presentation": { "kind": "value" },
+      "create": { "when": "statusHasAny", "keys": ["error.code", "fault.code", "error", "status.errorCode"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["error.code", "fault.code", "error", "status.errorCode"] }
+    },
+
+    {
+      "ident": "POWER",
+      "name": "Power",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["operation.power", "power", "is_on"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["operation.power", "power", "is_on"], "map": { "ON": true, "1": true, "TRUE": true, "OFF": false, "0": false, "FALSE": false } }
+    }
+  ]
+}
