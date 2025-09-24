@@ -611,12 +611,19 @@ class LGThinQBridge extends IPSModule
         $strCONFIG .= 'distinguished_name = req_DN' . $nl;
         $strCONFIG .= 'string_mask = nombstr' . $nl;
         $strCONFIG .= 'prompt = no' . $nl;
+        $strCONFIG .= 'req_extensions = v3_req' . $nl;
+        $strCONFIG .= 'x509_extensions = v3_client' . $nl;
         $strCONFIG .= $nl;
         $strCONFIG .= '[ req_DN ]' . $nl;
         $strCONFIG .= '0.organizationName = "IP-Symcon LG ThinQ"' . $nl;
         $strCONFIG .= 'commonName = "' . addslashes($clientId) . '"' . $nl;
         $strCONFIG .= $nl;
         $strCONFIG .= '[ v3_req ]' . $nl;
+        $strCONFIG .= 'basicConstraints = critical, CA:FALSE' . $nl;
+        $strCONFIG .= 'keyUsage = critical, digitalSignature' . $nl;
+        $strCONFIG .= 'extendedKeyUsage = clientAuth' . $nl;
+        $strCONFIG .= $nl;
+        $strCONFIG .= '[ v3_client ]' . $nl;
         $strCONFIG .= 'basicConstraints = critical, CA:FALSE' . $nl;
         $strCONFIG .= 'keyUsage = critical, digitalSignature' . $nl;
         $strCONFIG .= 'extendedKeyUsage = clientAuth' . $nl;
@@ -636,8 +643,6 @@ class LGThinQBridge extends IPSModule
             ];
             $config = [
                 'config' => $cfgPath,
-                'req_extensions' => 'v3_req',
-                'x509_extensions' => 'v3_req',
                 'digest_alg' => 'sha256'
             ];
             // Prefer EC P-256 key, fallback to RSA 2048
@@ -672,7 +677,48 @@ class LGThinQBridge extends IPSModule
 
             $csr = openssl_csr_new($dn, $pkGenerate, $config);
             if ($csr === false) {
-                throw new \RuntimeException('openssl_csr_new fehlgeschlagen');
+                // Retry without req_extensions to support OpenSSL builds that can't load custom req sections
+                if (method_exists($this, 'SendDebug')) {
+                    $this->SendDebug('CertGen', 'CSR with v3_req failed; retrying without req_extensions', 0);
+                }
+                $strCONFIG2  = 'default_md = sha256' . $nl;
+                $strCONFIG2 .= 'default_days = 3650' . $nl;
+                $strCONFIG2 .= $nl;
+                $strCONFIG2 .= '[ req ]' . $nl;
+                $strCONFIG2 .= 'default_bits = 2048' . $nl;
+                $strCONFIG2 .= 'distinguished_name = req_DN' . $nl;
+                $strCONFIG2 .= 'string_mask = nombstr' . $nl;
+                $strCONFIG2 .= 'prompt = no' . $nl;
+                $strCONFIG2 .= 'x509_extensions = v3_client' . $nl;
+                $strCONFIG2 .= $nl;
+                $strCONFIG2 .= '[ req_DN ]' . $nl;
+                $strCONFIG2 .= '0.organizationName = "IP-Symcon LG ThinQ"' . $nl;
+                $strCONFIG2 .= 'commonName = "' . addslashes($clientId) . '"' . $nl;
+                $strCONFIG2 .= $nl;
+                $strCONFIG2 .= '[ v3_client ]' . $nl;
+                $strCONFIG2 .= 'basicConstraints = critical, CA:FALSE' . $nl;
+                $strCONFIG2 .= 'keyUsage = critical, digitalSignature' . $nl;
+                $strCONFIG2 .= 'extendedKeyUsage = clientAuth' . $nl;
+                $strCONFIG2 .= 'subjectKeyIdentifier = hash' . $nl;
+                $strCONFIG2 .= 'authorityKeyIdentifier = keyid' . $nl;
+
+                $cfgHandle2 = fopen($cfgPath, 'w');
+                if ($cfgHandle2 === false) {
+                    throw new \RuntimeException('Konnte temporäre OpenSSL-Konfiguration (Fallback) nicht erstellen');
+                }
+                fwrite($cfgHandle2, $strCONFIG2);
+                fclose($cfgHandle2);
+
+                $config2 = [
+                    'config' => $cfgPath,
+                    'digest_alg' => 'sha256'
+                ];
+                $csr = openssl_csr_new($dn, $pkGenerate, $config2);
+                if ($csr === false) {
+                    throw new \RuntimeException('openssl_csr_new fehlgeschlagen');
+                }
+                // Use config2 for signing as well
+                $config = $config2;
             }
             $serial = 0;
             try {
