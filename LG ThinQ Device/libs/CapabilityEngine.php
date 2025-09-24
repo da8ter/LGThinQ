@@ -398,6 +398,51 @@ class CapabilityEngine
     }
 
     /**
+     * Build a configuration plan describing which variables should exist and how they should be presented.
+     *
+     * @param string $deviceType
+     * @param array<string, mixed> $profile
+     * @param array<string, mixed>|null $status
+     * @return array<string, array<string, mixed>> keyed by ident
+     */
+    public function buildPlan(string $deviceType, array $profile, ?array $status): array
+    {
+        $this->loadCapabilities($deviceType, $profile);
+        $this->flatProfile = $this->flatten($profile);
+        $this->flatStatus = is_array($status) ? $this->flatten($status) : [];
+
+        $plan = [];
+        foreach ($this->caps as $cap) {
+            $ident = (string)($cap['ident'] ?? '');
+            if ($ident === '') {
+                continue;
+            }
+
+            $shouldCreate = $this->shouldCreate($cap, $this->flatProfile, $this->flatStatus);
+            $entry = [
+                'ident' => $ident,
+                'type' => strtoupper((string)($cap['type'] ?? 'string')),
+                'name' => (string)($cap['name'] ?? $ident),
+                'hidden' => (bool)($cap['visibility']['hidden'] ?? false),
+                'shouldCreate' => $shouldCreate,
+                'presentation' => isset($cap['presentation']) && is_array($cap['presentation']) ? $cap['presentation'] : null,
+                'enableAction' => $shouldCreate && $this->shouldEnableAction($cap)
+            ];
+
+            if ($shouldCreate) {
+                $value = $this->readValue($cap, $this->flatStatus);
+                if ($value !== null) {
+                    $entry['initialValue'] = $value;
+                }
+            }
+
+            $plan[$ident] = $entry;
+        }
+
+        return $plan;
+    }
+
+    /**
      * Apply status to variables declared in capabilities and reassert actions if desired.
      *
      * @param array<string, mixed> $status
@@ -551,10 +596,27 @@ class CapabilityEngine
     private function enableAction(string $ident): void
     {
         @IPS_LogMessage('CapabilityEngine', sprintf('enableAction called for ident: %s, instanceId: %d - SKIPPING (will be handled by main module)', $ident, $this->instanceId));
-        
+
         // NOTE: Action enabling is now handled directly in the main module's SetupDeviceVariables method
         // using $this->EnableAction() which is the correct Symcon approach
         // This method is kept for compatibility but doesn't do the actual enabling anymore
+    }
+
+    /** @param array<string, mixed> $cap */
+    private function shouldEnableAction(array $cap): bool
+    {
+        $enableWhen = strtolower((string)($cap['action']['enableWhen'] ?? ''));
+        if ($enableWhen === 'always') {
+            return true;
+        }
+        if ($enableWhen === 'profilewriteableany') {
+            $writeKeys = $cap['action']['writeableKeys'] ?? [];
+            if (is_array($writeKeys) && $this->profileHasWriteAny($writeKeys)) {
+                return true;
+            }
+            return $this->capHasWriteDefinition($cap);
+        }
+        return false;
     }
 
     private function profileHasWriteAny(array $writeableKeys): bool
