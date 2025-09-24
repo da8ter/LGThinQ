@@ -24,109 +24,8 @@ class LGThinQDevice extends IPSModule
         $this->RegisterAttributeString('LastStatus', '');
         $this->RegisterAttributeString('DeviceType', '');
         $this->RegisterAttributeString('LastProfile', '');
-        $this->RegisterAttributeString('LastSupportBundle', '');
     }
 
-    private function configureProfilesFromProfile(array $profile): void
-    {
-        // Präsentationen dynamisch aus dem Geräteprofil ableiten
-        $hvacCandidates = [
-            'hvacModes', 'supportedHvacModes', 'modes', 'operationModes', 'airState.support.hvacModes'
-        ];
-        $fanCandidates = [
-            'fanModes', 'supportedFanSpeeds', 'fans', 'airState.support.fanModes'
-        ];
-        $tempRangeCandidates = [
-            'temperatureRange', 'targetTemperatureRange', 'airState.support.tempRange'
-        ];
-
-        $flat = $this->flatten($profile);
-
-        // HVAC Mode → Buttons Presentation mit OPTIONS (lokalisierte Labels, keine Duplikate)
-        foreach ($hvacCandidates as $k) {
-            if (isset($flat[$k]) && is_array($flat[$k]) && !empty($flat[$k])) {
-                $options = [];
-                $seen = [];
-                $options[] = [
-                    'Value' => 0,
-                    'Caption' => $this->getHvacCaptionByCode(0)
-                ];
-                $seen[0] = true;
-                foreach ($flat[$k] as $v) {
-                    $code = $this->mapHvacMode((string)$v);
-                    if ($code === 0 || isset($seen[$code])) continue;
-                    $seen[$code] = true;
-                    $options[] = [
-                        'Value' => $code,
-                        'Caption' => $this->getHvacCaptionByCode($code)
-                    ];
-                }
-                $this->setVarPresentation('HVAC_MODE', [
-                    'PRESENTATION' => self::PRES_BUTTONS,
-                    'OPTIONS' => $options
-                ]);
-                break;
-            }
-        }
-
-        // Fan Mode → Buttons Presentation mit OPTIONS (lokalisierte Labels, keine Duplikate)
-        foreach ($fanCandidates as $k) {
-            if (isset($flat[$k]) && is_array($flat[$k]) && !empty($flat[$k])) {
-                $options = [];
-                $seen = [];
-                foreach ($flat[$k] as $v) {
-                    $code = $this->mapFanMode((string)$v);
-                    if (isset($seen[$code])) continue;
-                    $seen[$code] = true;
-                    $options[] = [
-                        'Value' => $code,
-                        'Caption' => $this->getFanCaptionByCode($code)
-                    ];
-                }
-                if (!empty($options)) {
-                    $this->setVarPresentation('FAN_MODE', [
-                        'PRESENTATION' => self::PRES_BUTTONS,
-                        'OPTIONS' => $options
-                    ]);
-                }
-                break;
-            }
-        }
-
-        // Temperaturbereich → Slider Presentation
-        foreach ($tempRangeCandidates as $k) {
-            if (isset($flat[$k]) && is_array($flat[$k])) {
-                $range = $flat[$k];
-                $min = (float)($range['min'] ?? 16.0);
-                $max = (float)($range['max'] ?? 30.0);
-                $step = (float)($range['step'] ?? 1.0);
-                if ($step < 1.0) { $step = 1.0; }
-                $pres = [
-                    'PRESENTATION' => self::PRES_SLIDER,
-                    'MIN' => $min,
-                    'MAX' => $max,
-                    'STEP_SIZE' => $step,
-                    'SUFFIX' => ' °C'
-                ];
-                $pres['DIGITS'] = ($step >= 1.0) ? 0 : (($step >= 0.5) ? 1 : 2);
-                $this->setVarPresentation('SET_TEMP', $pres);
-                break;
-            }
-        }
-
-        // Aktionen anhand Profil-Schreibrechten erlauben/verbieten
-        try {
-            $flatP = $this->flatten($profile);
-            $this->applyActionEnableRulesFromProfile($flatP);
-        } catch (\Throwable $e) {
-        }
-    }
-
-    // Legacy hook kept for compatibility; action enabling is now handled by CapabilityEngine
-    private function applyActionEnableRulesFromProfile(array $flatProfile): void
-    {
-        // no-op
-    }
 
 
     public function Destroy()
@@ -166,17 +65,16 @@ class LGThinQDevice extends IPSModule
         // Direkt versuchen zu verbinden, falls die Konfiguration bereits vollständig ist
         $this->EnsureConnected();
 
-        // DEBUG: Check if we reach this point
-        // removed: debug log
+  
         $deviceIDCheck = (string)$this->ReadPropertyString('DeviceID');
-        // removed: debug log
+
         
         // Variablen/Profile gemäß Gerät anlegen
         try {
             $this->SetupDeviceVariables();
-            // removed: debug log
+
         } catch (\Throwable $e) {
-            // removed: debug log
+
         }
 
         // Auto-Subscribe für Event/Push am Bridge-Splitter
@@ -865,7 +763,6 @@ class LGThinQDevice extends IPSModule
             $eng = $this->getCapabilityEngine();
             $eng->loadCapabilities($deviceType, $profile);
             $caps = $eng->getDescriptors();
-            // removed: debug log
             $flat = $this->flatten($profile);
             foreach ($caps as $cap) {
                 $ident = (string)($cap['ident'] ?? '');
@@ -911,7 +808,6 @@ class LGThinQDevice extends IPSModule
                         $arr['DIGITS'] = ($s >= 1.0) ? 0 : (($s >= 0.5) ? 1 : 2);
                     }
                 } elseif ($kind === 'buttons') {
-                    // removed: debug log
                     $arr['PRESENTATION'] = self::PRES_BUTTONS;
                     $options = [];
                     // Static options provided
@@ -1094,7 +990,6 @@ class LGThinQDevice extends IPSModule
                 $this->EnsureConnected();
             }
         } catch (\Throwable $e) {
-            // removed: debug log
             // Don't stop setup for bridge issues - continue with capability setup
         }
 
@@ -1115,7 +1010,6 @@ class LGThinQDevice extends IPSModule
                 } else {
                 }
             } catch (\Throwable $e) {
-                // removed: debug log
                 $type = 'ac'; // Fallback to air conditioner
             }
             $this->WriteAttributeString('DeviceType', $type);
@@ -1130,7 +1024,6 @@ class LGThinQDevice extends IPSModule
         try {
             $profileJson = $this->sendAction('GetProfile', ['DeviceID' => $deviceID]);
         } catch (\Throwable $e) {
-            // removed: debug log
             $profileJson = '{}'; // Empty profile as fallback
         }
         $profileResponse = json_decode((string)$profileJson, true);
@@ -2349,28 +2242,66 @@ class LGThinQDevice extends IPSModule
         return $base;
     }
 
-    public function ExportSupportBundle(): void
+    private function redactDeep($data)
     {
+        if (is_array($data)) {
+            $out = [];
+            foreach ($data as $k => $v) {
+                $ks = (string)$k;
+                if ($this->shouldRedactKey($ks)) {
+                    if (is_string($v)) { $out[$k] = $this->maskText($v); }
+                    elseif (is_scalar($v)) { $out[$k] = '***'; }
+                    else { $out[$k] = $this->redactDeep($v); }
+                } else {
+                    $out[$k] = $this->redactDeep($v);
+                }
+            }
+            return $out;
+        }
+        if (is_string($data)) {
+            // Light PII patterns (emails, tokens-like long hex)
+            if (strpos($data, '@') !== false) return $this->maskText($data);
+            if (preg_match('/[A-Fa-f0-9]{24,}/', $data)) return $this->maskText($data);
+        }
+        return $data;
+    }
+
+    private function shouldRedactKey(string $key): bool
+    {
+        $needles = ['token','email','user','account','serial','mac','ssid','ip','location','latitude','longitude','address'];
+        $k = strtolower($key);
+        foreach ($needles as $n) { if (strpos($k, $n) !== false) return true; }
+        return false;
+    }
+
+    private function maskId(string $id): string
+    {
+        $id = trim($id);
+        if ($id === '') return '';
+        $len = strlen($id);
+        if ($len <= 4) return str_repeat('*', max(0, $len - 1)) . substr($id, -1);
+        return str_repeat('*', $len - 4) . substr($id, -4);
+    }
+
+    private function maskText(string $s): string
+    {
+        $s = trim($s);
+        if ($s === '') return '';
+        if (strlen($s) <= 4) return substr($s, 0, 1) . '***' . substr($s, -1);
+        return substr($s, 0, 2) . '***' . substr($s, -2);
+    }
+
+
+    public function UIExportSupportBundle(): string
+    {
+        // Generate a support bundle on-the-fly and return a Data-URL for direct download
         try {
             $deviceID = (string)$this->ReadPropertyString('DeviceID');
             $alias    = (string)$this->ReadPropertyString('Alias');
             $type     = (string)$this->ReadAttributeString('DeviceType');
 
-            // Resolve kernel/webfront directory
-            $kernelDir = function_exists('IPS_GetKernelDir') ? rtrim((string)IPS_GetKernelDir(), '/\\') : rtrim((string)dirname(__DIR__, 3), '/\\');
-            $outDir    = $kernelDir . DIRECTORY_SEPARATOR . 'user' . DIRECTORY_SEPARATOR . 'lgthinq_support';
-            if (!@is_dir($outDir)) {
-                @mkdir($outDir, 0777, true);
-            }
-
             $ts = date('Ymd_His');
             $devShort = $this->maskId($deviceID);
-            $zipName = sprintf('lgtqd_support_%d_%s_%s.zip', $this->InstanceID, $devShort !== '' ? $devShort : 'noid', $ts);
-            $zipPath = $outDir . DIRECTORY_SEPARATOR . $zipName;
-
-            // Create temp work dir
-            $tmpDir = rtrim(sys_get_temp_dir(), '/\\') . DIRECTORY_SEPARATOR . 'lgtqd_' . $this->InstanceID . '_' . $ts;
-            @mkdir($tmpDir, 0777, true);
 
             // Collect metadata
             $meta = [
@@ -2392,15 +2323,10 @@ class LGThinQDevice extends IPSModule
                 $devs = @json_decode((string)$listJson, true);
                 if (is_array($devs)) {
                     foreach ($devs as $d) {
-                        $id = $d['deviceId'] ?? ($d['id'] ?? null);
-                        if (is_array($d) && ($d['deviceId'] ?? '') === $deviceID) {
-                            $deviceInfo = $d; break;
-                        }
+                        if (is_array($d) && ($d['deviceId'] ?? '') === $deviceID) { $deviceInfo = $d; break; }
                     }
-                } else {
                 }
             } catch (\Throwable $e) {
-                // removed: debug log
                 $deviceInfo = ['error' => $e->getMessage()];
             }
             $deviceInfoSan = is_array($deviceInfo) ? $this->redactDeep($deviceInfo) : null;
@@ -2408,24 +2334,18 @@ class LGThinQDevice extends IPSModule
             // Profile (raw response + extracted profile/property)
             $profileResponse = null; $extractedProfile = [];
             try {
-                if ($deviceID !== '') {
-                    $profileRaw = $this->sendAction('GetProfile', ['DeviceID' => $deviceID]);
-                }
+                $profileRaw = ($deviceID !== '') ? $this->sendAction('GetProfile', ['DeviceID' => $deviceID]) : '{}';
             } catch (\Throwable $e) {
-                // removed: debug log
-                $profileRaw = '{}'; // Empty profile as fallback
+                $profileRaw = '{}';
             }
-            $profileResponse = json_decode((string)$profileRaw, true);
+            $profileResponse = @json_decode((string)$profileRaw, true);
             if (is_array($profileResponse)) {
                 if (isset($profileResponse['property']) && is_array($profileResponse['property'])) {
                     $extractedProfile = $profileResponse['property'];
                 } elseif (isset($profileResponse['profile']) && is_array($profileResponse['profile'])) {
                     $extractedProfile = $profileResponse['profile'];
-                } elseif (isset($profileResponse['success']) && $profileResponse['success'] === false) {
-                    return;
                 } else {
-                    // Maybe the response IS the profile directly
-                    $extractedProfile = $profileResponse;
+                    $extractedProfile = $profileResponse; // may already be the profile
                 }
             }
             $profileSan = $this->redactDeep($extractedProfile);
@@ -2444,7 +2364,7 @@ class LGThinQDevice extends IPSModule
             if (!is_array($statusArr)) {
                 $last = (string)$this->ReadAttributeString('LastStatus');
                 $tmp = @json_decode($last, true);
-                if (is_array($tmp)) { $statusArr = $tmp; } else { $statusArr = []; }
+                $statusArr = is_array($tmp) ? $tmp : [];
             }
             $statusSan = $this->redactDeep($statusArr);
 
@@ -2499,152 +2419,54 @@ class LGThinQDevice extends IPSModule
                 }
             }
 
-            // Write files to temp dir
-            @file_put_contents($tmpDir . DIRECTORY_SEPARATOR . '00_meta.json', json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-            @file_put_contents($tmpDir . DIRECTORY_SEPARATOR . '10_device_info.json', json_encode($deviceInfoSan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-            @file_put_contents($tmpDir . DIRECTORY_SEPARATOR . '20_profile_response.json', json_encode($this->redactDeep($profileResponse), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-            @file_put_contents($tmpDir . DIRECTORY_SEPARATOR . '21_profile_extracted.json', json_encode($profileSan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-            @file_put_contents($tmpDir . DIRECTORY_SEPARATOR . '22_profile_keys.txt', implode("\n", array_keys($this->flatten($extractedProfile))));
-            @file_put_contents($tmpDir . DIRECTORY_SEPARATOR . '30_status.json', json_encode($statusSan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-            @file_put_contents($tmpDir . DIRECTORY_SEPARATOR . '40_variables.json', json_encode($vars, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-            @file_put_contents($tmpDir . DIRECTORY_SEPARATOR . '50_capabilities_summary.json', json_encode($capsSummary, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-
-            $zipOk = false;
+            // Try to create ZIP on-the-fly (preferred)
             if (class_exists('ZipArchive')) {
-                $zip = new \ZipArchive();
-                if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
-                    $files = @scandir($tmpDir) ?: [];
-                    foreach ($files as $f) {
-                        if ($f === '.' || $f === '..') continue;
-                        $full = $tmpDir . DIRECTORY_SEPARATOR . $f;
-                        if (@is_file($full)) {
-                            @$zip->addFile($full, $f);
+                $tmpZip = @tempnam(sys_get_temp_dir(), 'lgtqd_zip_');
+                if (is_string($tmpZip) && $tmpZip !== '') {
+                    // Ensure .zip extension (some environments require it)
+                    $zipPath = $tmpZip . '.zip';
+                    @rename($tmpZip, $zipPath);
+                    $zip = new \ZipArchive();
+                    if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+                        @$zip->addFromString('00_meta.json', json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+                        @$zip->addFromString('10_device_info.json', json_encode($deviceInfoSan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+                        @$zip->addFromString('20_profile_response.json', json_encode($this->redactDeep($profileResponse), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+                        @$zip->addFromString('21_profile_extracted.json', json_encode($profileSan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+                        @$zip->addFromString('22_profile_keys.txt', implode("\n", array_keys($this->flatten($extractedProfile))));
+                        @$zip->addFromString('30_status.json', json_encode($statusSan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+                        @$zip->addFromString('40_variables.json', json_encode($vars, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+                        @$zip->addFromString('50_capabilities_summary.json', json_encode($capsSummary, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+                        $zip->close();
+
+                        $bin = @file_get_contents($zipPath);
+                        @unlink($zipPath);
+                        if (is_string($bin) && $bin !== '') {
+                            return 'data:application/zip;base64,' . base64_encode($bin);
                         }
+                    } else {
+                        // Cleanup renamed tmp if open failed
+                        @unlink($zipPath);
                     }
-                    $zipOk = $zip->close();
                 }
             }
 
-            // Cleanup temp dir
-            $files = @scandir($tmpDir) ?: [];
-            foreach ($files as $f) {
-                if ($f === '.' || $f === '..') continue;
-                @unlink($tmpDir . DIRECTORY_SEPARATOR . $f);
-            }
-            @rmdir($tmpDir);
-
-            if ($zipOk) {
-                // removed: debug log
-                $this->LogMessage('Support bundle created: ' . $zipPath, KL_MESSAGE);
-                $info = [
-                    'file' => $zipPath,
-                    'url'  => '/user/lgthinq_support/' . basename($zipPath),
-                    'time' => date('c'),
-                    'isZip'=> true
-                ];
-            } else {
-                // Fallback: place files as a folder if ZipArchive is unavailable
-                $fallbackDir = $outDir . DIRECTORY_SEPARATOR . sprintf('lgtqd_support_%d_%s_%s', $this->InstanceID, $devShort !== '' ? $devShort : 'noid', $ts);
-                @mkdir($fallbackDir, 0777, true);
-                @file_put_contents($fallbackDir . DIRECTORY_SEPARATOR . '00_meta.json', json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                @file_put_contents($fallbackDir . DIRECTORY_SEPARATOR . '10_device_info.json', json_encode($deviceInfoSan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                @file_put_contents($fallbackDir . DIRECTORY_SEPARATOR . '20_profile_response.json', json_encode($this->redactDeep($profileResponse), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                @file_put_contents($fallbackDir . DIRECTORY_SEPARATOR . '21_profile_extracted.json', json_encode($profileSan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                @file_put_contents($fallbackDir . DIRECTORY_SEPARATOR . '22_profile_keys.txt', implode("\n", array_keys($this->flatten($extractedProfile))));
-                @file_put_contents($fallbackDir . DIRECTORY_SEPARATOR . '30_status.json', json_encode($statusSan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                @file_put_contents($fallbackDir . DIRECTORY_SEPARATOR . '40_variables.json', json_encode($vars, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                @file_put_contents($fallbackDir . DIRECTORY_SEPARATOR . '50_capabilities_summary.json', json_encode($capsSummary, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                // removed: debug log
-                $this->LogMessage('Support bundle folder created: ' . $fallbackDir, KL_MESSAGE);
-                $info = [
-                    'file' => $fallbackDir,
-                    'url'  => '/user/lgthinq_support/' . basename($fallbackDir),
-                    'time' => date('c'),
-                    'isZip'=> false
-                ];
-            }
-            if (isset($info)) {
-                $this->WriteAttributeString('LastSupportBundle', json_encode($info, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-            }
+            // Fallback: return a single JSON with aggregated data
+            $bundle = [
+                'meta' => $meta,
+                'device' => $deviceInfoSan,
+                'profile_raw' => $this->redactDeep($profileResponse),
+                'profile_extracted' => $profileSan,
+                'profile_keys' => array_keys($this->flatten($extractedProfile)),
+                'status' => $statusSan,
+                'variables' => $vars,
+                'capabilities_summary' => $capsSummary
+            ];
+            return 'data:application/json;base64,' . base64_encode(json_encode($bundle, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         } catch (\Throwable $e) {
+            // Last resort: return error as JSON
+            $err = [ 'error' => $e->getMessage() ];
+            return 'data:application/json;base64,' . base64_encode(json_encode($err, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         }
-    }
-
-    private function redactDeep($data)
-    {
-        if (is_array($data)) {
-            $out = [];
-            foreach ($data as $k => $v) {
-                $ks = (string)$k;
-                if ($this->shouldRedactKey($ks)) {
-                    if (is_string($v)) { $out[$k] = $this->maskText($v); }
-                    elseif (is_scalar($v)) { $out[$k] = '***'; }
-                    else { $out[$k] = $this->redactDeep($v); }
-                } else {
-                    $out[$k] = $this->redactDeep($v);
-                }
-            }
-            return $out;
-        }
-        if (is_string($data)) {
-            // Light PII patterns (emails, tokens-like long hex)
-            if (strpos($data, '@') !== false) return $this->maskText($data);
-            if (preg_match('/[A-Fa-f0-9]{24,}/', $data)) return $this->maskText($data);
-        }
-        return $data;
-    }
-
-    private function shouldRedactKey(string $key): bool
-    {
-        $needles = ['token','email','user','account','serial','mac','ssid','ip','location','latitude','longitude','address'];
-        $k = strtolower($key);
-        foreach ($needles as $n) { if (strpos($k, $n) !== false) return true; }
-        return false;
-    }
-
-    private function maskId(string $id): string
-    {
-        $id = trim($id);
-        if ($id === '') return '';
-        $len = strlen($id);
-        if ($len <= 4) return str_repeat('*', max(0, $len - 1)) . substr($id, -1);
-        return str_repeat('*', $len - 4) . substr($id, -4);
-    }
-
-    private function maskText(string $s): string
-    {
-        $s = trim($s);
-        if ($s === '') return '';
-        if (strlen($s) <= 4) return substr($s, 0, 1) . '***' . substr($s, -1);
-        return substr($s, 0, 2) . '***' . substr($s, -2);
-    }
-
-    private function determineLatestSupportBundle(string $outDir): ?array
-    {
-        $prefix = 'lgtqd_support_' . $this->InstanceID . '_';
-        $entries = @scandir($outDir);
-        if (!is_array($entries)) return null;
-        $latest = null;
-        $latestMtime = 0;
-        foreach ($entries as $e) {
-            if ($e === '.' || $e === '..') continue;
-            if (strpos($e, $prefix) !== 0) continue;
-            $full = $outDir . DIRECTORY_SEPARATOR . $e;
-            $mt = @filemtime($full) ?: 0;
-            if ($mt > $latestMtime) {
-                $latestMtime = $mt;
-                $latest = $full;
-            }
-        }
-        if ($latest === null) return null;
-        $name = basename($latest);
-        $isZip = (strtolower(substr($name, -4)) === '.zip');
-        return [
-            'file' => $latest,
-            'url'  => '/user/lgthinq_support/' . $name,
-            'time' => date('c', $latestMtime),
-            'isZip'=> $isZip
-        ];
     }
 
     public function GetConfigurationForm()
@@ -2660,37 +2482,15 @@ class LGThinQDevice extends IPSModule
             $form['actions'] = [];
         }
 
-        $last = (string)$this->ReadAttributeString('LastSupportBundle');
-        $label = $this->t('No support bundle created yet.');
-        if ($last !== '') {
-            $info = @json_decode($last, true);
-            if (is_array($info)) {
-                $url  = isset($info['url']) ? (string)$info['url'] : '';
-                $file = isset($info['file']) ? (string)$info['file'] : '';
-                $time = isset($info['time']) ? (string)$info['time'] : '';
-                if ($url !== '') {
-                    // Many consoles render full or absolute URLs as clickable. We provide a relative WebFront path.
-                    $label = $this->t('Latest support bundle: ') . $url;
-                } elseif ($file !== '') {
-                    $label = $this->t('Latest support bundle file: ') . basename($file);
-                }
-                if ($time !== '') {
-                    $label .= ' (' . $time . ')';
-                }
-            }
-        }
-        // Fallback: scan the output directory for the latest bundle in case attribute is empty/not yet registered
-        if ($label === $this->t('No support bundle created yet.')) {
-            $kernelDir = function_exists('IPS_GetKernelDir') ? rtrim((string)IPS_GetKernelDir(), '/\\') : rtrim((string)dirname(__DIR__, 3), '/\\');
-            $outDir    = $kernelDir . DIRECTORY_SEPARATOR . 'user' . DIRECTORY_SEPARATOR . 'lgthinq_support';
-            $latest = $this->determineLatestSupportBundle($outDir);
-            if (is_array($latest)) {
-                $label = $this->t('Latest support bundle: ') . (string)$latest['url'] . ' (' . (string)$latest['time'] . ')';
-            }
-        }
+
+        // Provide a direct download button (Data-URL) with a suggested filename
+        $dlExt = class_exists('ZipArchive') ? 'zip' : 'json';
+        $dlName = sprintf('lgtqd_support_%d.%s', $this->InstanceID, $dlExt);
         $form['actions'][] = [
-            'type'  => 'Label',
-            'label' => $label
+            'type' => 'Button',
+            'label' => $this->t('Support-Paket herunterladen (ZIP)'),
+            'download' => $dlName,
+            'onClick' => 'echo LGTQD_UIExportSupportBundle($id);'
         ];
 
         return json_encode($form, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
