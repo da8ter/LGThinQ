@@ -17,6 +17,7 @@ class LGThinQDevice extends IPSModule
 
     private const PROFILE_PREFIX = 'LGTQD.';
 
+
     public function Create()
     {
         parent::Create();
@@ -27,6 +28,7 @@ class LGThinQDevice extends IPSModule
         $this->RegisterAttributeString('LastStatus', '');
         $this->RegisterAttributeString('DeviceType', '');
         $this->RegisterAttributeString('LastProfile', '');
+        $this->RegisterAttributeString('LastPlan', '[]');
     }
 
     public function Destroy()
@@ -40,12 +42,13 @@ class LGThinQDevice extends IPSModule
 
         $alias = trim((string)$this->ReadPropertyString('Alias'));
         if ($alias !== '' && IPS_GetName($this->InstanceID) !== $alias) {
-            @IPS_SetName($this->InstanceID, $alias);
+            IPS_SetName($this->InstanceID, $alias);
         }
 
-        $this->ensureVariable($this->InstanceID, 'INFO', 'Info', VARIABLETYPE_STRING);
-        $this->ensureVariable($this->InstanceID, 'STATUS', 'Status', VARIABLETYPE_STRING);
-        $this->ensureVariable($this->InstanceID, 'LASTUPDATE', 'Last Update', VARIABLETYPE_INTEGER, '~UnixTimestamp');
+        $this->MaintainVariable('INFO', $this->t('Info'), VARIABLETYPE_STRING, '', 10);
+        $this->MaintainVariable('STATUS', $this->t('Status'), VARIABLETYPE_STRING, '', 20);
+        $this->MaintainVariable('LASTUPDATE', $this->t('Last Update'), VARIABLETYPE_INTEGER, '~UnixTimestamp', 30);
+        $this->hideDefaultVariables();
 
         $deviceId = trim((string)$this->ReadPropertyString('DeviceID'));
         if ($deviceId === '') {
@@ -54,11 +57,14 @@ class LGThinQDevice extends IPSModule
         }
 
         $info = ['deviceId' => $deviceId, 'alias' => $alias];
+
         @SetValueString($this->getVarId('INFO'), json_encode($info, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
 
         $this->EnsureConnected();
 
         try {
+
 
             $this->SetupDeviceVariables();
 
@@ -74,8 +80,11 @@ class LGThinQDevice extends IPSModule
             }
         } catch (\Throwable $e) {
 
+
             $this->logThrowable('AutoSubscribe', $e);
         }
+
+        $this->updateReferences();
     }
 
     public function UpdateStatus(): void
@@ -95,6 +104,7 @@ class LGThinQDevice extends IPSModule
 
             $encoded = json_encode($status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             $this->WriteAttributeString('LastStatus', $encoded);
+
             @SetValueString($this->getVarId('STATUS'), $encoded);
             @SetValueInteger($this->getVarId('LASTUPDATE'), time());
 
@@ -109,6 +119,7 @@ class LGThinQDevice extends IPSModule
                 $this->logThrowable('UpdateStatus applyStatus', $e);
             }
         } catch (\Throwable $e) {
+
             $this->logThrowable('UpdateStatus', $e);
         }
     }
@@ -134,6 +145,7 @@ class LGThinQDevice extends IPSModule
         if ($deviceId === '') {
             throw new Exception($this->t('ControlDevice: Missing DeviceID'));
         }
+
 
         $engine = $this->prepareEngine();
         if ($engine === null) {
@@ -512,8 +524,9 @@ class LGThinQDevice extends IPSModule
         $this->sendAction('SubscribeDevice', ['DeviceID' => $deviceId, 'Push' => true, 'Event' => true]);
     }
 
-    private function sendAction(string $action, array $params = []): string
+    private function setupDevice(): void
     {
+
         if (method_exists($this, 'HasActiveParent') && !$this->HasActiveParent()) {
             $this->EnsureConnected();
         }
@@ -545,9 +558,9 @@ class LGThinQDevice extends IPSModule
             if (isset($decoded['profile'])) {
                 return json_encode($decoded['profile']);
             }
+
         }
-        return $result;
-    }
+
 
     private function ensureVariable(int $parentId, string $ident, string $name, int $type, string $profile = ''): int
     {
@@ -574,6 +587,7 @@ class LGThinQDevice extends IPSModule
         $this->applyDefaultHiddenFlags($vid, $ident);
         return $vid;
     }
+
 
     private function applyDefaultHiddenFlags(int $vid, string $ident): void
     {
@@ -654,7 +668,73 @@ class LGThinQDevice extends IPSModule
         return $result;
     }
 
+
     private function firstNumericByPaths(array $flat, array $paths): ?float
+    {
+        foreach ($paths as $path) {
+            $path = (string)$path;
+            if ($path === '') {
+                continue;
+            }
+            $candidates = [$path, 'property.' . $path, 'value.' . $path, 'profile.' . $path];
+            for ($i = 0; $i <= 4; $i++) {
+                $candidates[] = 'property.' . $i . '.' . $path;
+                $candidates[] = 'value.property.' . $i . '.' . $path;
+                $candidates[] = 'profile.property.' . $i . '.' . $path;
+                $candidates[] = 'profile.value.property.' . $i . '.' . $path;
+            }
+            foreach ($candidates as $candidate) {
+                if (array_key_exists($candidate, $flat) && is_numeric($flat[$candidate])) {
+                    return (float)$flat[$candidate];
+                }
+            }
+        }
+        return null;
+    }
+
+    private function updateReferences(): void
+    {
+
+        foreach ($patch as $key => $value) {
+            if (is_array($value) && isset($base[$key]) && is_array($base[$key])) {
+                $base[$key] = $this->deepMerge($base[$key], $value);
+            } else {
+                $base[$key] = $value;
+            }
+        }
+        $this->MaintainReferences($references);
+    }
+
+
+    private function t(string $text): string
+    {
+        return method_exists($this, 'Translate') ? $this->Translate($text) : $text;
+    }
+
+    private function logThrowable(string $context, Throwable $e): void
+    {
+        $id = trim($id);
+        if ($id === '') return '';
+        $len = strlen($id);
+        if ($len <= 4) return str_repeat('*', max(0, $len - 1)) . substr($id, -1);
+        return str_repeat('*', $len - 4) . substr($id, -4);
+    }
+
+    private function maskText(string $s): string
+    {
+        $s = trim($s);
+        if ($s === '') return '';
+        if (strlen($s) <= 4) return substr($s, 0, 1) . '***' . substr($s, -1);
+        return substr($s, 0, 2) . '***' . substr($s, -2);
+    }
+
+    private function logThrowable(string $context, \Throwable $e): void
+    {
+        $this->SendDebug($context, $e->getMessage(), 0);
+    }
+
+
+    public function UIExportSupportBundle(): string
     {
         foreach ($paths as $path) {
             $path = (string)$path;
@@ -696,228 +776,6 @@ class LGThinQDevice extends IPSModule
 
     private function logThrowable(string $context, Throwable $e): void
     {
-        $id = trim($id);
-        if ($id === '') return '';
-        $len = strlen($id);
-        if ($len <= 4) return str_repeat('*', max(0, $len - 1)) . substr($id, -1);
-        return str_repeat('*', $len - 4) . substr($id, -4);
-    }
-
-    private function maskText(string $s): string
-    {
-        $s = trim($s);
-        if ($s === '') return '';
-        if (strlen($s) <= 4) return substr($s, 0, 1) . '***' . substr($s, -1);
-        return substr($s, 0, 2) . '***' . substr($s, -2);
-    }
-
-    private function logThrowable(string $context, \Throwable $e): void
-    {
         $this->SendDebug($context, $e->getMessage(), 0);
-    }
-
-
-    public function UIExportSupportBundle(): string
-    {
-        // Generate a support bundle on-the-fly and return a Data-URL for direct download
-        try {
-            $deviceID = (string)$this->ReadPropertyString('DeviceID');
-            $alias    = (string)$this->ReadPropertyString('Alias');
-            $type     = (string)$this->ReadAttributeString('DeviceType');
-
-            $ts = date('Ymd_His');
-            $devShort = $this->maskId($deviceID);
-
-            // Collect metadata
-            $meta = [
-                'instanceId'    => $this->InstanceID,
-                'module'        => 'LG ThinQ Device',
-                'moduleGUID'    => '{B5CF9E2D-7B7C-4A0A-9C0E-7E5A0B8E2E9A}',
-                'timestamp'     => date('c'),
-                'phpVersion'    => PHP_VERSION,
-                'deviceIdMasked'=> $devShort,
-                'deviceIdHash'  => $deviceID !== '' ? sha1($deviceID) : '',
-                'aliasMasked'   => $alias !== '' ? $this->maskText($alias) : '',
-                'deviceType'    => $type,
-            ];
-
-            // GetDevices and filter current device
-            $deviceInfo = null;
-            try {
-                $listJson = $this->sendAction('GetDevices');
-                $devs = @json_decode((string)$listJson, true);
-                if (is_array($devs)) {
-                    foreach ($devs as $d) {
-                        if (is_array($d) && ($d['deviceId'] ?? '') === $deviceID) { $deviceInfo = $d; break; }
-                    }
-                }
-            } catch (\Throwable $e) {
-                $deviceInfo = ['error' => $e->getMessage()];
-            }
-            $deviceInfoSan = is_array($deviceInfo) ? $this->redactDeep($deviceInfo) : null;
-
-            // Profile (raw response + extracted profile/property)
-            $profileResponse = null; $extractedProfile = [];
-            try {
-                $profileRaw = ($deviceID !== '') ? $this->sendAction('GetProfile', ['DeviceID' => $deviceID]) : '{}';
-            } catch (\Throwable $e) {
-                $profileRaw = '{}';
-            }
-            $profileResponse = @json_decode((string)$profileRaw, true);
-            if (is_array($profileResponse)) {
-                if (isset($profileResponse['property']) && is_array($profileResponse['property'])) {
-                    $extractedProfile = $profileResponse['property'];
-                } elseif (isset($profileResponse['profile']) && is_array($profileResponse['profile'])) {
-                    $extractedProfile = $profileResponse['profile'];
-                } else {
-                    $extractedProfile = $profileResponse; // may already be the profile
-                }
-            }
-            $profileSan = $this->redactDeep($extractedProfile);
-
-            // Status (live or last attribute)
-            $statusArr = null;
-            try {
-                if ($deviceID !== '') {
-                    $statusRaw = $this->sendAction('GetStatus', ['DeviceID' => $deviceID]);
-                    $tmp = @json_decode((string)$statusRaw, true);
-                    if (is_array($tmp)) { $statusArr = $tmp; }
-                }
-            } catch (\Throwable $e) {
-                // ignore
-            }
-            if (!is_array($statusArr)) {
-                $last = (string)$this->ReadAttributeString('LastStatus');
-                $tmp = @json_decode($last, true);
-                $statusArr = is_array($tmp) ? $tmp : [];
-            }
-            $statusSan = $this->redactDeep($statusArr);
-
-            // Capability descriptors summary
-            $capsSummary = [];
-            try {
-                $profRaw = (string)$this->ReadAttributeString('LastProfile');
-                $prof = @json_decode($profRaw, true);
-                if (!is_array($prof)) { $prof = []; }
-                $eng = $this->getCapabilityEngine();
-                $eng->loadCapabilities((string)$type, $prof);
-                $descs = $eng->getDescriptors();
-                foreach ($descs as $cap) {
-                    if (!is_array($cap)) continue;
-                    $capsSummary[] = [
-                        'ident' => (string)($cap['ident'] ?? ''),
-                        'type'  => (string)($cap['type'] ?? ''),
-                        'presentation' => $cap['presentation']['kind'] ?? null,
-                        'create' => $cap['create']['when'] ?? null,
-                        'actionEnableWhen' => $cap['action']['enableWhen'] ?? null
-                    ];
-                }
-            } catch (\Throwable $e) {
-                $capsSummary = [['error' => $e->getMessage()]];
-            }
-
-            // Variables snapshot
-            $vars = [];
-            $children = @IPS_GetChildrenIDs($this->InstanceID);
-            if (is_array($children)) {
-                foreach ($children as $cid) {
-                    $obj = @IPS_GetObject($cid);
-                    if (!is_array($obj) || (int)($obj['ObjectType'] ?? -1) !== 2) continue; // only variables
-                    $var = @IPS_GetVariable($cid);
-                    if (!is_array($var)) continue;
-                    $vt = (int)($var['VariableType'] ?? -1);
-                    $val = null;
-                    if ($vt === VARIABLETYPE_BOOLEAN) { $val = @GetValueBoolean($cid); }
-                    elseif ($vt === VARIABLETYPE_INTEGER) { $val = @GetValueInteger($cid); }
-                    elseif ($vt === VARIABLETYPE_FLOAT) { $val = @GetValueFloat($cid); }
-                    elseif ($vt === VARIABLETYPE_STRING) { $val = @GetValueString($cid); }
-                    $vars[] = [
-                        'vid' => (int)$cid,
-                        'ident' => (string)($obj['ObjectIdent'] ?? ''),
-                        'name' => (string)($obj['ObjectName'] ?? ''),
-                        'type' => $vt,
-                        'profile' => (string)($var['VariableCustomProfile'] ?? ''),
-                        'presentation' => isset($var['VariableCustomPresentation']) ? $var['VariableCustomPresentation'] : null,
-                        'customAction' => $var['VariableCustomAction'] ?? null,
-                        'value' => $val
-                    ];
-                }
-            }
-
-            // Try to create ZIP on-the-fly (preferred)
-            if (class_exists('ZipArchive')) {
-                $tmpZip = @tempnam(sys_get_temp_dir(), 'lgtqd_zip_');
-                if (is_string($tmpZip) && $tmpZip !== '') {
-                    // Ensure .zip extension (some environments require it)
-                    $zipPath = $tmpZip . '.zip';
-                    @rename($tmpZip, $zipPath);
-                    $zip = new \ZipArchive();
-                    if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
-                        @$zip->addFromString('00_meta.json', json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                        @$zip->addFromString('10_device_info.json', json_encode($deviceInfoSan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                        @$zip->addFromString('20_profile_response.json', json_encode($this->redactDeep($profileResponse), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                        @$zip->addFromString('21_profile_extracted.json', json_encode($profileSan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                        @$zip->addFromString('22_profile_keys.txt', implode("\n", array_keys($this->flatten($extractedProfile))));
-                        @$zip->addFromString('30_status.json', json_encode($statusSan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                        @$zip->addFromString('40_variables.json', json_encode($vars, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                        @$zip->addFromString('50_capabilities_summary.json', json_encode($capsSummary, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                        $zip->close();
-
-                        $bin = @file_get_contents($zipPath);
-                        @unlink($zipPath);
-                        if (is_string($bin) && $bin !== '') {
-                            return 'data:application/zip;base64,' . base64_encode($bin);
-                        }
-                    } else {
-                        // Cleanup renamed tmp if open failed
-                        @unlink($zipPath);
-                    }
-                }
-            }
-
-            // Fallback: return a single JSON with aggregated data
-            $bundle = [
-                'meta' => $meta,
-                'device' => $deviceInfoSan,
-                'profile_raw' => $this->redactDeep($profileResponse),
-                'profile_extracted' => $profileSan,
-                'profile_keys' => array_keys($this->flatten($extractedProfile)),
-                'status' => $statusSan,
-                'variables' => $vars,
-                'capabilities_summary' => $capsSummary
-            ];
-            return 'data:application/json;base64,' . base64_encode(json_encode($bundle, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-        } catch (\Throwable $e) {
-            // Last resort: return error as JSON
-            $err = [ 'error' => $e->getMessage() ];
-            return 'data:application/json;base64,' . base64_encode(json_encode($err, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-        }
-    }
-
-    public function GetConfigurationForm()
-    {
-        // Load base form.json and append a dynamic label with the last bundle URL
-        $formPath = __DIR__ . '/form.json';
-        $raw = @file_get_contents($formPath);
-        $form = is_string($raw) ? @json_decode($raw, true) : null;
-        if (!is_array($form)) {
-            $form = ['elements' => [], 'actions' => [], 'status' => []];
-        }
-        if (!isset($form['actions']) || !is_array($form['actions'])) {
-            $form['actions'] = [];
-        }
-
-
-        // Provide a direct download button (Data-URL) with a suggested filename
-        $dlExt = class_exists('ZipArchive') ? 'zip' : 'json';
-        $dlName = sprintf('lgtqd_support_%d.%s', $this->InstanceID, $dlExt);
-        $form['actions'][] = [
-            'type' => 'Button',
-            'label' => $this->t('Support-Paket herunterladen (ZIP)'),
-            'download' => $dlName,
-            'onClick' => 'echo LGTQD_UIExportSupportBundle($id);'
-        ];
-
-        return json_encode($form, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 }
