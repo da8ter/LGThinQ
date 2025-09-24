@@ -86,9 +86,6 @@ final class ThinQBridgeConfig
         if ($this->eventRenewLeadMin < 1 || $this->eventRenewLeadMin >= 60) {
             $errors[] = 'Event Renew Vorlauf muss zwischen 1 und 59 Minuten liegen.';
         }
-        if ($this->useMqtt && $this->mqttClientId <= 0) {
-            $errors[] = 'Für MQTT Push muss ein gültiger MQTT-Client ausgewählt werden.';
-        }
         return $errors;
     }
 
