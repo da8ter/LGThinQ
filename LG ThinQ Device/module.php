@@ -74,7 +74,7 @@ class LGThinQDevice extends IPSModule
             $this->SetupDeviceVariables();
 
         } catch (\Throwable $e) {
-
+            $this->logThrowable('SetupDeviceVariables', $e);
         }
 
         // Auto-Subscribe für Event/Push am Bridge-Splitter
@@ -84,6 +84,7 @@ class LGThinQDevice extends IPSModule
                 $this->sendAction('SubscribeDevice', ['DeviceID' => $deviceID, 'Push' => true, 'Event' => true]);
             }
         } catch (\Throwable $e) {
+            $this->logThrowable('AutoSubscribe', $e);
         }
     }
 
@@ -115,8 +116,10 @@ class LGThinQDevice extends IPSModule
             try {
                 $this->getCapabilityEngine()->applyStatus($status);
             } catch (\Throwable $e) {
+                $this->logThrowable('UpdateStatus applyStatus', $e);
             }
         } catch (\Throwable $e) {
+            $this->logThrowable('UpdateStatus', $e);
         }
     }
 
@@ -2289,6 +2292,11 @@ class LGThinQDevice extends IPSModule
         if ($s === '') return '';
         if (strlen($s) <= 4) return substr($s, 0, 1) . '***' . substr($s, -1);
         return substr($s, 0, 2) . '***' . substr($s, -2);
+    }
+
+    private function logThrowable(string $context, \Throwable $e): void
+    {
+        $this->SendDebug($context, $e->getMessage(), 0);
     }
 
 
