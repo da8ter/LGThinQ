@@ -17,7 +17,6 @@ class LGThinQ extends IPSModule
     private const DATA_FLOW_GUID = '{A1F438B3-2A68-4A2B-8FDB-7460F1B8B854}';
     private const CHILD_INTERFACE_GUID = '{5E9D1B64-0F44-4F21-9D74-09C5BB90FB2F}';
     private const MQTT_MODULE_GUID = '{F7A0DD2E-7684-95C0-64C2-D2A9DC47577B}';
-
     private ?ThinQBridgeConfig $config = null;
     private ?ThinQHttpClient $httpClient = null;
     private ?ThinQDeviceRepository $deviceRepository = null;
@@ -44,7 +43,6 @@ class LGThinQ extends IPSModule
         $this->RegisterAttributeString('ClientID', '');
         $this->RegisterAttributeString('Devices', '[]');
         $this->RegisterAttributeString('EventSubscriptions', '{}');
-
         $this->RegisterTimer('EventRenewTimer', 0, 'LGTQ_RenewEvents($_IPS[\'TARGET\']);');
     }
 
@@ -63,7 +61,6 @@ class LGThinQ extends IPSModule
             $this->SetStatus(102);
         }
 
-        $this->ensureMqttParent();
         $this->configureTimers();
     }
 
@@ -206,6 +203,7 @@ class LGThinQ extends IPSModule
                     $ok++;
                 }
             }
+
             try {
                 $this->httpClient->request('POST', 'push/devices');
             } catch (Throwable $e) {
@@ -245,6 +243,7 @@ class LGThinQ extends IPSModule
             } catch (Throwable $e) {
                 $this->SendDebug('UnsubscribeAll Push', $e->getMessage(), 0);
             }
+
             $this->subscriptionRepository->saveAll([]);
             $this->NotifyUser(sprintf('UnsubscribeAll: %d/%d Geräte abgemeldet', $ok, $total));
         } catch (Throwable $e) {
@@ -405,6 +404,7 @@ class LGThinQ extends IPSModule
         if (method_exists($this, 'ConnectParent')) {
             $this->ConnectParent(self::MQTT_MODULE_GUID);
         }
+
     }
 
     /**
