@@ -355,7 +355,7 @@ class LGThinQ extends IPSModule
 
     private function bootServices(): void
     {
-        $this->config = ThinQBridgeConfig::fromModule($this);
+        $this->config = $this->createBridgeConfig();
         $this->deviceRepository = new ThinQDeviceRepository($this);
         $this->subscriptionRepository = new ThinQEventSubscriptionRepository($this);
         $this->httpClient = new ThinQHttpClient($this, $this->config, self::API_KEY);
@@ -375,6 +375,43 @@ class LGThinQ extends IPSModule
             $this->handleMetaEvent($type, $deviceId, $payload);
         });
         $this->mqttRouter = new ThinQMqttRouter($this, $this->config, $this->eventPipeline);
+    }
+
+    private function createBridgeConfig(): ThinQBridgeConfig
+    {
+        $accessToken = trim($this->ReadPropertyString('AccessToken'));
+        $countryCode = strtoupper(trim($this->ReadPropertyString('CountryCode')));
+        $debug = (bool)$this->ReadPropertyBoolean('Debug');
+        $useMqtt = (bool)$this->ReadPropertyBoolean('UseMQTT');
+        $mqttClientId = (int)$this->ReadPropertyInteger('MQTTClientID');
+        $mqttTopicFilter = $this->ReadPropertyString('MQTTTopicFilter');
+        $ignoreRetained = (bool)$this->ReadPropertyBoolean('IgnoreRetained');
+        $eventTtlHours = (int)$this->ReadPropertyInteger('EventTTLHrs');
+        $eventRenewLeadMin = (int)$this->ReadPropertyInteger('EventRenewLeadMin');
+
+        $clientIdProperty = trim($this->ReadPropertyString('ClientID'));
+        $clientIdAttr = trim($this->ReadAttributeString('ClientID'));
+        $clientId = $clientIdProperty !== '' ? $clientIdProperty : $clientIdAttr;
+        if ($clientId === '') {
+            $clientId = ThinQHelpers::generateUUIDv4();
+            $this->WriteAttributeString('ClientID', $clientId);
+        } elseif ($clientIdProperty !== '' && $clientIdProperty !== $clientIdAttr) {
+            $this->WriteAttributeString('ClientID', $clientIdProperty);
+            $clientId = $clientIdProperty;
+        }
+
+        return ThinQBridgeConfig::create(
+            $accessToken,
+            $countryCode,
+            $clientId,
+            $debug,
+            $useMqtt,
+            $mqttClientId,
+            $mqttTopicFilter,
+            $ignoreRetained,
+            $eventTtlHours,
+            $eventRenewLeadMin
+        );
     }
 
     private function ensureBooted(): void
