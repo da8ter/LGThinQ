@@ -7,7 +7,8 @@
   "actions": [
     { "type": "Button", "label": "Update status", "onClick": "LGTQD_UpdateStatus($id);" },
     { "type": "Label", "label": "Diagnose & Support" },
-    { "type": "Label", "label": "Hinweis: Falls ein Gerät nicht korrekt funktioniert können Sie eine Diagnose-Datei erstellen. Es werden nur Gerätespezifische Daten gespeichert. Persönliche Daten wie Device-ID oder Tocken werden anonymisiert" }
+    { "type": "Label", "label": "Hinweis: Falls ein Gerät nicht korrekt funktioniert können Sie eine Diagnose-Datei erstellen. Es werden nur Gerätespezifische Daten gespeichert. Persönliche Daten wie Device-ID oder Tocken werden anonymisiert" },
+    { "type": "Button", "caption": "Support-Paket (ZIP) erzeugen", "download": "LGThinQ_Device_Support.zip", "onClick": ["echo LGTQD_UIExportSupportBundle($id);"] }
   ],
   "status": [
     { "code": 101, "icon": "inactive", "caption": "Creating" },
