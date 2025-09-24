@@ -19,6 +19,7 @@
         { "type": "Label", "label": "Hint: Create a PAT at https://connect-pat.lgthinq.com and provide a two-letter ISO country code (e.g., DE). The Client ID is generated automatically and is unique per system (UUID)." }
     ],
     "actions": [
+        { "type": "Button", "caption": "Generate new SSL Certificates for the MQTT Client", "download": "LGThinQ_MQTT_Client_Certs.zip", "onClick": ["echo LGTQ_UIGenerateMQTTClientCerts($id);"] },
         { "type": "Button", "label": "Test connection", "onClick": "LGTQ_TestConnection($id);" },
         { "type": "Button", "label": "Sync devices", "onClick": "LGTQ_SyncDevices($id);" },
         { "type": "Button", "label": "Update now", "onClick": "LGTQ_Update($id);" },

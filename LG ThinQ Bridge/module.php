@@ -573,4 +573,154 @@ class LGThinQBridge extends IPSModule
     {
         $this->WriteAttributeString('EventSubscriptions', json_encode($subs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
+
+    // --- UI: Generate new MQTT Client SSL Certificates ---
+    public function UIGenerateMQTTClientCerts(): string
+    {
+        try {
+            $zipData = $this->buildMQTTClientCertsZip();
+            return 'data:application/zip;base64,' . base64_encode($zipData);
+        } catch (\Throwable $e) {
+            $this->SendDebug('UIGenerateMQTTClientCerts', $e->getMessage(), 0);
+            return 'data:text/plain,' . rawurlencode('Fehler beim Erstellen der Zertifikate: ' . $e->getMessage());
+        }
+    }
+
+    private function buildMQTTClientCertsZip(): string
+    {
+        if (!function_exists('openssl_pkey_new')) {
+            throw new \RuntimeException('OpenSSL wird nicht unterstützt (openssl_* Funktionen fehlen)');
+        }
+
+        $clientId = trim((string)$this->ReadAttributeString('ClientID'));
+        if ($clientId === '') {
+            // fallback: try property or generate
+            $clientId = trim((string)$this->ReadPropertyString('ClientID'));
+            if ($clientId === '') {
+                $clientId = 'client-' . (string)$this->InstanceID;
+            }
+        }
+
+        $cfgPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'lgtq_mqtt_' . $this->InstanceID . '_' . bin2hex(random_bytes(4)) . '.cnf';
+        $nl = "\r\n";
+        $strCONFIG  = 'default_md = sha256' . $nl;
+        $strCONFIG .= 'default_days = 3650' . $nl;
+        $strCONFIG .= $nl;
+        $strCONFIG .= '[ req ]' . $nl;
+        $strCONFIG .= 'default_bits = 2048' . $nl;
+        $strCONFIG .= 'distinguished_name = req_DN' . $nl;
+        $strCONFIG .= 'string_mask = nombstr' . $nl;
+        $strCONFIG .= 'prompt = no' . $nl;
+        $strCONFIG .= $nl;
+        $strCONFIG .= '[ req_DN ]' . $nl;
+        $strCONFIG .= '0.organizationName = "IP-Symcon LG ThinQ"' . $nl;
+        $strCONFIG .= 'commonName = "' . addslashes($clientId) . '"' . $nl;
+        $cfgHandle = fopen($cfgPath, 'w');
+        if ($cfgHandle === false) {
+            throw new \RuntimeException('Konnte temporäre OpenSSL-Konfiguration nicht erstellen');
+        }
+        fwrite($cfgHandle, $strCONFIG);
+        fclose($cfgHandle);
+
+        try {
+            $dn = [
+                'organizationName' => 'IP-Symcon LG ThinQ',
+                'commonName'       => $clientId
+            ];
+            $config = [
+                'config' => $cfgPath
+            ];
+            $configKey = [
+                'config'           => $cfgPath,
+                'private_key_bits' => 2048,
+                'private_key_type' => OPENSSL_KEYTYPE_RSA
+            ];
+
+            $pkGenerate = openssl_pkey_new($configKey);
+            if ($pkGenerate === false) {
+                throw new \RuntimeException('openssl_pkey_new fehlgeschlagen');
+            }
+
+            $pkPrivate = '';
+            if (!openssl_pkey_export($pkGenerate, $pkPrivate, null, $config)) { // unverschlüsselt
+                throw new \RuntimeException('openssl_pkey_export fehlgeschlagen');
+            }
+            $pkDetails = openssl_pkey_get_details($pkGenerate);
+            if ($pkDetails === false || !isset($pkDetails['key'])) {
+                throw new \RuntimeException('openssl_pkey_get_details fehlgeschlagen');
+            }
+            $pkPublic = (string)$pkDetails['key'];
+
+            $csr = openssl_csr_new($dn, $pkGenerate, $config);
+            if ($csr === false) {
+                throw new \RuntimeException('openssl_csr_new fehlgeschlagen');
+            }
+            $cert = openssl_csr_sign($csr, null, $pkGenerate, 730, $config);
+            if ($cert === false) {
+                throw new \RuntimeException('openssl_csr_sign fehlgeschlagen');
+            }
+            $certOut = '';
+            if (!openssl_x509_export($cert, $certOut)) {
+                throw new \RuntimeException('openssl_x509_export fehlgeschlagen');
+            }
+            $csrOut = '';
+            if (!openssl_csr_export($csr, $csrOut)) {
+                // Non-fatal, but log
+                $csrOut = '';
+            }
+
+            // Create ZIP
+            $zip = new \ZipArchive();
+            $tmpZip = tempnam(sys_get_temp_dir(), 'lgtq_mqtt_zip_');
+            if ($tmpZip === false) {
+                throw new \RuntimeException('Konnte temporäre ZIP-Datei nicht erstellen');
+            }
+            if ($zip->open($tmpZip, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                @unlink($tmpZip);
+                throw new \RuntimeException('Konnte ZIP nicht öffnen');
+            }
+
+            // 00_meta.json
+            $meta = [
+                'module' => 'LG ThinQ Bridge',
+                'purpose' => 'MQTT Client Zertifikate',
+                'instanceId' => $this->InstanceID,
+                'alias' => @IPS_GetName($this->InstanceID),
+                'clientId' => $clientId,
+                'timestamp' => date('c'),
+                'phpVersion' => PHP_VERSION,
+                'kernelVersion' => function_exists('IPS_GetKernelVersion') ? @IPS_GetKernelVersion() : ''
+            ];
+            $zip->addFromString('00_meta.json', json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+
+            // Cert material
+            $zip->addFromString('client_cert.pem', $certOut);
+            $zip->addFromString('client_private_key.pem', $pkPrivate);
+            $zip->addFromString('client_public_key.pem', $pkPublic);
+            if ($csrOut !== '') {
+                $zip->addFromString('client_csr.pem', $csrOut);
+            }
+
+            $readme = "Diese ZIP-Datei enthält einen selbst-signierten Client-Zertifikatssatz für den MQTT-Client.\n\n"
+                . "Dateien:\n"
+                . "- client_cert.pem: X.509 Client-Zertifikat\n"
+                . "- client_private_key.pem: Privater Schlüssel (PEM, unverschlüsselt)\n"
+                . "- client_public_key.pem: Öffentlicher Schlüssel\n"
+                . ($csrOut !== '' ? "- client_csr.pem: Certificate Signing Request (CSR)\n" : '')
+                . "\nHinweise:\n"
+                . "- Importieren Sie Zertifikat und privaten Schlüssel dort, wo Ihr MQTT-Client diese benötigt.\n"
+                . "- Für produktive Umgebungen empfiehlt sich die Verwendung einer vertrauenswürdigen CA statt Selbstsignierung.\n";
+            $zip->addFromString('README.txt', $readme);
+
+            $zip->close();
+            $data = file_get_contents($tmpZip);
+            @unlink($tmpZip);
+            if ($data === false) {
+                throw new \RuntimeException('Konnte ZIP-Inhalt nicht lesen');
+            }
+            return $data;
+        } finally {
+            @unlink($cfgPath);
+        }
+    }
 }
