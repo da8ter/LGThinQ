@@ -615,6 +615,12 @@ class LGThinQBridge extends IPSModule
         $strCONFIG .= '[ req_DN ]' . $nl;
         $strCONFIG .= '0.organizationName = "IP-Symcon LG ThinQ"' . $nl;
         $strCONFIG .= 'commonName = "' . addslashes($clientId) . '"' . $nl;
+        $strCONFIG .= $nl;
+        $strCONFIG .= '[ v3_req ]' . $nl;
+        $strCONFIG .= 'basicConstraints = CA:FALSE' . $nl;
+        $strCONFIG .= 'keyUsage = digitalSignature, keyEncipherment' . $nl;
+        $strCONFIG .= 'extendedKeyUsage = clientAuth' . $nl;
+        $strCONFIG .= 'subjectKeyIdentifier = hash' . $nl;
         $cfgHandle = fopen($cfgPath, 'w');
         if ($cfgHandle === false) {
             throw new \RuntimeException('Konnte temporäre OpenSSL-Konfiguration nicht erstellen');
@@ -628,7 +634,10 @@ class LGThinQBridge extends IPSModule
                 'commonName'       => $clientId
             ];
             $config = [
-                'config' => $cfgPath
+                'config' => $cfgPath,
+                'req_extensions' => 'v3_req',
+                'x509_extensions' => 'v3_req',
+                'digest_alg' => 'sha256'
             ];
             $configKey = [
                 'config'           => $cfgPath,
@@ -701,7 +710,7 @@ class LGThinQBridge extends IPSModule
                 $zip->addFromString('client_csr.pem', $csrOut);
             }
 
-            $readme = "Diese ZIP-Datei enthält einen selbst-signierten Client-Zertifikatssatz für den MQTT-Client.\n\n"
+            $readme = "Diese ZIP-Datei enthält einen selbst-signierten Client-Zertifikatssatz für den MQTT-Client (inkl. X.509 v3 Extended Key Usage: clientAuth).\n\n"
                 . "Dateien:\n"
                 . "- client_cert.pem: X.509 Client-Zertifikat\n"
                 . "- client_private_key.pem: Privater Schlüssel (PEM, unverschlüsselt)\n"
