@@ -42,28 +42,18 @@ final class ThinQBridgeConfig
         $this->eventRenewLeadMin = $eventRenewLeadMin;
     }
 
-    public static function fromModule(IPSModule $module): self
-    {
-        $accessToken = trim((string)$module->ReadPropertyString('AccessToken'));
-        $countryCode = strtoupper(trim((string)$module->ReadPropertyString('CountryCode')));
-        $debug = (bool)$module->ReadPropertyBoolean('Debug');
-        $useMqtt = (bool)$module->ReadPropertyBoolean('UseMQTT');
-        $mqttClientId = (int)$module->ReadPropertyInteger('MQTTClientID');
-        $mqttTopicFilter = (string)$module->ReadPropertyString('MQTTTopicFilter');
-        $ignoreRetained = (bool)$module->ReadPropertyBoolean('IgnoreRetained');
-        $eventTtlHours = (int)$module->ReadPropertyInteger('EventTTLHrs');
-        $eventRenewLeadMin = (int)$module->ReadPropertyInteger('EventRenewLeadMin');
-
-        $clientIdProperty = trim((string)$module->ReadPropertyString('ClientID'));
-        $clientIdAttr = trim((string)$module->ReadAttributeString('ClientID'));
-        $clientId = $clientIdProperty !== '' ? $clientIdProperty : $clientIdAttr;
-        if ($clientId === '') {
-            $clientId = ThinQHelpers::generateUUIDv4();
-            $module->WriteAttributeString('ClientID', $clientId);
-        } elseif ($clientIdProperty !== '' && $clientIdProperty !== $clientIdAttr) {
-            $module->WriteAttributeString('ClientID', $clientIdProperty);
-        }
-
+    public static function create(
+        string $accessToken,
+        string $countryCode,
+        string $clientId,
+        bool $debug,
+        bool $useMqtt,
+        int $mqttClientId,
+        string $mqttTopicFilter,
+        bool $ignoreRetained,
+        int $eventTtlHours,
+        int $eventRenewLeadMin
+    ): self {
         return new self(
             $accessToken,
             $countryCode,
