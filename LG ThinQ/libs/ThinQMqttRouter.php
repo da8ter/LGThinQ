@@ -104,7 +104,7 @@ final class ThinQMqttRouter
             return true;
         }
         $escaped = preg_quote($filter, '/');
-        $pattern = '/^' . str_replace(['\\*', '\\#'], '.*', $escaped) . '$/i';
+        $pattern = '/^' . str_replace(['\\*', '\\+', '\\#'], ['.*', '[^/]+', '.*'], $escaped) . '$/i';
         return (bool)preg_match($pattern, $topic);
     }
 }
