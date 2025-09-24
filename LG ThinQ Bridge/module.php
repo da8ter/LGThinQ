@@ -617,10 +617,11 @@ class LGThinQBridge extends IPSModule
         $strCONFIG .= 'commonName = "' . addslashes($clientId) . '"' . $nl;
         $strCONFIG .= $nl;
         $strCONFIG .= '[ v3_req ]' . $nl;
-        $strCONFIG .= 'basicConstraints = CA:FALSE' . $nl;
-        $strCONFIG .= 'keyUsage = digitalSignature, keyEncipherment' . $nl;
+        $strCONFIG .= 'basicConstraints = critical, CA:FALSE' . $nl;
+        $strCONFIG .= 'keyUsage = critical, digitalSignature' . $nl;
         $strCONFIG .= 'extendedKeyUsage = clientAuth' . $nl;
         $strCONFIG .= 'subjectKeyIdentifier = hash' . $nl;
+        $strCONFIG .= 'authorityKeyIdentifier = keyid' . $nl;
         $cfgHandle = fopen($cfgPath, 'w');
         if ($cfgHandle === false) {
             throw new \RuntimeException('Konnte temporäre OpenSSL-Konfiguration nicht erstellen');
@@ -639,13 +640,22 @@ class LGThinQBridge extends IPSModule
                 'x509_extensions' => 'v3_req',
                 'digest_alg' => 'sha256'
             ];
+            // Prefer EC P-256 key, fallback to RSA 2048
             $configKey = [
                 'config'           => $cfgPath,
-                'private_key_bits' => 2048,
-                'private_key_type' => OPENSSL_KEYTYPE_RSA
+                'private_key_type' => OPENSSL_KEYTYPE_EC,
+                'curve_name'       => 'prime256v1'
             ];
 
-            $pkGenerate = openssl_pkey_new($configKey);
+            $pkGenerate = @openssl_pkey_new($configKey);
+            if ($pkGenerate === false) {
+                $configKey = [
+                    'config'           => $cfgPath,
+                    'private_key_bits' => 2048,
+                    'private_key_type' => OPENSSL_KEYTYPE_RSA
+                ];
+                $pkGenerate = openssl_pkey_new($configKey);
+            }
             if ($pkGenerate === false) {
                 throw new \RuntimeException('openssl_pkey_new fehlgeschlagen');
             }
@@ -664,7 +674,13 @@ class LGThinQBridge extends IPSModule
             if ($csr === false) {
                 throw new \RuntimeException('openssl_csr_new fehlgeschlagen');
             }
-            $cert = openssl_csr_sign($csr, null, $pkGenerate, 730, $config);
+            $serial = 0;
+            try {
+                $serial = random_int(1, PHP_INT_MAX);
+            } catch (\Throwable $e) {
+                $serial = time();
+            }
+            $cert = openssl_csr_sign($csr, null, $pkGenerate, 730, $config, $serial);
             if ($cert === false) {
                 throw new \RuntimeException('openssl_csr_sign fehlgeschlagen');
             }
