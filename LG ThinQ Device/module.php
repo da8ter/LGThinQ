@@ -17,7 +17,6 @@ class LGThinQDevice extends IPSModule
 
     private const PROFILE_PREFIX = 'LGTQD.';
 
-    private ?CapabilityEngine $engine = null;
 
     public function Create()
     {
@@ -58,22 +57,30 @@ class LGThinQDevice extends IPSModule
         }
 
         $info = ['deviceId' => $deviceId, 'alias' => $alias];
-        $this->setValueByVarType('INFO', json_encode($info, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+        @SetValueString($this->getVarId('INFO'), json_encode($info, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
 
         $this->EnsureConnected();
 
         try {
-            $this->setupDevice();
-            $this->SetStatus(102);
-        } catch (Throwable $e) {
-            $this->logThrowable('ApplyChanges', $e);
-            $this->SetStatus(202);
-            return;
+
+
+            $this->SetupDeviceVariables();
+
+        } catch (\Throwable $e) {
+            $this->logThrowable('SetupDeviceVariables', $e);
         }
 
         try {
-            $this->autoSubscribe($deviceId);
-        } catch (Throwable $e) {
+
+            $deviceID = (string)$this->ReadPropertyString('DeviceID');
+            if ($deviceID !== '') {
+                $this->sendAction('SubscribeDevice', ['DeviceID' => $deviceID, 'Push' => true, 'Event' => true]);
+            }
+        } catch (\Throwable $e) {
+
+
             $this->logThrowable('AutoSubscribe', $e);
         }
 
@@ -97,14 +104,22 @@ class LGThinQDevice extends IPSModule
 
             $encoded = json_encode($status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             $this->WriteAttributeString('LastStatus', $encoded);
-            $this->setValueByVarType('STATUS', $encoded);
-            $this->setValueByVarType('LASTUPDATE', time());
 
-            $engine = $this->prepareEngine();
-            if ($engine !== null) {
-                $engine->applyStatus($status);
+            @SetValueString($this->getVarId('STATUS'), $encoded);
+            @SetValueInteger($this->getVarId('LASTUPDATE'), time());
+
+            $this->WriteAttributeString('LastStatus', json_encode($status));
+
+            // Dedizierte Variablen aktualisieren
+            $this->updateFromStatus($status);
+            // CapabilityEngine: Werte anwenden
+            try {
+                $this->getCapabilityEngine()->applyStatus($status);
+            } catch (\Throwable $e) {
+                $this->logThrowable('UpdateStatus applyStatus', $e);
             }
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
+
             $this->logThrowable('UpdateStatus', $e);
         }
     }
@@ -131,6 +146,7 @@ class LGThinQDevice extends IPSModule
             throw new Exception($this->t('ControlDevice: Missing DeviceID'));
         }
 
+
         $engine = $this->prepareEngine();
         if ($engine === null) {
             throw new Exception($this->t('Unknown action'));
@@ -145,7 +161,7 @@ class LGThinQDevice extends IPSModule
         if ($ok) {
             $this->setValueByVarType((string)$ident, $value);
             if (method_exists($this, 'RegisterOnceTimer')) {
-                $this->RegisterOnceTimer('RefreshAfterControl', 'LGTQD_UpdateStatus($_IPS["TARGET"]);');
+                @$this->RegisterOnceTimer('RefreshAfterControl', 'LGTQD_UpdateStatus($_IPS["TARGET"]);');
             }
         }
     }
@@ -181,8 +197,8 @@ class LGThinQDevice extends IPSModule
         $merged = $this->deepMerge($current, $event);
         $encoded = json_encode($merged, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $this->WriteAttributeString('LastStatus', $encoded);
-        $this->setValueByVarType('STATUS', $encoded);
-        $this->setValueByVarType('LASTUPDATE', time());
+        @SetValueString($this->getVarId('STATUS'), $encoded);
+        @SetValueInteger($this->getVarId('LASTUPDATE'), time());
 
         $engine = $this->prepareEngine();
         if ($engine !== null) {
@@ -217,52 +233,46 @@ class LGThinQDevice extends IPSModule
         $engine = $this->getCapabilityEngine();
         $plan = $engine->buildPlan($type, $profile, $status);
         $flatProfile = $this->flatten($profile);
-        $previousPlan = $this->readStoredPlanIdents();
-        $currentPlan = [];
-        $position = 100;
 
         foreach ($plan as $ident => $entry) {
-            $ident = (string)$ident;
-            $shouldCreate = (bool)($entry['shouldCreate'] ?? false);
-            $enableAction = (bool)($entry['enableAction'] ?? false);
-
-            if ($shouldCreate) {
-                $ipsType = match (strtoupper((string)($entry['type'] ?? 'STRING'))) {
-                    'BOOLEAN' => VARIABLETYPE_BOOLEAN,
-                    'INTEGER' => VARIABLETYPE_INTEGER,
-                    'FLOAT' => VARIABLETYPE_FLOAT,
-                    default => VARIABLETYPE_STRING
-                };
-
-                $name = (string)($entry['name'] ?? $ident);
-                $this->MaintainVariable($ident, $this->t($name), $ipsType, '', $position, true);
-                $position += 10;
-
-                $vid = $this->findVariableId($ident);
-                if ($vid > 0) {
-                    if (($entry['hidden'] ?? false)) {
-                        IPS_SetHidden($vid, true);
-                    }
-                    if (isset($entry['presentation']) && is_array($entry['presentation'])) {
-                        $this->applyPresentation($vid, $ident, $entry['presentation'], $flatProfile, (string)($entry['type'] ?? 'STRING'));
-                    }
-                }
-
-                if (array_key_exists('initialValue', $entry)) {
-                    $this->setValueByVarType($ident, $entry['initialValue']);
-                }
-
-                $currentPlan[] = $ident;
-            } else {
-                $this->MaintainVariable($ident, '', 0, '', 0, false);
-                $this->removeFallbackProfile($ident);
+            if (!($entry['shouldCreate'] ?? false)) {
+                continue;
             }
 
-            $this->MaintainAction($ident, $enableAction);
-        }
+            $ipsType = match (strtoupper((string)($entry['type'] ?? 'STRING'))) {
+                'BOOLEAN' => VARIABLETYPE_BOOLEAN,
+                'INTEGER' => VARIABLETYPE_INTEGER,
+                'FLOAT' => VARIABLETYPE_FLOAT,
+                default => VARIABLETYPE_STRING
+            };
 
-        $this->cleanupRemovedPlanEntries($previousPlan, $currentPlan);
-        $this->WriteAttributeString('LastPlan', json_encode($currentPlan, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $vid = $this->ensureVariable(
+                $this->InstanceID,
+                (string)$ident,
+                (string)($entry['name'] ?? $ident),
+                $ipsType
+            );
+
+            if (($entry['hidden'] ?? false) && $vid > 0) {
+                @IPS_SetHidden($vid, true);
+            }
+
+            if (isset($entry['presentation']) && is_array($entry['presentation'])) {
+                $this->applyPresentation($vid, (string)$ident, $entry['presentation'], $flatProfile, (string)($entry['type'] ?? 'STRING'));
+            }
+
+            if (($entry['enableAction'] ?? false) && method_exists($this, 'EnableAction')) {
+                try {
+                    $this->EnableAction((string)$ident);
+                } catch (Throwable $e) {
+                    $this->logThrowable('EnableAction ' . $ident, $e);
+                }
+            }
+
+            if (array_key_exists('initialValue', $entry)) {
+                $this->setValueByVarType((string)$ident, $entry['initialValue']);
+            }
+        }
 
         if (!empty($status)) {
             $engine->applyStatus($status);
@@ -428,7 +438,7 @@ class LGThinQDevice extends IPSModule
             if (isset($payload['OPTIONS']) && is_array($payload['OPTIONS'])) {
                 $payload['OPTIONS'] = json_encode($payload['OPTIONS'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             }
-            IPS_SetVariableCustomPresentation($vid, $payload);
+            @IPS_SetVariableCustomPresentation($vid, $payload);
         } else {
             $this->applyProfileFallback($vid, $ident, $payload, $type);
         }
@@ -458,7 +468,8 @@ class LGThinQDevice extends IPSModule
 
     private function applyProfileFallback(int $vid, string $ident, array $presentation, string $type): void
     {
-        if (!IPS_VariableExists($vid)) {
+        $varInfo = @IPS_GetVariable($vid);
+        if (!is_array($varInfo)) {
             return;
         }
 
@@ -470,39 +481,39 @@ class LGThinQDevice extends IPSModule
             default => VARIABLETYPE_STRING
         };
 
-        if (IPS_VariableProfileExists($profileName)) {
-            IPS_SetVariableCustomProfile($vid, '');
-            IPS_DeleteVariableProfile($profileName);
+        if (@IPS_VariableProfileExists($profileName)) {
+            @IPS_SetVariableCustomProfile($vid, '');
+            @IPS_DeleteVariableProfile($profileName);
         }
-        IPS_CreateVariableProfile($profileName, $vt);
-        IPS_SetVariableProfileIcon($profileName, '');
-        IPS_SetVariableProfileText($profileName, '', '');
+        @IPS_CreateVariableProfile($profileName, $vt);
+        @IPS_SetVariableProfileIcon($profileName, '');
+        @IPS_SetVariableProfileText($profileName, '', '');
 
         if ($vt === VARIABLETYPE_BOOLEAN) {
-            IPS_SetVariableProfileAssociation($profileName, 0, $presentation['CAPTION_OFF'] ?? $this->t('Off'), '', -1);
-            IPS_SetVariableProfileAssociation($profileName, 1, $presentation['CAPTION_ON'] ?? $this->t('On'), '', -1);
+            @IPS_SetVariableProfileAssociation($profileName, 0, $presentation['CAPTION_OFF'] ?? $this->t('Off'), '', -1);
+            @IPS_SetVariableProfileAssociation($profileName, 1, $presentation['CAPTION_ON'] ?? $this->t('On'), '', -1);
         } elseif ($vt === VARIABLETYPE_INTEGER || $vt === VARIABLETYPE_FLOAT) {
             $min = isset($presentation['MIN']) ? (float)$presentation['MIN'] : 0.0;
             $max = isset($presentation['MAX']) ? (float)$presentation['MAX'] : 0.0;
             $step = isset($presentation['STEP_SIZE']) ? (float)$presentation['STEP_SIZE'] : 1.0;
-            IPS_SetVariableProfileValues($profileName, $min, $max, $step);
+            @IPS_SetVariableProfileValues($profileName, $min, $max, $step);
             if (isset($presentation['DIGITS'])) {
-                IPS_SetVariableProfileDigits($profileName, (int)$presentation['DIGITS']);
+                @IPS_SetVariableProfileDigits($profileName, (int)$presentation['DIGITS']);
             }
             if (isset($presentation['SUFFIX'])) {
-                IPS_SetVariableProfileText($profileName, '', (string)$presentation['SUFFIX']);
+                @IPS_SetVariableProfileText($profileName, '', (string)$presentation['SUFFIX']);
             }
             if (isset($presentation['OPTIONS']) && is_array($presentation['OPTIONS'])) {
                 foreach ($presentation['OPTIONS'] as $option) {
                     if (!isset($option['Value'], $option['Caption'])) {
                         continue;
                     }
-                    IPS_SetVariableProfileAssociation($profileName, (int)$option['Value'], (string)$option['Caption'], '', (int)($option['Color'] ?? -1));
+                    @IPS_SetVariableProfileAssociation($profileName, (int)$option['Value'], (string)$option['Caption'], '', (int)($option['Color'] ?? -1));
                 }
             }
         }
 
-        IPS_SetVariableCustomProfile($vid, $profileName);
+        @IPS_SetVariableCustomProfile($vid, $profileName);
     }
 
     private function autoSubscribe(string $deviceId): void
@@ -513,8 +524,9 @@ class LGThinQDevice extends IPSModule
         $this->sendAction('SubscribeDevice', ['DeviceID' => $deviceId, 'Push' => true, 'Event' => true]);
     }
 
-    private function sendAction(string $action, array $params = []): string
+    private function setupDevice(): void
     {
+
         if (method_exists($this, 'HasActiveParent') && !$this->HasActiveParent()) {
             $this->EnsureConnected();
         }
@@ -546,11 +558,38 @@ class LGThinQDevice extends IPSModule
             if (isset($decoded['profile'])) {
                 return json_encode($decoded['profile']);
             }
+
         }
-        return $result;
+
+
+    private function ensureVariable(int $parentId, string $ident, string $name, int $type, string $profile = ''): int
+    {
+        $vid = @IPS_GetObjectIDByIdent($ident, $parentId);
+        if ($vid && IPS_ObjectExists($vid)) {
+            $translatedName = $this->t($name);
+            if (IPS_GetName($vid) !== $translatedName) {
+                IPS_SetName($vid, $translatedName);
+            }
+            if ($profile !== '') {
+                @IPS_SetVariableCustomProfile($vid, $profile);
+            }
+            $this->applyDefaultHiddenFlags($vid, $ident);
+            return $vid;
+        }
+
+        $vid = IPS_CreateVariable($type);
+        IPS_SetParent($vid, $parentId);
+        IPS_SetIdent($vid, $ident);
+        IPS_SetName($vid, $this->t($name));
+        if ($profile !== '') {
+            @IPS_SetVariableCustomProfile($vid, $profile);
+        }
+        $this->applyDefaultHiddenFlags($vid, $ident);
+        return $vid;
     }
 
-    private function hideDefaultVariables(): void
+
+    private function applyDefaultHiddenFlags(int $vid, string $ident): void
     {
         $hide = [
             'INFO', 'STATUS', 'LASTUPDATE',
@@ -560,20 +599,19 @@ class LGThinQDevice extends IPSModule
             'TIMER_START_ABS_HOUR', 'TIMER_START_ABS_MIN',
             'TIMER_STOP_ABS_HOUR', 'TIMER_STOP_ABS_MIN'
         ];
-        foreach ($hide as $ident) {
-            $vid = $this->findVariableId($ident);
-            if ($vid > 0 && IPS_ObjectExists($vid)) {
-                IPS_SetHidden($vid, true);
-            }
+        if (in_array($ident, $hide, true)) {
+            @IPS_SetHidden($vid, true);
         }
+    }
+
+    private function getVarId(string $ident): int
+    {
+        return (int)@IPS_GetObjectIDByIdent($ident, $this->InstanceID);
     }
 
     private function getCapabilityEngine(): CapabilityEngine
     {
-        if ($this->engine === null) {
-            $this->engine = new CapabilityEngine($this->InstanceID, __DIR__);
-        }
-        return $this->engine;
+        return new CapabilityEngine($this->InstanceID, __DIR__);
     }
 
     private function readStoredProfile(): array
@@ -590,97 +628,30 @@ class LGThinQDevice extends IPSModule
         return is_array($status) ? $status : [];
     }
 
-    /**
-     * @return array<int, string>
-     */
-    private function readStoredPlanIdents(): array
-    {
-        $raw = (string)$this->ReadAttributeString('LastPlan');
-        $decoded = json_decode($raw, true);
-        if (!is_array($decoded)) {
-            return [];
-        }
-
-        $result = [];
-        foreach ($decoded as $entry) {
-            if (is_string($entry) && $entry !== '') {
-                $result[] = $entry;
-            }
-        }
-        return $result;
-    }
-
     private function setValueByVarType(string $ident, $value): void
     {
-        $vid = $this->findVariableId($ident);
-        if ($vid <= 0 || !IPS_VariableExists($vid)) {
+        $vid = $this->getVarId($ident);
+        if ($vid <= 0) {
             return;
         }
-        $var = IPS_GetVariable($vid);
+        $var = @IPS_GetVariable($vid);
+        if (!is_array($var)) {
+            return;
+        }
         switch ((int)$var['VariableType']) {
             case VARIABLETYPE_BOOLEAN:
-                SetValueBoolean($vid, (bool)$value);
+                @SetValueBoolean($vid, (bool)$value);
                 break;
             case VARIABLETYPE_INTEGER:
-                SetValueInteger($vid, (int)$value);
+                @SetValueInteger($vid, (int)$value);
                 break;
             case VARIABLETYPE_FLOAT:
-                SetValueFloat($vid, (float)$value);
+                @SetValueFloat($vid, (float)$value);
                 break;
             case VARIABLETYPE_STRING:
-                SetValueString($vid, (string)$value);
+                @SetValueString($vid, (string)$value);
                 break;
         }
-    }
-
-    private function findVariableId(string $ident): int
-    {
-        foreach (IPS_GetChildrenIDs($this->InstanceID) as $childId) {
-            $object = IPS_GetObject($childId);
-            if (($object['ObjectIdent'] ?? '') === $ident && IPS_VariableExists($childId)) {
-                return $childId;
-            }
-        }
-        return 0;
-    }
-
-    private function cleanupRemovedPlanEntries(array $previous, array $current): void
-    {
-        $removed = array_diff($previous, $current);
-        foreach ($removed as $ident) {
-            $ident = (string)$ident;
-            $this->MaintainVariable($ident, '', 0, '', 0, false);
-            $this->MaintainAction($ident, false);
-            $this->removeFallbackProfile($ident);
-        }
-    }
-
-    private function removeFallbackProfile(string $ident): void
-    {
-        $profileName = self::PROFILE_PREFIX . $this->InstanceID . '.' . $ident;
-        if (!IPS_VariableProfileExists($profileName)) {
-            return;
-        }
-
-        $vid = $this->findVariableId($ident);
-        if ($vid > 0 && IPS_VariableExists($vid)) {
-            IPS_SetVariableCustomProfile($vid, '');
-        }
-
-        if (IPS_VariableProfileExists($profileName)) {
-            IPS_DeleteVariableProfile($profileName);
-        }
-    }
-
-    private function updateReferences(): void
-    {
-        $references = [];
-        $instance = IPS_GetInstance($this->InstanceID);
-        $parentId = (int)($instance['ConnectionID'] ?? 0);
-        if ($parentId > 0) {
-            $references[] = $parentId;
-        }
-        $this->MaintainReferences($references);
     }
 
     private function flatten(array $data, string $prefix = ''): array
@@ -697,7 +668,73 @@ class LGThinQDevice extends IPSModule
         return $result;
     }
 
+
     private function firstNumericByPaths(array $flat, array $paths): ?float
+    {
+        foreach ($paths as $path) {
+            $path = (string)$path;
+            if ($path === '') {
+                continue;
+            }
+            $candidates = [$path, 'property.' . $path, 'value.' . $path, 'profile.' . $path];
+            for ($i = 0; $i <= 4; $i++) {
+                $candidates[] = 'property.' . $i . '.' . $path;
+                $candidates[] = 'value.property.' . $i . '.' . $path;
+                $candidates[] = 'profile.property.' . $i . '.' . $path;
+                $candidates[] = 'profile.value.property.' . $i . '.' . $path;
+            }
+            foreach ($candidates as $candidate) {
+                if (array_key_exists($candidate, $flat) && is_numeric($flat[$candidate])) {
+                    return (float)$flat[$candidate];
+                }
+            }
+        }
+        return null;
+    }
+
+    private function updateReferences(): void
+    {
+
+        foreach ($patch as $key => $value) {
+            if (is_array($value) && isset($base[$key]) && is_array($base[$key])) {
+                $base[$key] = $this->deepMerge($base[$key], $value);
+            } else {
+                $base[$key] = $value;
+            }
+        }
+        $this->MaintainReferences($references);
+    }
+
+
+    private function t(string $text): string
+    {
+        return method_exists($this, 'Translate') ? $this->Translate($text) : $text;
+    }
+
+    private function logThrowable(string $context, Throwable $e): void
+    {
+        $id = trim($id);
+        if ($id === '') return '';
+        $len = strlen($id);
+        if ($len <= 4) return str_repeat('*', max(0, $len - 1)) . substr($id, -1);
+        return str_repeat('*', $len - 4) . substr($id, -4);
+    }
+
+    private function maskText(string $s): string
+    {
+        $s = trim($s);
+        if ($s === '') return '';
+        if (strlen($s) <= 4) return substr($s, 0, 1) . '***' . substr($s, -1);
+        return substr($s, 0, 2) . '***' . substr($s, -2);
+    }
+
+    private function logThrowable(string $context, \Throwable $e): void
+    {
+        $this->SendDebug($context, $e->getMessage(), 0);
+    }
+
+
+    public function UIExportSupportBundle(): string
     {
         foreach ($paths as $path) {
             $path = (string)$path;
