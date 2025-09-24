@@ -17,8 +17,6 @@ class LGThinQ extends IPSModule
     private const DATA_FLOW_GUID = '{A1F438B3-2A68-4A2B-8FDB-7460F1B8B854}';
     private const CHILD_INTERFACE_GUID = '{5E9D1B64-0F44-4F21-9D74-09C5BB90FB2F}';
     private const MQTT_MODULE_GUID = '{F7A0DD2E-7684-95C0-64C2-D2A9DC47577B}';
-    private const CLIENT_SOCKET_MODULE_GUID = '{3CFF0FD9-E306-41DB-9B5A-9D06D38576C3}';
-
     private ?ThinQBridgeConfig $config = null;
     private ?ThinQHttpClient $httpClient = null;
     private ?ThinQDeviceRepository $deviceRepository = null;
@@ -45,8 +43,6 @@ class LGThinQ extends IPSModule
         $this->RegisterAttributeString('ClientID', '');
         $this->RegisterAttributeString('Devices', '[]');
         $this->RegisterAttributeString('EventSubscriptions', '{}');
-        $this->RegisterAttributeString('MqttCredentials', '{}');
-
         $this->RegisterTimer('EventRenewTimer', 0, 'LGTQ_RenewEvents($_IPS[\'TARGET\']);');
     }
 
@@ -54,10 +50,6 @@ class LGThinQ extends IPSModule
     {
         parent::ApplyChanges();
         $this->bootServices();
-
-        if ($this->ensureMqttInfrastructure()) {
-            return;
-        }
 
         $errors = $this->config->validate();
         if (!empty($errors)) {
@@ -211,7 +203,12 @@ class LGThinQ extends IPSModule
                     $ok++;
                 }
             }
-            $this->registerPushClient(true);
+
+            try {
+                $this->httpClient->request('POST', 'push/devices');
+            } catch (Throwable $e) {
+                $this->SendDebug('SubscribeAll Push', $e->getMessage(), 0);
+            }
             $this->NotifyUser(sprintf('SubscribeAll: %d/%d Geräte abonniert', $ok, $total));
         } catch (Throwable $e) {
             $this->SendDebug('SubscribeAll', $e->getMessage(), 0);
@@ -246,7 +243,7 @@ class LGThinQ extends IPSModule
             } catch (Throwable $e) {
                 $this->SendDebug('UnsubscribeAll Push', $e->getMessage(), 0);
             }
-            $this->clearCachedMqttCredentials();
+
             $this->subscriptionRepository->saveAll([]);
             $this->NotifyUser(sprintf('UnsubscribeAll: %d/%d Geräte abgemeldet', $ok, $total));
         } catch (Throwable $e) {
@@ -394,447 +391,20 @@ class LGThinQ extends IPSModule
         $this->SetTimerInterval('EventRenewTimer', empty($errors) ? $interval * 1000 : 0);
     }
 
-    private function ensureMqttInfrastructure(): bool
+    private function ensureMqttParent(): void
     {
-        if ($this->config === null || !$this->config->useMqtt) {
-            return false;
+        if (!(bool)$this->ReadPropertyBoolean('UseMQTT')) {
+            return;
         }
-
-        $mqttInstanceId = $this->config->mqttClientId;
-        if (!$this->isInstanceOfModule($mqttInstanceId, self::MQTT_MODULE_GUID)) {
-            $created = $this->createMqttClientInstance();
-            if ($created > 0) {
-                $this->SendDebug('MQTT', 'Created MQTT client instance #' . $created, 0);
-                if (@IPS_SetProperty($this->InstanceID, 'MQTTClientID', $created)) {
-                    @IPS_ApplyChanges($this->InstanceID);
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        $credentials = $this->registerPushClient(false);
-        if (is_array($credentials)) {
-            $topic = (string)($credentials['topic'] ?? '');
-            if ($topic !== '' && $topic !== (string)$this->ReadPropertyString('MQTTTopicFilter')) {
-                if (@IPS_SetProperty($this->InstanceID, 'MQTTTopicFilter', $topic)) {
-                    @IPS_ApplyChanges($this->InstanceID);
-                    return true;
-                }
-            }
-        }
-
-        $this->configureMqttClient($mqttInstanceId, $credentials);
-        $this->ensureModuleConnectedToMqtt($mqttInstanceId);
-
-        return false;
-    }
-
-    private function createMqttClientInstance(): int
-    {
-        $instanceId = @IPS_CreateInstance(self::MQTT_MODULE_GUID);
-        if ($instanceId <= 0) {
-            $this->SendDebug('MQTT', 'Unable to create MQTT client instance', 0);
-            return 0;
-        }
-        $name = 'LG ThinQ MQTT Client';
-        @IPS_SetName($instanceId, $name);
-        $parent = @IPS_GetParent($this->InstanceID);
-        if (is_int($parent) && $parent > 0) {
-            @IPS_SetParent($instanceId, $parent);
-        }
-        $this->SendDebug('MQTT', 'MQTT client instance created with ID ' . $instanceId, 0);
-        return $instanceId;
-    }
-
-    private function ensureModuleConnectedToMqtt(int $mqttInstanceId): void
-    {
         $inst = @IPS_GetInstance($this->InstanceID);
         $parentId = is_array($inst) ? (int)($inst['ConnectionID'] ?? 0) : 0;
-        if ($parentId === $mqttInstanceId) {
+        if ($parentId > 0) {
             return;
         }
-        if ($mqttInstanceId > 0 && @IPS_InstanceExists($mqttInstanceId)) {
-            @IPS_ConnectInstance($this->InstanceID, $mqttInstanceId);
-        }
-    }
-
-    /**
-     * @param array<string, mixed>|null $credentials
-     */
-    private function configureMqttClient(int $mqttInstanceId, ?array $credentials): void
-    {
-        if ($mqttInstanceId <= 0 || !@IPS_InstanceExists($mqttInstanceId)) {
-            return;
+        if (method_exists($this, 'ConnectParent')) {
+            $this->ConnectParent(self::MQTT_MODULE_GUID);
         }
 
-        $socketId = $this->ensureMqttClientSocket($mqttInstanceId, $credentials);
-
-        $availableProps = $this->getInstancePropertyNames($mqttInstanceId);
-        $config = $this->readInstanceConfiguration($mqttInstanceId);
-        $changed = false;
-
-        $clientId = (string)($credentials['clientId'] ?? $this->config->clientId ?? '');
-        if ($clientId !== '') {
-            $changed = $this->setInstanceProperty($mqttInstanceId, ['ClientID', 'ClientId'], $clientId, $availableProps, $config) || $changed;
-        }
-        if (isset($credentials['username'])) {
-            $changed = $this->setInstanceProperty($mqttInstanceId, ['Username', 'User'], (string)$credentials['username'], $availableProps, $config) || $changed;
-        }
-        if (isset($credentials['password'])) {
-            $changed = $this->setInstanceProperty($mqttInstanceId, ['Password', 'Pass'], (string)$credentials['password'], $availableProps, $config) || $changed;
-        }
-        if (isset($credentials['keepAlive'])) {
-            $changed = $this->setInstanceProperty($mqttInstanceId, ['KeepAlive'], (int)$credentials['keepAlive'], $availableProps, $config) || $changed;
-        }
-        if (isset($credentials['cleanSession'])) {
-            $changed = $this->setInstanceProperty($mqttInstanceId, ['CleanSession'], (bool)$credentials['cleanSession'], $availableProps, $config) || $changed;
-        } else {
-            $changed = $this->setInstanceProperty($mqttInstanceId, ['CleanSession'], false, $availableProps, $config) || $changed;
-        }
-
-        if ($changed) {
-            @IPS_ApplyChanges($mqttInstanceId);
-        }
-
-        if ($socketId > 0 && @IPS_InstanceExists($socketId)) {
-            @IPS_ConnectInstance($mqttInstanceId, $socketId);
-        }
-    }
-
-    /**
-     * @param array<string, mixed>|null $credentials
-     */
-    private function ensureMqttClientSocket(int $mqttInstanceId, ?array $credentials): int
-    {
-        $instance = @IPS_GetInstance($mqttInstanceId);
-        $socketId = is_array($instance) ? (int)($instance['ConnectionID'] ?? 0) : 0;
-        if (!$this->isInstanceOfModule($socketId, self::CLIENT_SOCKET_MODULE_GUID)) {
-            $socketId = @IPS_CreateInstance(self::CLIENT_SOCKET_MODULE_GUID);
-            if ($socketId <= 0) {
-                $this->SendDebug('MQTT', 'Unable to create client socket for MQTT', 0);
-                return 0;
-            }
-            $parent = @IPS_GetParent($this->InstanceID);
-            if (is_int($parent) && $parent > 0) {
-                @IPS_SetParent($socketId, $parent);
-            }
-            @IPS_SetName($socketId, 'LG ThinQ MQTT Socket');
-        }
-
-        if ($socketId <= 0) {
-            return 0;
-        }
-
-        $host = '';
-        $port = 0;
-        $secure = true;
-        if (is_array($credentials)) {
-            $host = (string)($credentials['host'] ?? '');
-            $port = (int)($credentials['port'] ?? 0);
-            if (isset($credentials['secure'])) {
-                $secure = (bool)$credentials['secure'];
-            }
-        }
-
-        $availableProps = $this->getInstancePropertyNames($socketId);
-        $config = $this->readInstanceConfiguration($socketId);
-        $changed = false;
-
-        if ($host !== '') {
-            $changed = $this->setInstanceProperty($socketId, ['Host'], $host, $availableProps, $config) || $changed;
-        }
-        if ($port > 0) {
-            $changed = $this->setInstanceProperty($socketId, ['Port'], $port, $availableProps, $config) || $changed;
-        }
-        $changed = $this->setInstanceProperty($socketId, ['UseSSL', 'UseTLS'], $secure, $availableProps, $config) || $changed;
-        $changed = $this->setInstanceProperty($socketId, ['VerifyCertificate', 'VerifyPeer'], false, $availableProps, $config) || $changed;
-        if ($host !== '' && $port > 0) {
-            $changed = $this->setInstanceProperty($socketId, ['Open'], true, $availableProps, $config) || $changed;
-        }
-
-        if ($changed) {
-            @IPS_ApplyChanges($socketId);
-        }
-
-        return $socketId;
-    }
-
-    private function isInstanceOfModule(int $instanceId, string $moduleGuid): bool
-    {
-        if ($instanceId <= 0 || !@IPS_InstanceExists($instanceId)) {
-            return false;
-        }
-        $instance = @IPS_GetInstance($instanceId);
-        if (!is_array($instance)) {
-            return false;
-        }
-        $info = $instance['ModuleInfo'] ?? null;
-        if (!is_array($info)) {
-            return false;
-        }
-        $moduleId = (string)($info['ModuleID'] ?? '');
-        return strcasecmp($moduleId, $moduleGuid) === 0;
-    }
-
-    private function readInstanceConfiguration(int $instanceId): array
-    {
-        $json = @IPS_GetConfiguration($instanceId);
-        if (!is_string($json) || $json === '') {
-            return [];
-        }
-        $decoded = json_decode($json, true);
-        return is_array($decoded) ? $decoded : [];
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function getInstancePropertyNames(int $instanceId): array
-    {
-        $form = @IPS_GetConfigurationForm($instanceId);
-        if (!is_string($form) || $form === '') {
-            return [];
-        }
-        $decoded = json_decode($form, true);
-        if (!is_array($decoded)) {
-            return [];
-        }
-        $names = [];
-        if (isset($decoded['elements']) && is_array($decoded['elements'])) {
-            $this->collectPropertyNames($decoded['elements'], $names);
-        }
-        return $names;
-    }
-
-    /**
-     * @param array<int, mixed> $nodes
-     * @param array<int, string> $names
-     */
-    private function collectPropertyNames(array $nodes, array &$names): void
-    {
-        foreach ($nodes as $node) {
-            if (!is_array($node)) {
-                continue;
-            }
-            if (isset($node['name'])) {
-                $names[] = (string)$node['name'];
-            }
-            if (isset($node['items']) && is_array($node['items'])) {
-                $this->collectPropertyNames($node['items'], $names);
-            }
-            if (isset($node['columns']) && is_array($node['columns'])) {
-                $this->collectPropertyNames($node['columns'], $names);
-            }
-        }
-    }
-
-    /**
-     * @param array<int, string> $candidates
-     * @param array<int, string> $availableProps
-     * @param array<string, mixed> $config
-     */
-    private function setInstanceProperty(int $instanceId, array $candidates, $value, array $availableProps, array &$config): bool
-    {
-        foreach ($candidates as $candidate) {
-            if (!empty($availableProps) && !in_array($candidate, $availableProps, true)) {
-                continue;
-            }
-            if (array_key_exists($candidate, $config) && $config[$candidate] === $value) {
-                return false;
-            }
-            if (@IPS_SetProperty($instanceId, $candidate, $value)) {
-                $config[$candidate] = $value;
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function registerPushClient(bool $forceRefresh): ?array
-    {
-        $cached = $this->readCachedMqttCredentials();
-        if (!$forceRefresh && $this->isValidMqttCredentials($cached)) {
-            return $cached;
-        }
-
-        if ($this->config->accessToken === '' || $this->config->countryCode === '') {
-            return $this->isValidMqttCredentials($cached) ? $cached : null;
-        }
-
-        try {
-            $response = $this->httpClient->request('POST', 'push/devices');
-        } catch (Throwable $e) {
-            $this->SendDebug('MQTT Register', $e->getMessage(), 0);
-            return $this->isValidMqttCredentials($cached) ? $cached : null;
-        }
-
-        $credentials = $this->parseMqttCredentials($response);
-        if ($credentials !== null) {
-            $this->cacheMqttCredentials($credentials);
-            return $credentials;
-        }
-
-        return $this->isValidMqttCredentials($cached) ? $cached : null;
-    }
-
-    private function clearCachedMqttCredentials(): void
-    {
-        $this->WriteAttributeString('MqttCredentials', '{}');
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function readCachedMqttCredentials(): array
-    {
-        $raw = (string)$this->ReadAttributeString('MqttCredentials');
-        $decoded = json_decode($raw, true);
-        return is_array($decoded) ? $decoded : [];
-    }
-
-    /**
-     * @param array<string, mixed> $credentials
-     */
-    private function cacheMqttCredentials(array $credentials): void
-    {
-        $this->WriteAttributeString('MqttCredentials', json_encode($credentials, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    }
-
-    /**
-     * @param array<string, mixed> $credentials
-     */
-    private function isValidMqttCredentials(array $credentials): bool
-    {
-        if (empty($credentials)) {
-            return false;
-        }
-        $host = (string)($credentials['host'] ?? '');
-        $username = (string)($credentials['username'] ?? '');
-        $password = (string)($credentials['password'] ?? '');
-        return $host !== '' && $username !== '' && $password !== '';
-    }
-
-    /**
-     * @param array<string, mixed> $response
-     * @return array<string, mixed>|null
-     */
-    private function parseMqttCredentials(array $response): ?array
-    {
-        if (empty($response)) {
-            return null;
-        }
-
-        $flat = $this->flattenKeys($response);
-
-        $hostRaw = $this->findFirstString($flat, ['mqttserveruri', 'mqttserverurl', 'mqttserver', 'serveruri', 'server']);
-        $host = '';
-        $port = 0;
-        $secure = true;
-        if ($hostRaw !== '') {
-            if (preg_match('/^\w+:\/\//', $hostRaw) === 1) {
-                $parts = @parse_url($hostRaw);
-                if (is_array($parts)) {
-                    $host = (string)($parts['host'] ?? '');
-                    if (isset($parts['port'])) {
-                        $port = (int)$parts['port'];
-                    }
-                    $scheme = strtolower((string)($parts['scheme'] ?? ''));
-                    $secure = in_array($scheme, ['ssl', 'tls', 'mqtts', 'https', 'wss'], true);
-                }
-            } else {
-                $host = $hostRaw;
-            }
-        }
-
-        $portRaw = $this->findFirstString($flat, ['mqttsslport', 'mqttport', 'port']);
-        if ($portRaw !== '' && is_numeric($portRaw)) {
-            $port = (int)$portRaw;
-        }
-        if ($port <= 0) {
-            $port = $secure ? 8883 : 1883;
-        }
-
-        $username = $this->findFirstString($flat, ['mqttusername', 'username', 'userid', 'user']);
-        $password = $this->findFirstString($flat, ['mqttpassword', 'password', 'pass']);
-        $clientId = $this->findFirstString($flat, ['mqttclientid', 'clientid']);
-        $topic = $this->findFirstString($flat, ['mqtttopic', 'topic', 'topicname']);
-        $keepAliveRaw = $this->findFirstString($flat, ['keepalive', 'mqttkeepalive']);
-        $keepAlive = is_numeric($keepAliveRaw) ? (int)$keepAliveRaw : null;
-        $cleanSessionRaw = $this->findFirstString($flat, ['cleansession']);
-        $cleanSession = null;
-        if ($cleanSessionRaw !== '') {
-            $cleanSession = in_array(strtolower($cleanSessionRaw), ['1', 'true', 'yes'], true);
-        }
-
-        if ($host === '' || $username === '' || $password === '') {
-            return null;
-        }
-
-        $data = [
-            'host' => $host,
-            'port' => $port,
-            'secure' => $secure,
-            'username' => $username,
-            'password' => $password,
-            'clientId' => $clientId !== '' ? $clientId : null,
-            'topic' => $topic !== '' ? $topic : null,
-        ];
-        if ($keepAlive !== null) {
-            $data['keepAlive'] = $keepAlive;
-        }
-        if ($cleanSession !== null) {
-            $data['cleanSession'] = $cleanSession;
-        }
-
-        return $data;
-    }
-
-    /**
-     * @param array<string, mixed> $data
-     * @param array<int, string> $keys
-     */
-    private function findFirstString(array $data, array $keys): string
-    {
-        foreach ($keys as $key) {
-            $lookup = strtolower($key);
-            if (array_key_exists($lookup, $data)) {
-                $value = $data[$lookup];
-                if (is_string($value)) {
-                    return trim($value);
-                }
-                if (is_numeric($value)) {
-                    return (string)$value;
-                }
-            }
-        }
-        return '';
-    }
-
-    /**
-     * @param array<string, mixed> $data
-     * @return array<string, mixed>
-     */
-    private function flattenKeys(array $data): array
-    {
-        $result = [];
-        foreach ($data as $key => $value) {
-            $keyName = strtolower((string)$key);
-            if (is_array($value)) {
-                $nested = $this->flattenKeys($value);
-                foreach ($nested as $nKey => $nValue) {
-                    if (!array_key_exists($nKey, $result)) {
-                        $result[$nKey] = $nValue;
-                    }
-                }
-            } elseif (!array_key_exists($keyName, $result)) {
-                $result[$keyName] = $value;
-            }
-        }
-        return $result;
     }
 
     /**
