@@ -1,0 +1,151 @@
+{
+  "fallback": ["ac.json"],
+  "rules": [
+    {
+      "description": "Air Conditioner",
+      "files": ["ac.json"],
+      "match": {"any": ["air", "condition", "hvac", "ac"]}
+    },
+    {
+      "description": "Refrigerator",
+      "files": ["fridge.json"],
+      "match": {"any": ["fridge", "refrigerator", "freezer"]}
+    },
+    {
+      "description": "Washer",
+      "files": ["washer.json"],
+      "match": {"any": ["wash", "laundry", "dish"]}
+    },
+    {
+      "description": "WashTower Washer",
+      "files": ["washtower_washer.json"],
+      "match": {"all": ["tower", "wash"]}
+    },
+    {
+      "description": "WashCombo",
+      "files": ["washcombo.json"],
+      "match": {"any": ["washcombo", "wash_combo"], "regex": ["combo.*(wash|dry)"]}
+    },
+    {
+      "description": "Mini WashCombo",
+      "files": ["mini_washcombo.json"],
+      "match": {"any": ["mini_washcombo", "mini washcombo", "mini_wash_combo", "miniwashcombo"]}
+    },
+    {
+      "description": "Kimchi Refrigerator",
+      "files": ["kimchi_refrigerator.json"],
+      "match": {"any": ["kimchi"]}
+    },
+    {
+      "description": "Dish Washer",
+      "files": ["dish_washer.json"],
+      "match": {"any": ["dish", "dishwasher", "dish_washer"]}
+    },
+    {
+      "description": "Humidifier",
+      "files": ["humidifier.json"],
+      "match": {"any": ["humidifier", "humid"], "exclude": {"any": ["dehumid", "dehum"]}}
+    },
+    {
+      "description": "Dehumidifier",
+      "files": ["dehumidifier.json"],
+      "match": {"any": ["dehumid", "dehum"], "regex": ["dry.*humid"]}
+    },
+    {
+      "description": "Dryer",
+      "files": ["dryer.json"],
+      "match": {"any": ["dry", "dryer"], "exclude": {"any": ["dehumid", "dehum"]}}
+    },
+    {
+      "description": "WashTower Dryer",
+      "files": ["washtower_dryer.json"],
+      "match": {"all": ["tower"], "any": ["dry", "dryer"]}
+    },
+    {
+      "description": "Water Purifier",
+      "files": ["water_purifier.json"],
+      "match": {"any": ["water purifier", "water_purifier", "waterpurifier"], "regex": ["water.*purifier"]}
+    },
+    {
+      "description": "Air Purifier",
+      "files": ["air_purifier.json"],
+      "match": {"any": ["purifier", "air_purifier", "airpurifier", "puri"], "exclude": {"any": ["water purifier", "water_purifier", "waterpurifier"]}}
+    },
+    {
+      "description": "Air Purifier Fan",
+      "files": ["air_purifier_fan.json"],
+      "match": {"any": ["air_purifier_fan", "purifier_fan"], "regex": ["purifier.*fan"]}
+    },
+    {
+      "description": "Stick Cleaner",
+      "files": ["stick_cleaner.json"],
+      "match": {"any": ["stick", "cordless", "handstick", "stick_cleaner"]}
+    },
+    {
+      "description": "Robot Cleaner",
+      "files": ["robot_cleaner.json"],
+      "match": {"any": ["robot", "vacuum", "cleaner"]},
+      "exclude": {"any": ["stick", "handstick", "stick_cleaner", "cordless"]}
+    },
+    {
+      "description": "Oven",
+      "files": ["oven.json"],
+      "match": {"any": ["oven", "range", "cook"]}
+    },
+    {
+      "description": "Microwave",
+      "files": ["microwave_oven.json"],
+      "match": {"any": ["microwave", "micro_wave"]}
+    },
+    {
+      "description": "Cooktop",
+      "files": ["cooktop.json"],
+      "match": {"any": ["cooktop", "cook_top", "hob", "stove"]}
+    },
+    {
+      "description": "Hood",
+      "files": ["hood.json"],
+      "match": {"any": ["hood", "range_hood", "rangehood", "cooker_hood", "extractor"]}
+    },
+    {
+      "description": "Ventilator",
+      "files": ["ventilator.json"],
+      "match": {"any": ["ventilator", "stand_fan", "standfan", "tower_fan", "towerfan"]}
+    },
+    {
+      "description": "Styler",
+      "files": ["styler.json"],
+      "match": {"any": ["styler", "steam", "closet", "clothing"]}
+    },
+    {
+      "description": "Ceiling Fan",
+      "files": ["ceiling_fan.json"],
+      "match": {"any": ["ceiling", "ceiling_fan", "ceilingfan"]}
+    },
+    {
+      "description": "Wine Cellar",
+      "files": ["wine_cellar.json"],
+      "match": {"any": ["wine", "cellar", "wine_cellar", "winecooler", "wine_cooler"]}
+    },
+    {
+      "description": "Home Brew",
+      "files": ["home_brew.json"],
+      "match": {"any": ["homebrew", "home_brew", "beer"]}
+    },
+    {
+      "description": "Plant Cultivator",
+      "files": ["plant_cultivator.json"],
+      "match": {"any": ["plant", "cultivator", "garden", "grow"]}
+    },
+    {
+      "description": "System Boiler",
+      "files": ["system_boiler.json"],
+      "match": {"any": ["boiler", "system_boiler"], "regex": ["system.*boiler"]}
+    },
+    {
+      "description": "Water Heater",
+      "files": ["water_heater.json"],
+      "match": {"any": ["water_heater", "water heater"], "regex": ["water.*heater"]}
+    }
+  ]
+}

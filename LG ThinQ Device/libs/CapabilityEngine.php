@@ -24,6 +24,9 @@ class CapabilityEngine
     /** @var array<string, mixed> */
     private array $flatStatus = [];
 
+    /** @var array<string, mixed>|null */
+    private static ?array $catalog = null;
+
     public function __construct(int $instanceId, string $baseDir)
     {
         $this->instanceId = $instanceId;
@@ -49,133 +52,7 @@ class CapabilityEngine
      */
     public function loadCapabilities(string $deviceType, array $profile): void
     {
-        $dt = strtolower($deviceType);
-        @IPS_LogMessage('CapabilityEngine', sprintf('loadCapabilities: deviceType="%s", dt="%s"', $deviceType, $dt));
-        $files = [];
-        if ($dt === '' || str_contains($dt, 'air') || str_contains($dt, 'condition') || str_contains($dt, 'hvac') || str_contains($dt, 'ac')) {
-            $files[] = $this->baseDir . '/capabilities/ac.json';
-            @IPS_LogMessage('CapabilityEngine', 'Added ac.json capability file');
-        }
-        if (str_contains($dt, 'fridge') || str_contains($dt, 'refrigerator') || str_contains($dt, 'freezer')) {
-            $files[] = $this->baseDir . '/capabilities/fridge.json';
-        }
-        if (str_contains($dt, 'wash') || str_contains($dt, 'laundry') || str_contains($dt, 'dish')) {
-            $files[] = $this->baseDir . '/capabilities/washer.json';
-        }
-        // Washtower washer detection (load after generic washer to override where needed)
-        if (str_contains($dt, 'washtower') || str_contains($dt, 'wash_tower') || (str_contains($dt, 'tower') && str_contains($dt, 'wash'))) {
-            $files[] = $this->baseDir . '/capabilities/washtower_washer.json';
-        }
-        // WashCombo detection (load after generic washer to override where needed)
-        if (str_contains($dt, 'washcombo') || str_contains($dt, 'wash_combo') || (str_contains($dt, 'combo') && (str_contains($dt, 'wash') || str_contains($dt, 'dry')))) {
-            $files[] = $this->baseDir . '/capabilities/washcombo.json';
-        }
-        // Mini WashCombo detection (load after washcombo to override where needed)
-        if (str_contains($dt, 'mini_washcombo') || str_contains($dt, 'mini washcombo') || str_contains($dt, 'mini_wash_combo') || str_contains($dt, 'miniwashcombo')) {
-            $files[] = $this->baseDir . '/capabilities/mini_washcombo.json';
-        }
-        // Kimchi refrigerator detection (additional to generic fridge)
-        if (str_contains($dt, 'kimchi')) {
-            $files[] = $this->baseDir . '/capabilities/kimchi_refrigerator.json';
-        }
-        // Dishwasher detection (load after washer to override common idents where needed)
-        if (str_contains($dt, 'dish') || str_contains($dt, 'dishwasher') || str_contains($dt, 'dish_washer')) {
-            $files[] = $this->baseDir . '/capabilities/dish_washer.json';
-        }
-        // Humidifier detection (avoid collision with dehumidifier)
-        $isHumidifier = str_contains($dt, 'humidifier') || (str_contains($dt, 'humid') && !str_contains($dt, 'dehumid'));
-        if ($isHumidifier) {
-            $files[] = $this->baseDir . '/capabilities/humidifier.json';
-        }
-        // Dehumidifier detection (avoid collision with dryer)
-        if (str_contains($dt, 'dehumid') || str_contains($dt, 'dehum') || (str_contains($dt, 'dry') && str_contains($dt, 'humid'))) {
-            $files[] = $this->baseDir . '/capabilities/dehumidifier.json';
-        }
-        // Dryer detection
-        if (str_contains($dt, 'dry') || str_contains($dt, 'dryer')) {
-            $files[] = $this->baseDir . '/capabilities/dryer.json';
-        }
-        // Washtower dryer detection (load after generic dryer to override where needed)
-        if (str_contains($dt, 'washtower') || str_contains($dt, 'wash_tower') || (str_contains($dt, 'tower') && (str_contains($dt, 'dry') || str_contains($dt, 'dryer')))) {
-            $files[] = $this->baseDir . '/capabilities/washtower_dryer.json';
-        }
-        // Purifier detection with disambiguation
-        $isWaterPurifier = (str_contains($dt, 'water') && str_contains($dt, 'purifier'))
-            || str_contains($dt, 'water_purifier')
-            || str_contains($dt, 'waterpurifier');
-        if ($isWaterPurifier) {
-            $files[] = $this->baseDir . '/capabilities/water_purifier.json';
-        }
-        $isAirPurifier = (str_contains($dt, 'purifier') || str_contains($dt, 'air_purifier') || str_contains($dt, 'airpurifier') || str_contains($dt, 'puri')) && !$isWaterPurifier;
-        if ($isAirPurifier) {
-            $files[] = $this->baseDir . '/capabilities/air_purifier.json';
-            // Air purifier fan variant (load after standard purifier to override where needed)
-            if (str_contains($dt, 'fan') || str_contains($dt, 'air_purifier_fan') || str_contains($dt, 'purifier_fan')) {
-                $files[] = $this->baseDir . '/capabilities/air_purifier_fan.json';
-            }
-        }
-        // Stick cleaner detection (before robot to avoid overlap)
-        $isStickCleaner = str_contains($dt, 'stick') || str_contains($dt, 'cordless') || str_contains($dt, 'handstick') || str_contains($dt, 'stick_cleaner');
-        if ($isStickCleaner) {
-            $files[] = $this->baseDir . '/capabilities/stick_cleaner.json';
-        }
-        // Robot cleaner detection (exclude stick cleaner)
-        if ((str_contains($dt, 'robot') || str_contains($dt, 'vacuum') || (str_contains($dt, 'cleaner') && !$isStickCleaner)) && !$isStickCleaner) {
-            $files[] = $this->baseDir . '/capabilities/robot_cleaner.json';
-        }
-        // Oven / Range detection
-        if (str_contains($dt, 'oven') || str_contains($dt, 'range') || str_contains($dt, 'cook')) {
-            $files[] = $this->baseDir . '/capabilities/oven.json';
-        }
-        // Microwave oven detection
-        if (str_contains($dt, 'microwave') || str_contains($dt, 'micro_wave')) {
-            $files[] = $this->baseDir . '/capabilities/microwave_oven.json';
-        }
-        // Cooktop / Hob detection
-        if (str_contains($dt, 'cooktop') || str_contains($dt, 'cook_top') || str_contains($dt, 'hob') || str_contains($dt, 'stove')) {
-            $files[] = $this->baseDir . '/capabilities/cooktop.json';
-        }
-        // Hood / Range Hood detection
-        if (str_contains($dt, 'hood') || str_contains($dt, 'range_hood') || str_contains($dt, 'rangehood') || str_contains($dt, 'cooker_hood') || str_contains($dt, 'extractor')) {
-            $files[] = $this->baseDir . '/capabilities/hood.json';
-        }
-        // Ventilator (stand/tower fan) detection
-        if (str_contains($dt, 'ventilator') || str_contains($dt, 'stand_fan') || str_contains($dt, 'standfan') || str_contains($dt, 'tower_fan') || str_contains($dt, 'towerfan')) {
-            $files[] = $this->baseDir . '/capabilities/ventilator.json';
-        }
-        // Styler detection
-        if (str_contains($dt, 'styler') || str_contains($dt, 'steam') || str_contains($dt, 'closet') || str_contains($dt, 'clothing')) {
-            $files[] = $this->baseDir . '/capabilities/styler.json';
-        }
-        // Ceiling fan detection
-        if (str_contains($dt, 'ceiling') || str_contains($dt, 'ceiling_fan') || str_contains($dt, 'ceilingfan')) {
-            $files[] = $this->baseDir . '/capabilities/ceiling_fan.json';
-        }
-        // Wine cellar / wine cooler detection
-        if (str_contains($dt, 'wine') || str_contains($dt, 'cellar') || str_contains($dt, 'wine_cellar') || str_contains($dt, 'winecooler') || str_contains($dt, 'wine_cooler')) {
-            $files[] = $this->baseDir . '/capabilities/wine_cellar.json';
-        }
-        // HomeBrew / Beer maker detection
-        if (str_contains($dt, 'homebrew') || str_contains($dt, 'home_brew') || str_contains($dt, 'beer')) {
-            $files[] = $this->baseDir . '/capabilities/home_brew.json';
-        }
-        // Plant cultivator detection
-        if (str_contains($dt, 'plant') || str_contains($dt, 'cultivator') || str_contains($dt, 'garden') || str_contains($dt, 'grow')) {
-            $files[] = $this->baseDir . '/capabilities/plant_cultivator.json';
-        }
-        // System boiler detection
-        if (str_contains($dt, 'boiler') || str_contains($dt, 'system_boiler') || (str_contains($dt, 'system') && str_contains($dt, 'boiler'))) {
-            $files[] = $this->baseDir . '/capabilities/system_boiler.json';
-        }
-        // Water heater detection
-        if (str_contains($dt, 'water_heater') || str_contains($dt, 'water heater') || (str_contains($dt, 'water') && str_contains($dt, 'heater'))) {
-            $files[] = $this->baseDir . '/capabilities/water_heater.json';
-        }
-        // Fallback: if nothing matched, try AC basic
-        if (empty($files)) {
-            $files[] = $this->baseDir . '/capabilities/ac.json';
-        }
-
+        $files = $this->resolveCapabilityFiles($deviceType, $profile);
         $this->caps = [];
         @IPS_LogMessage('CapabilityEngine', sprintf('Loading %d capability files: %s', count($files), implode(', ', $files)));
         foreach ($files as $f) {
@@ -202,6 +79,157 @@ class CapabilityEngine
             }
         }
         $this->flatProfile = $this->flatten($profile);
+    }
+
+    /**
+     * @param array<string, mixed> $profile
+     * @return array<int, string>
+     */
+    private function resolveCapabilityFiles(string $deviceType, array $profile): array
+    {
+        $catalog = $this->loadCatalog();
+        $type = strtolower((string)$deviceType);
+        $profileText = strtolower(json_encode($profile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '');
+
+        $files = [];
+        foreach ($catalog['rules'] as $rule) {
+            if ($this->catalogRuleMatches($rule, $type, $profileText)) {
+                foreach ($rule['files'] as $file) {
+                    $files[] = $this->baseDir . '/capabilities/' . $file;
+                }
+            }
+        }
+        if (empty($files)) {
+            foreach ($catalog['fallback'] as $fallback) {
+                $files[] = $this->baseDir . '/capabilities/' . $fallback;
+            }
+        }
+
+        $files = array_values(array_unique($files));
+        return $files;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function loadCatalog(): array
+    {
+        if (self::$catalog !== null) {
+            return self::$catalog;
+        }
+        $file = $this->baseDir . '/capabilities/catalog.json';
+        $default = ['rules' => [], 'fallback' => ['ac.json']];
+        if (!@is_file($file)) {
+            self::$catalog = $default;
+            return self::$catalog;
+        }
+        $json = @file_get_contents($file);
+        if (!is_string($json) || $json === '') {
+            self::$catalog = $default;
+            return self::$catalog;
+        }
+        $data = json_decode($json, true);
+        if (!is_array($data) || !isset($data['rules']) || !is_array($data['rules'])) {
+            self::$catalog = $default;
+            return self::$catalog;
+        }
+        foreach ($data['rules'] as &$rule) {
+            if (!isset($rule['files']) || !is_array($rule['files'])) {
+                $rule['files'] = [];
+            }
+        }
+        self::$catalog = $data;
+        return self::$catalog;
+    }
+
+    /**
+     * @param array<string, mixed> $rule
+     */
+    private function catalogRuleMatches(array $rule, string $deviceType, string $profileText): bool
+    {
+        $match = $rule['match'] ?? [];
+        $exclude = $rule['exclude'] ?? [];
+        if (!$this->matchesCondition($match, $deviceType, $profileText)) {
+            return false;
+        }
+        if (!empty($exclude) && $this->matchesCondition($exclude, $deviceType, $profileText)) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * @param array<string, mixed> $condition
+     */
+    private function matchesCondition(array $condition, string $deviceType, string $profileText): bool
+    {
+        if (empty($condition)) {
+            return true;
+        }
+        $haystacks = [$deviceType];
+        if ($profileText !== '') {
+            $haystacks[] = $profileText;
+        }
+
+        if (isset($condition['any']) && is_array($condition['any'])) {
+            $found = false;
+            foreach ($condition['any'] as $needle) {
+                $needle = strtolower((string)$needle);
+                if ($needle === '') {
+                    continue;
+                }
+                foreach ($haystacks as $haystack) {
+                    if (strpos($haystack, $needle) !== false) {
+                        $found = true;
+                        break 2;
+                    }
+                }
+            }
+            if (!$found) {
+                return false;
+            }
+        }
+
+        if (isset($condition['all']) && is_array($condition['all'])) {
+            foreach ($condition['all'] as $needle) {
+                $needle = strtolower((string)$needle);
+                if ($needle === '') {
+                    continue;
+                }
+                $matches = false;
+                foreach ($haystacks as $haystack) {
+                    if (strpos($haystack, $needle) !== false) {
+                        $matches = true;
+                        break;
+                    }
+                }
+                if (!$matches) {
+                    return false;
+                }
+            }
+        }
+
+        if (isset($condition['regex']) && is_array($condition['regex'])) {
+            $regexMatch = false;
+            foreach ($condition['regex'] as $pattern) {
+                $pattern = (string)$pattern;
+                if ($pattern === '') {
+                    continue;
+                }
+                $pattern = '/' . str_replace('/', '\/', $pattern) . '/i';
+                foreach ($haystacks as $haystack) {
+                    if (@preg_match($pattern, $haystack)) {
+                        $regexMatch = true;
+                        break 2;
+                    }
+                }
+            }
+            if (!$regexMatch) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -370,6 +398,51 @@ class CapabilityEngine
     }
 
     /**
+     * Build a configuration plan describing which variables should exist and how they should be presented.
+     *
+     * @param string $deviceType
+     * @param array<string, mixed> $profile
+     * @param array<string, mixed>|null $status
+     * @return array<string, array<string, mixed>> keyed by ident
+     */
+    public function buildPlan(string $deviceType, array $profile, ?array $status): array
+    {
+        $this->loadCapabilities($deviceType, $profile);
+        $this->flatProfile = $this->flatten($profile);
+        $this->flatStatus = is_array($status) ? $this->flatten($status) : [];
+
+        $plan = [];
+        foreach ($this->caps as $cap) {
+            $ident = (string)($cap['ident'] ?? '');
+            if ($ident === '') {
+                continue;
+            }
+
+            $shouldCreate = $this->shouldCreate($cap, $this->flatProfile, $this->flatStatus);
+            $entry = [
+                'ident' => $ident,
+                'type' => strtoupper((string)($cap['type'] ?? 'string')),
+                'name' => (string)($cap['name'] ?? $ident),
+                'hidden' => (bool)($cap['visibility']['hidden'] ?? false),
+                'shouldCreate' => $shouldCreate,
+                'presentation' => isset($cap['presentation']) && is_array($cap['presentation']) ? $cap['presentation'] : null,
+                'enableAction' => $shouldCreate && $this->shouldEnableAction($cap)
+            ];
+
+            if ($shouldCreate) {
+                $value = $this->readValue($cap, $this->flatStatus);
+                if ($value !== null) {
+                    $entry['initialValue'] = $value;
+                }
+            }
+
+            $plan[$ident] = $entry;
+        }
+
+        return $plan;
+    }
+
+    /**
      * Apply status to variables declared in capabilities and reassert actions if desired.
      *
      * @param array<string, mixed> $status
@@ -523,10 +596,27 @@ class CapabilityEngine
     private function enableAction(string $ident): void
     {
         @IPS_LogMessage('CapabilityEngine', sprintf('enableAction called for ident: %s, instanceId: %d - SKIPPING (will be handled by main module)', $ident, $this->instanceId));
-        
+
         // NOTE: Action enabling is now handled directly in the main module's SetupDeviceVariables method
         // using $this->EnableAction() which is the correct Symcon approach
         // This method is kept for compatibility but doesn't do the actual enabling anymore
+    }
+
+    /** @param array<string, mixed> $cap */
+    private function shouldEnableAction(array $cap): bool
+    {
+        $enableWhen = strtolower((string)($cap['action']['enableWhen'] ?? ''));
+        if ($enableWhen === 'always') {
+            return true;
+        }
+        if ($enableWhen === 'profilewriteableany') {
+            $writeKeys = $cap['action']['writeableKeys'] ?? [];
+            if (is_array($writeKeys) && $this->profileHasWriteAny($writeKeys)) {
+                return true;
+            }
+            return $this->capHasWriteDefinition($cap);
+        }
+        return false;
     }
 
     private function profileHasWriteAny(array $writeableKeys): bool
