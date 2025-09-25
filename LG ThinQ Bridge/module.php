@@ -330,6 +330,7 @@ class LGThinQBridge extends IPSModule
                     $ok = false;
                 }
             }
+        }
         return ['ok' => $ok, 'errors' => $errors];
     }
 
