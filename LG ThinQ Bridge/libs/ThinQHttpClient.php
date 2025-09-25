@@ -79,12 +79,22 @@ final class ThinQHttpClient
             $statusCode = (int)$match[1];
         }
 
+        if ($this->config->debug) {
+            @IPS_LogMessage('LG ThinQ HTTP', 'ResponseStatus: ' . $statusCode . ' HeaderLine: ' . $statusHeader);
+            // Log a compact, truncated response body for diagnostics
+            $snippet = substr(preg_replace('/\s+/', ' ', (string)$result), 0, 1000);
+            @IPS_LogMessage('LG ThinQ HTTP', 'ResponseBody: ' . $snippet . (strlen($result) > 1000 ? ' ...[truncated]' : ''));
+        }
+
         if ($statusCode === 204 || trim($result) === '') {
             return [];
         }
 
         $decoded = json_decode($result, true);
         if ($statusCode >= 400) {
+            if ($this->config->debug) {
+                @IPS_LogMessage('LG ThinQ HTTP', 'HTTP error status ' . $statusCode . ' for URL: ' . $url);
+            }
             if (is_array($decoded) && isset($decoded['error'])) {
                 $code = $decoded['error']['code'] ?? 'unknown';
                 $message = $decoded['error']['message'] ?? 'unknown';
@@ -96,6 +106,10 @@ final class ThinQHttpClient
 
         if (!is_array($decoded)) {
             return [];
+        }
+
+        if ($this->config->debug) {
+            @IPS_LogMessage('LG ThinQ HTTP', 'DecodedKeys: ' . implode(',', array_keys($decoded)));
         }
 
         return $decoded['response'] ?? $decoded;
