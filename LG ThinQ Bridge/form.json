@@ -9,7 +9,7 @@
         { "type": "Label", "label": "MQTT Push (Symcon MQTT Client)", "visible": true },
         { "type": "CheckBox", "name": "UseMQTT", "caption": "Use MQTT for events", "visible": true },
         
-        { "type": "ValidationTextBox", "name": "MQTTTopicFilter", "caption": "Topic filter", "width": "600px", "placeholder": "app/clients/*/push" },
+        { "type": "ValidationTextBox", "name": "MQTTTopicFilter", "caption": "Topic filter", "width": "600px", "placeholder": "app/clients/*/#" },
         { "type": "CheckBox", "name": "IgnoreRetained", "caption": "Ignore retained MQTT messages", "visible": true },
 
         { "type": "Label", "label": "Event API (Auto-Renew)" },

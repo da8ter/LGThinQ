@@ -36,7 +36,7 @@ class LGThinQBridge extends IPSModule
         $this->RegisterPropertyBoolean('Debug', false);
         $this->RegisterPropertyBoolean('UseMQTT', true);
         $this->RegisterPropertyInteger('MQTTClientID', 0);
-        $this->RegisterPropertyString('MQTTTopicFilter', 'app/clients/*/push');
+        $this->RegisterPropertyString('MQTTTopicFilter', 'app/clients/*/#');
         $this->RegisterPropertyBoolean('IgnoreRetained', true);
         $this->RegisterPropertyInteger('EventTTLHrs', 24);
         $this->RegisterPropertyInteger('EventRenewLeadMin', 5);
@@ -64,6 +64,9 @@ class LGThinQBridge extends IPSModule
         }
 
         $this->configureTimers();
+
+        // Ensure MQTT parent is connected when MQTT is enabled
+        $this->ensureMqttParent();
 
         // Extra diagnostics when Debug is enabled
         if ((bool)$this->ReadPropertyBoolean('Debug')) {

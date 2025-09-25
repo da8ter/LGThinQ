@@ -45,6 +45,13 @@ final class ThinQMqttRouter
 
         $filter = (string)$this->config->mqttTopicFilter;
         if ($filter !== '' && !$this->topicMatches($topic, $filter)) {
+            if ($this->config->debug) {
+                if (method_exists($this->module, 'DebugLog')) {
+                    $this->module->DebugLog('MQTT', 'Filter miss: topic=' . $topic . ' filter=' . $filter);
+                } else {
+                    @IPS_LogMessage('LG ThinQ MQTT', 'Filter miss: topic=' . $topic . ' filter=' . $filter);
+                }
+            }
             return;
         }
 
