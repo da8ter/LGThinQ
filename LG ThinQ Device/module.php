@@ -55,6 +55,8 @@ class LGThinQDevice extends IPSModule
             $this->SetStatus(104);
             return;
         }
+        // Configuration is complete: mark instance as Ready
+        $this->SetStatus(102);
 
         $info = ['deviceId' => $deviceId, 'alias' => $alias];
 
@@ -72,13 +74,27 @@ class LGThinQDevice extends IPSModule
             $this->logThrowable('SetupDeviceVariables', $e);
         }
 
+        // Immediately subscribe device to LG push/events if possible; also schedule a one-time retry
         try {
-            $deviceID = (string)$this->ReadPropertyString('DeviceID');
-            if ($deviceID !== '' && method_exists($this, 'RegisterOnceTimer')) {
-                @$this->RegisterOnceTimer('AutoSubscribe', 'LGTQD_AutoSubscribe($_IPS["TARGET"]);');
+            $deviceID = trim((string)$this->ReadPropertyString('DeviceID'));
+            if ($deviceID !== '') {
+                $hasParent = !method_exists($this, 'HasActiveParent') || $this->HasActiveParent();
+                if ($hasParent) {
+                    $this->doAutoSubscribe($deviceID);
+                }
+                if (method_exists($this, 'RegisterOnceTimer')) {
+                    @$this->RegisterOnceTimer('AutoSubscribe', 'LGTQD_AutoSubscribe($_IPS["TARGET"]);');
+                }
             }
         } catch (\Throwable $e) {
             $this->logThrowable('AutoSubscribe', $e);
+        }
+
+        // One-time initial status fetch (HTTP) to seed STATUS and capability variables
+        try {
+            $this->UpdateStatus();
+        } catch (\Throwable $e) {
+            $this->logThrowable('InitialUpdateStatus', $e);
         }
 
         $this->updateReferences();
