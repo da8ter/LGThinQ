@@ -92,9 +92,24 @@ class LGThinQDevice extends IPSModule
 
         // One-time initial status fetch (HTTP) to seed STATUS and capability variables
         try {
-            $this->UpdateStatus();
+            $hasParent = !method_exists($this, 'HasActiveParent') || $this->HasActiveParent();
+            if ($hasParent) {
+                $this->UpdateStatus();
+            } elseif (method_exists($this, 'RegisterOnceTimer')) {
+                // Defer initial fetch until the parent becomes active
+                @$this->RegisterOnceTimer('InitialUpdateStatus', 'LGTQD_UpdateStatus($_IPS["TARGET"]);');
+            }
         } catch (\Throwable $e) {
             $this->logThrowable('InitialUpdateStatus', $e);
+        }
+
+        // Schedule a finalize setup pass to ensure variables and initial status after the parent becomes active
+        try {
+            if (method_exists($this, 'RegisterOnceTimer')) {
+                @$this->RegisterOnceTimer('FinalizeSetup', 'LGTQD_FinalizeSetup($_IPS["TARGET"]);');
+            }
+        } catch (\Throwable $e) {
+            $this->logThrowable('FinalizeSetup schedule', $e);
         }
 
         $this->updateReferences();
@@ -134,6 +149,31 @@ class LGThinQDevice extends IPSModule
         } catch (\Throwable $e) {
 
             $this->logThrowable('UpdateStatus', $e);
+        }
+    }
+
+    public function FinalizeSetup(): void
+    {
+        $deviceID = (string)$this->ReadPropertyString('DeviceID');
+        if ($deviceID === '') {
+            return;
+        }
+        if (method_exists($this, 'HasActiveParent') && !$this->HasActiveParent()) {
+            if (method_exists($this, 'RegisterOnceTimer')) {
+                // Retry later until the gateway becomes active
+                @$this->RegisterOnceTimer('FinalizeSetup', 'LGTQD_FinalizeSetup($_IPS["TARGET"]);');
+            }
+            return;
+        }
+        try {
+            $this->SetupDeviceVariables();
+        } catch (\Throwable $e) {
+            $this->logThrowable('FinalizeSetup SetupDeviceVariables', $e);
+        }
+        try {
+            $this->UpdateStatus();
+        } catch (\Throwable $e) {
+            $this->logThrowable('FinalizeSetup UpdateStatus', $e);
         }
     }
 
