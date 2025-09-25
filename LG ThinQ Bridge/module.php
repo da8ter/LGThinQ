@@ -319,6 +319,11 @@ class LGThinQBridge extends IPSModule
         $errors = [];
         if ($Event) {
             $success = $this->eventManager->subscribe($DeviceID);
+            if ($success) {
+                $this->SendDebug('Event Subscribe', 'OK for ' . $DeviceID, 0);
+            } else {
+                $this->SendDebug('Event Subscribe', 'FAILED for ' . $DeviceID, 0);
+            }
             if (!$success) {
                 $errors[] = 'Event subscription failed';
             }
@@ -326,7 +331,15 @@ class LGThinQBridge extends IPSModule
         }
         if ($Push) {
             try {
+                // Ensure this client is registered as push recipient (idempotent)
+                try {
+                    $this->httpClient->request('POST', 'push/devices');
+                    $this->SendDebug('Push Subscribe', 'push/devices OK', 0);
+                } catch (Throwable $e2) {
+                    $this->SendDebug('Push Subscribe', 'push/devices error: ' . $e2->getMessage(), 0);
+                }
                 $this->httpClient->request('POST', 'push/' . rawurlencode($DeviceID) . '/subscribe');
+                $this->SendDebug('Push Subscribe', 'OK for ' . $DeviceID, 0);
             } catch (Throwable $e) {
                 $msg = $e->getMessage();
                 if (stripos($msg, 'already subscribed') !== false) {
@@ -437,6 +450,20 @@ class LGThinQBridge extends IPSModule
         } elseif ($clientIdProperty !== '' && $clientIdProperty !== $clientIdAttr) {
             $this->WriteAttributeString('ClientID', $clientIdProperty);
             $clientId = $clientIdProperty;
+        }
+
+        // Prefer MQTT parent ClientID to keep HTTP x-client-id aligned with certificate CN
+        $instInfo = @IPS_GetInstance($this->InstanceID);
+        $parentId = is_array($instInfo) ? (int)($instInfo['ConnectionID'] ?? 0) : 0;
+        if ($parentId > 0) {
+            $parentClientId = trim((string)@IPS_GetProperty($parentId, 'ClientID'));
+            if ($parentClientId !== '') {
+                if ($clientId !== $parentClientId) {
+                    // Update attribute to reflect parent ClientID and use it for HTTP client
+                    $this->WriteAttributeString('ClientID', $parentClientId);
+                    $clientId = $parentClientId;
+                }
+            }
         }
 
         return ThinQBridgeConfig::create(
