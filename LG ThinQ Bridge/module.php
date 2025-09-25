@@ -864,6 +864,9 @@ class LGThinQBridge extends IPSModule
             $csrOut = '';
         }
         if ((bool)$this->ReadPropertyBoolean('Debug')) {
+            if ($lgSubscriptions !== null) {
+                $this->SendDebug('CertGen', 'LG Subscriptions: ' . substr(json_encode($lgSubscriptions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 0, 1000) . (strlen(json_encode($lgSubscriptions)) > 1000 ? ' ...[truncated]' : ''), 0);
+            }
             $fpSha = hash('sha256', (string)$certOut);
             $x509 = @openssl_x509_read($certOut);
             if ($x509 !== false) {
@@ -878,6 +881,9 @@ class LGThinQBridge extends IPSModule
                 }
             }
             $this->SendDebug('CertGen', 'Cert PEM length=' . strlen($certOut) . ' sha256=' . $fpSha, 0);
+            // Verify that the certificate matches the generated private key
+            $matches = @openssl_x509_check_private_key($certOut, $pkPrivate);
+            $this->SendDebug('CertGen', 'Cert matches private key: ' . ($matches ? 'yes' : 'no'), 0);
         }
 
         // Create ZIP
