@@ -600,6 +600,23 @@ class LGThinQBridge extends IPSModule
                 $clientId = 'client-' . (string)$this->InstanceID;
             }
         }
+        // Subject CN: prefer MQTT ClientID from parent if available
+        $subjectCN = $clientId;
+        $instInfo = @IPS_GetInstance($this->InstanceID);
+        if (is_array($instInfo)) {
+            $parentId = (int)($instInfo['ConnectionID'] ?? 0);
+            if ($parentId > 0) {
+                $parentClientId = trim((string)@IPS_GetProperty($parentId, 'ClientID'));
+                if ($parentClientId !== '') {
+                    $subjectCN = $parentClientId;
+                }
+            }
+        }
+        // Sanitize CN (no spaces or special chars)
+        $subjectCN = preg_replace('/[^A-Za-z0-9._-]/', '_', (string)$subjectCN);
+        if (!is_string($subjectCN) || trim($subjectCN) === '') {
+            $subjectCN = 'client-' . (string)$this->InstanceID;
+        }
 
         $cfgPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'lgtq_mqtt_' . $this->InstanceID . '_' . bin2hex(random_bytes(4)) . '.cnf';
         $nl = "\r\n";
@@ -615,8 +632,7 @@ class LGThinQBridge extends IPSModule
         $strCONFIG .= 'x509_extensions = v3_client' . $nl;
         $strCONFIG .= $nl;
         $strCONFIG .= '[ req_DN ]' . $nl;
-        $strCONFIG .= '0.organizationName = "IP-Symcon LG ThinQ"' . $nl;
-        $strCONFIG .= 'commonName = "' . addslashes($clientId) . '"' . $nl;
+        $strCONFIG .= 'commonName = "' . addslashes($subjectCN) . '"' . $nl;
         $strCONFIG .= $nl;
         $strCONFIG .= '[ v3_req ]' . $nl;
         $strCONFIG .= 'basicConstraints = critical, CA:FALSE' . $nl;
@@ -638,8 +654,7 @@ class LGThinQBridge extends IPSModule
 
         try {
             $dn = [
-                'organizationName' => 'IP-Symcon LG ThinQ',
-                'commonName'       => $clientId
+                'commonName'       => $subjectCN
             ];
             $config = [
                 'config' => $cfgPath,
@@ -758,6 +773,7 @@ class LGThinQBridge extends IPSModule
                 'instanceId' => $this->InstanceID,
                 'alias' => @IPS_GetName($this->InstanceID),
                 'clientId' => $clientId,
+                'subjectCN' => $subjectCN,
                 'timestamp' => date('c'),
                 'phpVersion' => PHP_VERSION,
                 'kernelVersion' => function_exists('IPS_GetKernelVersion') ? @IPS_GetKernelVersion() : ''
