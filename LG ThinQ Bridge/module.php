@@ -822,61 +822,54 @@ class LGThinQBridge extends IPSModule
             throw new \RuntimeException('Konnte temporäre ZIP-Datei nicht erstellen');
         }
         if ($zip->open($tmpZip, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-            // Create ZIP
-            $zip = new \ZipArchive();
-            $tmpZip = tempnam(sys_get_temp_dir(), 'lgtq_mqtt_zip_');
-            if ($tmpZip === false) {
-                throw new \RuntimeException('Konnte temporäre ZIP-Datei nicht erstellen');
-            }
-            if ($zip->open($tmpZip, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-                @unlink($tmpZip);
-                throw new \RuntimeException('Konnte ZIP nicht öffnen');
-            }
-
-            // 00_meta.json
-            $meta = [
-                'module' => 'LG ThinQ Bridge',
-                'purpose' => 'MQTT Client Zertifikate',
-                'instanceId' => $this->InstanceID,
-                'alias' => @IPS_GetName($this->InstanceID),
-                'clientId' => $clientId,
-                'subjectCN' => $subjectCN,
-                'lgSigned' => ($lgCertOut !== ''),
-                'lgSubscriptions' => $lgSubscriptions,
-                'timestamp' => date('c'),
-                'phpVersion' => PHP_VERSION,
-                'kernelVersion' => function_exists('IPS_GetKernelVersion') ? @IPS_GetKernelVersion() : ''
-            ];
-            $zip->addFromString('00_meta.json', json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
-
-            // Cert material
-            $zip->addFromString('client_cert.pem', $certOut);
-            $zip->addFromString('client_private_key.pem', $pkPrivate);
-            $zip->addFromString('client_public_key.pem', $pkPublic);
-            if ($csrOut !== '') {
-                $zip->addFromString('client_csr.pem', $csrOut);
-            }
-
-            $readme = "Diese ZIP-Datei enthält ein über die LG ThinQ API signiertes Client-Zertifikat für den MQTT-Client (inkl. X.509 v3 Extended Key Usage: clientAuth).\n\n"
-                . "Dateien:\n"
-                . "- client_cert.pem: X.509 Client-Zertifikat (LG-signiert)\n"
-                . "- client_private_key.pem: Privater Schlüssel (PEM, unverschlüsselt)\n"
-                . "- client_public_key.pem: Öffentlicher Schlüssel\n"
-                . ($csrOut !== '' ? "- client_csr.pem: Certificate Signing Request (CSR)\n" : '')
-                . "\nHinweise:\n"
-                . "- Importieren Sie Zertifikat und privaten Schlüssel dort, wo Ihr MQTT-Client diese benötigt.\n"
-                . "- Die CN (Common Name) muss exakt der MQTT ClientID entsprechen.\n";
-            $zip->addFromString('README.txt', $readme);
-
-            $zip->close();
-            $data = file_get_contents($tmpZip);
             @unlink($tmpZip);
-            if ($data === false) {
-                throw new \RuntimeException('Konnte ZIP-Inhalt nicht lesen');
-            }
-            return $data;
-        } finally {
-            @unlink($cfgPath);
+            throw new \RuntimeException('Konnte ZIP nicht öffnen');
         }
+
+        // 00_meta.json
+        $meta = [
+            'module' => 'LG ThinQ Bridge',
+            'purpose' => 'MQTT Client Zertifikate',
+            'instanceId' => $this->InstanceID,
+            'alias' => @IPS_GetName($this->InstanceID),
+            'clientId' => $clientId,
+            'subjectCN' => $subjectCN,
+            'lgSigned' => ($lgCertOut !== ''),
+            'lgSubscriptions' => $lgSubscriptions,
+            'timestamp' => date('c'),
+            'phpVersion' => PHP_VERSION,
+            'kernelVersion' => function_exists('IPS_GetKernelVersion') ? @IPS_GetKernelVersion() : ''
+        ];
+        $zip->addFromString('00_meta.json', json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+
+        // Cert material
+        $zip->addFromString('client_cert.pem', $certOut);
+        $zip->addFromString('client_private_key.pem', $pkPrivate);
+        $zip->addFromString('client_public_key.pem', $pkPublic);
+        if ($csrOut !== '') {
+            $zip->addFromString('client_csr.pem', $csrOut);
+        }
+
+        $readme = "Diese ZIP-Datei enthält ein über die LG ThinQ API signiertes Client-Zertifikat für den MQTT-Client (inkl. X.509 v3 Extended Key Usage: clientAuth).\n\n"
+            . "Dateien:\n"
+            . "- client_cert.pem: X.509 Client-Zertifikat (LG-signiert)\n"
+            . "- client_private_key.pem: Privater Schlüssel (PEM, unverschlüsselt)\n"
+            . "- client_public_key.pem: Öffentlicher Schlüssel\n"
+            . ($csrOut !== '' ? "- client_csr.pem: Certificate Signing Request (CSR)\n" : '')
+            . "\nHinweise:\n"
+            . "- Importieren Sie Zertifikat und privaten Schlüssel dort, wo Ihr MQTT-Client diese benötigt.\n"
+            . "- Die CN (Common Name) muss exakt der MQTT ClientID entsprechen.\n";
+        $zip->addFromString('README.txt', $readme);
+
+        $zip->close();
+        $data = file_get_contents($tmpZip);
+        @unlink($tmpZip);
+        if ($data === false) {
+            throw new \RuntimeException('Konnte ZIP-Inhalt nicht lesen');
+        }
+        return $data;
+    } finally {
+        @unlink($cfgPath);
+    }
     }
 }
