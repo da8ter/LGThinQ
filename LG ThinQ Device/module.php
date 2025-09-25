@@ -505,8 +505,13 @@ class LGThinQDevice extends IPSModule
                 $stepVal = (float)$payload['STEP_SIZE'];
                 $payload['DIGITS'] = ($stepVal >= 1.0) ? 0 : (($stepVal >= 0.5) ? 1 : 2);
             }
-        } elseif ($kind === 'buttons') {
-            $payload['PRESENTATION'] = self::PRES_BUTTONS;
+        } elseif ($kind === 'enumeration') {
+            // New: Enumeration presentation
+            if (!defined('VARIABLE_PRESENTATION_ENUMERATION')) {
+                $this->SendDebug('Presentation', 'Enumeration presentation not available in this IP-Symcon version; ident=' . $ident, 0);
+                return;
+            }
+            $payload['PRESENTATION'] = VARIABLE_PRESENTATION_ENUMERATION;
             $options = [];
             if (isset($presentation['options']) && is_array($presentation['options'])) {
                 foreach ($presentation['options'] as $op) {
@@ -521,12 +526,36 @@ class LGThinQDevice extends IPSModule
                         'Caption' => $this->t((string)$op['caption']),
                         'IconActive' => false,
                         'IconValue' => '',
-                        'Color' => (int)($op['color'] ?? -1)
+                        'Color' => isset($op['color']) ? (int)$op['color'] : -1
                     ];
                 }
             }
             if (!empty($options)) {
-                $payload['LAYOUT'] = 1;
+                $payload['OPTIONS'] = $options;
+            }
+        } elseif ($kind === 'buttons') {
+            $payload['PRESENTATION'] = self::PRES_BUTTONS;
+            $payload['ICON'] = '';
+            $payload['LAYOUT'] = isset($presentation['layout']) ? (int)$presentation['layout'] : 1;
+            $options = [];
+            if (isset($presentation['options']) && is_array($presentation['options'])) {
+                foreach ($presentation['options'] as $op) {
+                    if (!is_array($op)) {
+                        continue;
+                    }
+                    if (!array_key_exists('value', $op) || !array_key_exists('caption', $op)) {
+                        continue;
+                    }
+                    $options[] = [
+                        'Value' => (int)$op['value'],
+                        'Caption' => $this->t((string)$op['caption']),
+                        'IconActive' => false,
+                        'IconValue' => '',
+                        'Color' => isset($op['color']) ? (int)$op['color'] : -1
+                    ];
+                }
+            }
+            if (!empty($options)) {
                 $payload['OPTIONS'] = $options;
             }
         } elseif ($kind === 'value') {
@@ -545,13 +574,33 @@ class LGThinQDevice extends IPSModule
 
         $payload = $this->translatePresentationPayload($payload);
 
+        // Debug: show outgoing presentation payload
+        $this->SendDebug('Presentation', 'Preparing ident=' . $ident . ' kind=' . $kind . ' payload=' . json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 0);
+
+        // Clear any previously assigned custom profile so presentation can take effect
+        @IPS_SetVariableCustomProfile($vid, '');
+
         if (function_exists('IPS_SetVariableCustomPresentation')) {
-            if (isset($payload['OPTIONS']) && is_array($payload['OPTIONS'])) {
-                $payload['OPTIONS'] = json_encode($payload['OPTIONS'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $payloadEncoded = $payload;
+            $hadOptionsArray = isset($payload['OPTIONS']) && is_array($payload['OPTIONS']);
+            if ($hadOptionsArray) {
+                $payloadEncoded['OPTIONS'] = json_encode($payload['OPTIONS'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             }
-            @IPS_SetVariableCustomPresentation($vid, $payload);
+            @IPS_SetVariableCustomPresentation($vid, $payloadEncoded);
+            // Debug: verify if custom presentation has been applied
+            $varInfo = @IPS_GetVariable($vid);
+            $post = is_array($varInfo) && array_key_exists('VariableCustomPresentation', $varInfo) ? $varInfo['VariableCustomPresentation'] : null;
+            $this->SendDebug('Presentation', 'Applied ident=' . $ident . ' post=' . (is_string($post) ? $post : json_encode($post)), 0);
+            // If not applied and we encoded OPTIONS, retry once with OPTIONS as array (compat mode)
+            $notApplied = ($post === null || $post === '' || $post === false);
+            if ($notApplied && $hadOptionsArray) {
+                $this->SendDebug('Presentation', 'Retry ident=' . $ident . ' with OPTIONS as array (compatibility attempt)', 0);
+                @IPS_SetVariableCustomPresentation($vid, $payload);
+            }
         } else {
-            $this->applyProfileFallback($vid, $ident, $payload, $type);
+            // Explicitly no fallback to old variable profiles per requirement
+            $this->SendDebug('Presentation', 'IPS_SetVariableCustomPresentation not available; skipping ident=' . $ident, 0);
+            return;
         }
     }
 

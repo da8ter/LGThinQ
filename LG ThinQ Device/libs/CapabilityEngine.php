@@ -92,6 +92,21 @@ class CapabilityEngine
         $profileText = strtolower(json_encode($profile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '');
 
         $files = [];
+
+        // 1) Strict deviceType-only matching: if any rules match the deviceType string alone, use ONLY those files
+        $strictFiles = [];
+        foreach ($catalog['rules'] as $rule) {
+            if ($this->catalogRuleMatchesDeviceOnly($rule, $type)) {
+                foreach ($rule['files'] as $file) {
+                    $strictFiles[] = $this->baseDir . '/capabilities/' . $file;
+                }
+            }
+        }
+        if (!empty($strictFiles)) {
+            return array_values(array_unique($strictFiles));
+        }
+
+        // 2) Fallback: broader match using deviceType + profile text
         foreach ($catalog['rules'] as $rule) {
             if ($this->catalogRuleMatches($rule, $type, $profileText)) {
                 foreach ($rule['files'] as $file) {
@@ -153,6 +168,22 @@ class CapabilityEngine
             return false;
         }
         if (!empty($exclude) && $this->matchesCondition($exclude, $deviceType, $profileText)) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Like catalogRuleMatches but only considers the deviceType (ignores profileText).
+     */
+    private function catalogRuleMatchesDeviceOnly(array $rule, string $deviceType): bool
+    {
+        $match = $rule['match'] ?? [];
+        $exclude = $rule['exclude'] ?? [];
+        if (!$this->matchesCondition($match, $deviceType, '')) {
+            return false;
+        }
+        if (!empty($exclude) && $this->matchesCondition($exclude, $deviceType, '')) {
             return false;
         }
         return true;

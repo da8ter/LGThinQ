@@ -4,7 +4,7 @@
       "ident": "ROBOT_OPERATION",
       "name": "Roboterbetrieb",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 1, "caption": "Start", "color": 52651 },
         { "value": 2, "caption": "Pause", "color": 16026947 },
         { "value": 3, "caption": "Stop", "color": 16711680 },
@@ -55,7 +55,7 @@
       "ident": "CLEANING_MODE",
       "name": "Reinigungsmodus",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 1, "caption": "Auto", "color": 52651 },
         { "value": 2, "caption": "Spot", "color": 3442154 },
         { "value": 3, "caption": "Kante", "color": 16777215 },
@@ -76,7 +76,7 @@
       "ident": "SUCTION_LEVEL",
       "name": "Saugstärke",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 10, "caption": "Auto", "color": 52651 },
         { "value": 11, "caption": "Niedrig", "color": 3442154 },
         { "value": 12, "caption": "Mittel", "color": 16777215 },
@@ -99,7 +99,7 @@
       "ident": "WATER_LEVEL",
       "name": "Wasserstand (Mopp)",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 1, "caption": "Niedrig", "color": 3442154 },
         { "value": 2, "caption": "Mittel", "color": 16777215 },
         { "value": 3, "caption": "Hoch", "color": 16026947 }
