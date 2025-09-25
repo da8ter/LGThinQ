@@ -15,6 +15,16 @@ final class ThinQHttpClient
         $this->apiKey = $apiKey;
     }
 
+    private function dbg(string $tag, string $message): void
+    {
+        // Mirror HTTP logs to the Bridge instance debug if available; otherwise fall back to kernel log
+        if (method_exists($this->module, 'DebugLog')) {
+            $this->module->DebugLog('HTTP', $tag . ': ' . $message);
+        } else {
+            @IPS_LogMessage('LG ThinQ HTTP', $tag . ': ' . $message);
+        }
+    }
+
     /**
      * @param array<string, mixed>|null $payload
      * @param array<int, string> $extraHeaders
@@ -54,6 +64,11 @@ final class ThinQHttpClient
             if ($method !== 'GET') {
                 @IPS_LogMessage('LG ThinQ HTTP', 'Body: ' . $body);
             }
+            $this->dbg('Request', $method . ' ' . $url);
+            $this->dbg('Headers', json_encode($headers, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            if ($method !== 'GET') {
+                $this->dbg('Body', (string)$body);
+            }
         }
 
         $context = stream_context_create([
@@ -84,6 +99,8 @@ final class ThinQHttpClient
             // Log a compact, truncated response body for diagnostics
             $snippet = substr(preg_replace('/\s+/', ' ', (string)$result), 0, 1000);
             @IPS_LogMessage('LG ThinQ HTTP', 'ResponseBody: ' . $snippet . (strlen($result) > 1000 ? ' ...[truncated]' : ''));
+            $this->dbg('ResponseStatus', $statusCode . ' HeaderLine: ' . $statusHeader);
+            $this->dbg('ResponseBody', $snippet . (strlen($result) > 1000 ? ' ...[truncated]' : ''));
         }
 
         if ($statusCode === 204 || trim($result) === '') {
@@ -94,6 +111,7 @@ final class ThinQHttpClient
         if ($statusCode >= 400) {
             if ($this->config->debug) {
                 @IPS_LogMessage('LG ThinQ HTTP', 'HTTP error status ' . $statusCode . ' for URL: ' . $url);
+                $this->dbg('Error', 'HTTP error status ' . $statusCode . ' for URL: ' . $url);
             }
             if (is_array($decoded) && isset($decoded['error'])) {
                 $code = $decoded['error']['code'] ?? 'unknown';
@@ -110,6 +128,7 @@ final class ThinQHttpClient
 
         if ($this->config->debug) {
             @IPS_LogMessage('LG ThinQ HTTP', 'DecodedKeys: ' . implode(',', array_keys($decoded)));
+            $this->dbg('DecodedKeys', implode(',', array_keys($decoded)));
         }
 
         return $decoded['response'] ?? $decoded;

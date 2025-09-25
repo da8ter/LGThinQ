@@ -492,11 +492,8 @@ class CapabilityEngine
             if ($val !== null) {
                 $this->setValueByType($vid, $cap, $val);
             }
-            // Reassert action on status
-            $reassert = $cap['action']['reassertOn'] ?? [];
-            if (is_array($reassert) && in_array('status', array_map('strtolower', $reassert), true)) {
-                $this->enableAction($ident);
-            }
+            // NOTE: Do not re-enable actions on every status update to avoid noisy logs and redundant calls.
+            // Action enabling is performed during variable creation in the main module (SetupDeviceVariables).
         }
     }
 
@@ -575,6 +572,67 @@ class CapabilityEngine
             $converted = $this->convertValueForType($cap, $value);
             $out = $this->replaceTemplatePlaceholders($tpl, $converted);
             return $out;
+        }
+
+        // firstOf: pick the first matching write option based on profile keys
+        if (isset($cap['write']['firstOf']) && is_array($cap['write']['firstOf'])) {
+            foreach ($cap['write']['firstOf'] as $opt) {
+                if (!is_array($opt)) continue;
+                // Prefer explicit writeable condition
+                $writeKeys = $opt['profileWriteableAny'] ?? [];
+                if (is_array($writeKeys) && !empty($writeKeys)) {
+                    $ok = false;
+                    foreach ($writeKeys as $wk) {
+                        if ($this->flatProfileIsWriteable((string)$wk)) { $ok = true; break; }
+                    }
+                    if (!$ok) continue; // not writeable, skip option
+                } else {
+                    // Fallback: presence only
+                    $keys = $opt['profileHasAny'] ?? ($opt['whenProfileHasAny'] ?? []);
+                    $keys = is_array($keys) ? $keys : [];
+                    if (!empty($keys) && !$this->flatProfileHasAny($keys)) {
+                        continue;
+                    }
+                }
+                // Support template within firstOf
+                if (isset($opt['template']) && is_array($opt['template'])) {
+                    $converted = $this->convertValueForType($cap, $value);
+                    $out = $this->replaceTemplatePlaceholders($opt['template'], $converted);
+                    @IPS_LogMessage('CapabilityEngine', sprintf('firstOf: using template for ident=%s with keys=%s', (string)($cap['ident'] ?? ''), implode(',', array_keys($opt['template']))));
+                    return $out;
+                }
+                // Support enumMap within firstOf (optional)
+                if (isset($opt['enumMap']) && is_array($opt['enumMap'])) {
+                    $map = $opt['enumMap'];
+                    $key = (string)$value;
+                    if (array_key_exists($key, $map) && is_array($map[$key])) {
+                        $out = [];
+                        foreach ($map[$key] as $path => $v) {
+                            $this->setByPath($out, (string)$path, $v);
+                        }
+                        @IPS_LogMessage('CapabilityEngine', sprintf('firstOf: using enumMap for ident=%s on paths=%s', (string)($cap['ident'] ?? ''), implode(',', array_keys($map[$key]))));
+                        return $out;
+                    }
+                }
+                // Support composite within firstOf (optional)
+                if (isset($opt['composite']) && is_array($opt['composite'])) {
+                    $comp = $opt['composite'];
+                    $fn = strtolower((string)($comp['decompose'] ?? ''));
+                    $targets = $comp['targets'] ?? [];
+                    if ($fn === 'minutes_to_hm' && is_array($targets) && count($targets) >= 2) {
+                        $total = (int)$value;
+                        $h = intdiv($total, 60);
+                        $m = $total % 60;
+                        $t0 = (string)($targets[0]['path'] ?? '');
+                        $t1 = (string)($targets[1]['path'] ?? '');
+                        $out = [];
+                        if ($t0 !== '') $this->setByPath($out, $t0, $h);
+                        if ($t1 !== '') $this->setByPath($out, $t1, $m);
+                        @IPS_LogMessage('CapabilityEngine', sprintf('firstOf: using composite(minutes_to_hm) for ident=%s targets=%s,%s', (string)($cap['ident'] ?? ''), $t0, $t1));
+                        return $out;
+                    }
+                }
+            }
         }
         return null;
     }
@@ -730,6 +788,40 @@ class CapabilityEngine
         }
         if (is_array($mode)) {
             foreach ($mode as $m) { if ($this->modeHasW($m)) return true; }
+        }
+        return false;
+    }
+
+    /** @param array<int, string> $keys */
+    private function flatProfileHasAny(array $keys): bool
+    {
+        foreach ($keys as $k) {
+            $k = (string)$k;
+            if ($k === '') continue;
+            if (array_key_exists($k, $this->flatProfile)) return true;
+            foreach ($this->flatProfile as $fk => $_) {
+                if (strpos($fk, $k) !== false) return true;
+            }
+        }
+        return false;
+    }
+
+    private function flatProfileIsWriteable(string $basePath): bool
+    {
+        $basePath = (string)$basePath;
+        if ($basePath === '') return false;
+        // 1) Direct mode flag indicates write (contains 'w')
+        $modeKey = $basePath . '.mode';
+        if (array_key_exists($modeKey, $this->flatProfile) && $this->modeHasW($this->flatProfile[$modeKey])) {
+            return true;
+        }
+        // 2) Any nested value.w under the base path indicates writeable range
+        $prefix = $basePath . '.';
+        foreach ($this->flatProfile as $k => $_) {
+            if (strpos($k, $prefix) !== 0) continue;
+            if (strpos($k, '.value.w') !== false) {
+                return true;
+            }
         }
         return false;
     }

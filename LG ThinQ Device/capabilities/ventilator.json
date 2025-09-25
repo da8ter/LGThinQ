@@ -33,7 +33,7 @@
       "ident": "FAN_MODE",
       "name": "Lüfterstufe",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 10, "caption": "Auto", "color": 52651 },
         { "value": 11, "caption": "Niedrig", "color": 3442154 },
         { "value": 12, "caption": "Mittel", "color": 16777215 },

@@ -4,7 +4,7 @@
       "ident": "WTW_WASHER_OPERATION",
       "name": "Washtower Waschbetrieb",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 1, "caption": "Start" },
         { "value": 2, "caption": "Pause" },
         { "value": 3, "caption": "Stop" }

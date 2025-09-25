@@ -52,16 +52,18 @@
           { "value": 14, "caption": "Power", "color": 16711680 }
         ]
       },
-      "create": { "when": "profileHasAny", "keys": ["airFlow.windStrength", "fanModes", "airState.support.fanModes"] },
-      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["airFlow.windStrength.mode"], "reassertOn": ["setup", "status"] },
-      "read": { "sources": ["airFlow.windStrength"], "map": { "AUTO": 10, "LOW": 11, "MID": 12, "HIGH": 13, "POWER": 14 } },
-      "write": { "enumMap": {
-        "10": { "operation.airConOperationMode": "POWER_ON", "airFlow.windStrength": "AUTO" },
-        "11": { "operation.airConOperationMode": "POWER_ON", "airFlow.windStrength": "LOW" },
-        "12": { "operation.airConOperationMode": "POWER_ON", "airFlow.windStrength": "MID" },
-        "13": { "operation.airConOperationMode": "POWER_ON", "airFlow.windStrength": "HIGH" },
-        "14": { "operation.airConOperationMode": "POWER_ON", "airFlow.windStrength": "POWER" }
-      } }
+      "create": { "when": "profileHasAny", "keys": ["airFlow.windStrength", "airFlow.targetWindStrength", "airState.windStrength", "fanModes", "airState.support.fanModes"] },
+      "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["airFlow.windStrength.mode", "airFlow.targetWindStrength.mode", "airState.windStrength.mode"], "reassertOn": ["setup", "status"] },
+      "read": { "sources": ["airFlow.windStrength", "airFlow.targetWindStrength", "airState.windStrength"], "map": { "AUTO": 10, "LOW": 11, "MID": 12, "HIGH": 13, "POWER": 14 } },
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["airFlow.windStrength"], "enumMap": {
+          "10": { "airFlow.windStrength": "AUTO" },
+          "11": { "airFlow.windStrength": "LOW" },
+          "12": { "airFlow.windStrength": "MID" },
+          "13": { "airFlow.windStrength": "HIGH" },
+          "14": { "airFlow.windStrength": "POWER" }
+        } }
+      ] }
     },
     {
       "ident": "SWING",
@@ -125,6 +127,16 @@
       "create": { "when": "profileHasAny", "keys": ["temperature.targetTemperature", "temperature.coolTargetTemperature", "temperature.heatTargetTemperature", "temperature.autoTargetTemperature"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["temperature.targetTemperature.mode", "temperature.coolTargetTemperature.mode", "temperature.heatTargetTemperature.mode", "temperature.autoTargetTemperature.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["temperature.targetTemperature", "temperature.coolTargetTemperature", "temperature.heatTargetTemperature", "temperature.autoTargetTemperature"] },
+      "write": {
+        "firstOf": [
+          { "profileHasAny": ["temperature.targetTemperature"], "template": { "temperature": { "targetTemperature": "@float" } } },
+          { "profileHasAny": ["temperature.coolTargetTemperature"], "template": { "temperature": { "coolTargetTemperature": "@float" } } },
+          { "profileHasAny": ["temperature.heatTargetTemperature"], "template": { "temperature": { "heatTargetTemperature": "@float" } } },
+          { "profileHasAny": ["temperature.autoTargetTemperature"], "template": { "temperature": { "autoTargetTemperature": "@float" } } },
+          { "profileHasAny": ["twoSetTemperature.coolTargetTemperature"], "template": { "twoSetTemperature": { "coolTargetTemperature": "@float" } } },
+          { "profileHasAny": ["twoSetTemperature.heatTargetTemperature"], "template": { "twoSetTemperature": { "heatTargetTemperature": "@float" } } }
+        ]
+      },
       "visibility": { "hidden": false }
     },
     {

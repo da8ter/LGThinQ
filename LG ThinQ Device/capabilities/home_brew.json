@@ -4,7 +4,7 @@
       "ident": "HOMEBREW_OPERATION",
       "name": "Betrieb",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 1, "caption": "Start" },
         { "value": 2, "caption": "Pause" },
         { "value": 0, "caption": "Stop" }
@@ -76,7 +76,7 @@
       "ident": "CLEANING_OPERATION",
       "name": "Reinigung",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 1, "caption": "Start" },
         { "value": 0, "caption": "Stop" }
       ] },

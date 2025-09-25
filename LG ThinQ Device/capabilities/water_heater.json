@@ -41,7 +41,7 @@
       "ident": "WH_MODE",
       "name": "Modus",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 1, "caption": "Auto", "color": 52651 },
         { "value": 2, "caption": "Eco", "color": 8421504 },
         { "value": 3, "caption": "Normal", "color": 16777215 },

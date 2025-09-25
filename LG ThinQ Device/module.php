@@ -319,7 +319,14 @@ class LGThinQDevice extends IPSModule
 
     private function hideDefaultVariables(): void
     {
-        // Intentionally left as a no-op; reserved for future defaults
+        // Hide default meta variables
+        $toHide = ['INFO', 'STATUS', 'LASTUPDATE'];
+        foreach ($toHide as $ident) {
+            $vid = $this->getVarId($ident);
+            if ($vid > 0) {
+                @IPS_SetHidden($vid, true);
+            }
+        }
     }
 
     private function setupDevice(): void
@@ -565,6 +572,76 @@ class LGThinQDevice extends IPSModule
             }
             if (isset($presentation['digits'])) {
                 $payload['DIGITS'] = (int)$presentation['digits'];
+            }
+            // Optional pass-throughs to align with desired schema
+            if (array_key_exists('min', $presentation)) {
+                $payload['MIN'] = is_numeric($presentation['min']) ? (float)$presentation['min'] : $presentation['min'];
+            }
+            if (array_key_exists('max', $presentation)) {
+                $payload['MAX'] = is_numeric($presentation['max']) ? (float)$presentation['max'] : $presentation['max'];
+            }
+            if (array_key_exists('prefix', $presentation)) {
+                $payload['PREFIX'] = $this->t((string)$presentation['prefix']);
+            }
+            if (array_key_exists('percentage', $presentation)) {
+                $payload['PERCENTAGE'] = (bool)$presentation['percentage'];
+            }
+            if (array_key_exists('usageType', $presentation) || array_key_exists('usage_type', $presentation)) {
+                $payload['USAGE_TYPE'] = (int)($presentation['usageType'] ?? $presentation['usage_type']);
+            }
+            if (array_key_exists('decimalSeparator', $presentation)) {
+                $payload['DECIMAL_SEPARATOR'] = (string)$presentation['decimalSeparator'];
+            }
+            if (array_key_exists('thousandsSeparator', $presentation)) {
+                $payload['THOUSANDS_SEPARATOR'] = (string)$presentation['thousandsSeparator'];
+            }
+            if (array_key_exists('multiline', $presentation)) {
+                $payload['MULTILINE'] = (bool)$presentation['multiline'];
+            }
+            if (array_key_exists('icon', $presentation)) {
+                $payload['ICON'] = (string)$presentation['icon'];
+            }
+            if (array_key_exists('color', $presentation)) {
+                $payload['COLOR'] = (int)$presentation['color'];
+            }
+            if (array_key_exists('intervalsActive', $presentation)) {
+                $payload['INTERVALS_ACTIVE'] = (bool)$presentation['intervalsActive'];
+            }
+            if (array_key_exists('intervals', $presentation) && is_array($presentation['intervals'])) {
+                $payload['INTERVALS'] = $presentation['intervals'];
+            }
+            // Optional: support OPTIONS for string-valued enumerations on value presentation
+            if (isset($presentation['options']) && is_array($presentation['options'])) {
+                $options = [];
+                foreach ($presentation['options'] as $op) {
+                    if (!is_array($op)) {
+                        continue;
+                    }
+                    if (!array_key_exists('value', $op) || !array_key_exists('caption', $op)) {
+                        continue;
+                    }
+                    $opt = [
+                        // For value-presentation we keep string values verbatim
+                        'Value' => (string)$op['value'],
+                        'Caption' => $this->t((string)$op['caption']),
+                        'IconActive' => isset($op['iconActive']) ? (bool)$op['iconActive'] : false,
+                        'IconValue' => isset($op['iconValue']) ? (string)$op['iconValue'] : '',
+                        'Color' => isset($op['color']) ? (int)$op['color'] : -1
+                    ];
+                    if (array_key_exists('colorActive', $op)) {
+                        $opt['ColorActive'] = (bool)$op['colorActive'];
+                    }
+                    if (array_key_exists('colorValue', $op)) {
+                        $opt['ColorValue'] = (int)$op['colorValue'];
+                    }
+                    if (array_key_exists('colorDisplay', $op)) {
+                        $opt['ColorDisplay'] = (int)$op['colorDisplay'];
+                    }
+                    $options[] = $opt;
+                }
+                if (!empty($options)) {
+                    $payload['OPTIONS'] = $options;
+                }
             }
         }
 

@@ -4,7 +4,7 @@
       "ident": "OVEN_OPERATION",
       "name": "Ofenbetrieb",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 1, "caption": "Start", "color": 52651 },
         { "value": 2, "caption": "Pause", "color": 16026947 },
         { "value": 3, "caption": "Stop", "color": 16711680 }
@@ -23,7 +23,7 @@
       "ident": "OVEN_MODE",
       "name": "Modus",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 1, "caption": "Backen", "color": 52651 },
         { "value": 2, "caption": "Grillen", "color": 16026947 },
         { "value": 3, "caption": "Braten", "color": 16753920 },
