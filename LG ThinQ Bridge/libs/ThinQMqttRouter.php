@@ -75,12 +75,36 @@ final class ThinQMqttRouter
         $pushNode = isset($payload['push']) && is_array($payload['push']) ? $payload['push'] : null;
         $topType = strtoupper((string)($payload['pushType'] ?? ($payload['type'] ?? '')));
 
+        // Primary path: explicit event node, or DEVICE_STATUS payloads
         if ($eventNode || $topType === 'DEVICE_STATUS') {
             $node = $eventNode ?: $payload;
             $deviceId = (string)($node['deviceId'] ?? ($node['device_id'] ?? ''));
-            $report = $node['report'] ?? null;
+            // Extract report/state flexibly
+            $report = null;
+            if (isset($node['report']) && is_array($node['report'])) {
+                $report = $node['report'];
+            } elseif (isset($node['state']) && is_array($node['state'])) {
+                $report = $node['state'];
+            } elseif (isset($node['data']) && is_array($node['data'])) {
+                $data = $node['data'];
+                if (isset($data['report']) && is_array($data['report'])) {
+                    $report = $data['report'];
+                } elseif (isset($data['state']) && is_array($data['state'])) {
+                    $report = $data['state'];
+                }
+            }
+
             if ($deviceId !== '' && is_array($report)) {
                 $this->pipeline->dispatchEvent($deviceId, $report);
+                return;
+            }
+            if ($this->config->debug) {
+                $haveKeys = implode(',', array_keys($node));
+                if (method_exists($this->module, 'DebugLog')) {
+                    $this->module->DebugLog('MQTT', 'DEVICE_STATUS/event without usable report/state for deviceId=' . $deviceId . ' keys=[' . $haveKeys . ']');
+                } else {
+                    @IPS_LogMessage('LG ThinQ MQTT', 'DEVICE_STATUS/event without usable report/state for deviceId=' . $deviceId . ' keys=[' . $haveKeys . ']');
+                }
             }
             return;
         }
