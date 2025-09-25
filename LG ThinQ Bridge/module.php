@@ -707,8 +707,7 @@ class LGThinQBridge extends IPSModule
                 $strCONFIG2 .= 'x509_extensions = v3_client' . $nl;
                 $strCONFIG2 .= $nl;
                 $strCONFIG2 .= '[ req_DN ]' . $nl;
-                $strCONFIG2 .= '0.organizationName = "IP-Symcon LG ThinQ"' . $nl;
-                $strCONFIG2 .= 'commonName = "' . addslashes($clientId) . '"' . $nl;
+                $strCONFIG2 .= 'commonName = "' . addslashes($subjectCN) . '"' . $nl;
                 $strCONFIG2 .= $nl;
                 $strCONFIG2 .= '[ v3_client ]' . $nl;
                 $strCONFIG2 .= 'basicConstraints = critical, CA:FALSE' . $nl;
@@ -735,26 +734,94 @@ class LGThinQBridge extends IPSModule
                 // Use config2 for signing as well
                 $config = $config2;
             }
-            $serial = 0;
+        }
+
+        // Try to obtain LG-signed certificate first (preferred)
+        $lgCertOut = '';
+        $lgSubscriptions = null;
+        try {
+            // Build a temporary HTTP client whose x-client-id equals the CSR CN (subjectCN)
+            $baseCfg = $this->createBridgeConfig();
+            $tmpCfg = ThinQBridgeConfig::create(
+                $baseCfg->accessToken,
+                $baseCfg->countryCode,
+                $subjectCN, // x-client-id must match CSR CN
+                $baseCfg->debug,
+                $baseCfg->useMqtt,
+                $baseCfg->mqttClientId,
+                $baseCfg->mqttTopicFilter,
+                $baseCfg->ignoreRetained,
+                $baseCfg->eventTtlHours,
+                $baseCfg->eventRenewLeadMin
+            );
+            $tmpHttp = new ThinQHttpClient($this, $tmpCfg, self::API_KEY);
+
+            // Export CSR PEM for API
+            $csrPemForApi = '';
+            @openssl_csr_export($csr, $csrPemForApi);
+
+            // 1) Register client (idempotent)
             try {
-                $serial = random_int(1, PHP_INT_MAX);
+                $payloadRegister = ['body' => ['type' => 'MQTT', 'service-code' => 'SVC202', 'device-type' => '607']];
+                $tmpHttp->request('POST', 'client', $payloadRegister);
             } catch (\Throwable $e) {
-                $serial = time();
-            }
-            $cert = openssl_csr_sign($csr, null, $pkGenerate, 730, $config, $serial);
-            if ($cert === false) {
-                throw new \RuntimeException('openssl_csr_sign fehlgeschlagen');
-            }
-            $certOut = '';
-            if (!openssl_x509_export($cert, $certOut)) {
-                throw new \RuntimeException('openssl_x509_export fehlgeschlagen');
-            }
-            $csrOut = '';
-            if (!openssl_csr_export($csr, $csrOut)) {
-                // Non-fatal, but log
-                $csrOut = '';
+                // ignore errors (idempotent/register may already exist)
+                $this->SendDebug('CertGen', 'Register client ignored: ' . $e->getMessage(), 0);
             }
 
+            // 2) Request certificate
+            $payloadCert = ['body' => ['service-code' => 'SVC202', 'csr' => $csrPemForApi]];
+            $resp = $tmpHttp->request('POST', 'client/certificate', $payloadCert);
+            // ThinQHttpClient returns $decoded['response'] ?? $decoded
+            $resNode = $resp;
+            if (isset($resp['result']) && is_array($resp['result'])) {
+                $resNode = $resp['result'];
+            }
+            $maybeCert = $resNode['certificatePem'] ?? null;
+            if (is_string($maybeCert) && trim($maybeCert) !== '') {
+                $lgCertOut = (string)$maybeCert;
+            }
+            $lgSubscriptions = $resNode['subscriptions'] ?? null;
+
+            // Fallback: some APIs might return without 'body' wrapper
+            if ($lgCertOut === '') {
+                $payloadCert2 = ['service-code' => 'SVC202', 'csr' => $csrPemForApi];
+                $resp2 = $tmpHttp->request('POST', 'client/certificate', $payloadCert2);
+                $resNode2 = $resp2;
+                if (isset($resp2['result']) && is_array($resp2['result'])) {
+                    $resNode2 = $resp2['result'];
+                }
+                $maybeCert2 = $resNode2['certificatePem'] ?? null;
+                if (is_string($maybeCert2) && trim($maybeCert2) !== '') {
+                    $lgCertOut = (string)$maybeCert2;
+                }
+                if ($lgSubscriptions === null) {
+                    $lgSubscriptions = $resNode2['subscriptions'] ?? null;
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->SendDebug('CertGen', 'LG certificate request failed: ' . $e->getMessage(), 0);
+            $lgCertOut = '';
+        }
+
+        // Require LG-signed certificate; no self-signed fallback
+        if ($lgCertOut === '') {
+            throw new \RuntimeException('LG certificate request returned no certificatePem');
+        }
+        $certOut = $lgCertOut;
+        $csrOut = '';
+        if (!openssl_csr_export($csr, $csrOut)) {
+            // Non-fatal, but log
+            $csrOut = '';
+        }
+
+        // Create ZIP
+        $zip = new \ZipArchive();
+        $tmpZip = tempnam(sys_get_temp_dir(), 'lgtq_mqtt_zip_');
+        if ($tmpZip === false) {
+            throw new \RuntimeException('Konnte temporäre ZIP-Datei nicht erstellen');
+        }
+        if ($zip->open($tmpZip, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             // Create ZIP
             $zip = new \ZipArchive();
             $tmpZip = tempnam(sys_get_temp_dir(), 'lgtq_mqtt_zip_');
@@ -774,6 +841,8 @@ class LGThinQBridge extends IPSModule
                 'alias' => @IPS_GetName($this->InstanceID),
                 'clientId' => $clientId,
                 'subjectCN' => $subjectCN,
+                'lgSigned' => ($lgCertOut !== ''),
+                'lgSubscriptions' => $lgSubscriptions,
                 'timestamp' => date('c'),
                 'phpVersion' => PHP_VERSION,
                 'kernelVersion' => function_exists('IPS_GetKernelVersion') ? @IPS_GetKernelVersion() : ''
@@ -788,15 +857,15 @@ class LGThinQBridge extends IPSModule
                 $zip->addFromString('client_csr.pem', $csrOut);
             }
 
-            $readme = "Diese ZIP-Datei enthält einen selbst-signierten Client-Zertifikatssatz für den MQTT-Client (inkl. X.509 v3 Extended Key Usage: clientAuth).\n\n"
+            $readme = "Diese ZIP-Datei enthält ein über die LG ThinQ API signiertes Client-Zertifikat für den MQTT-Client (inkl. X.509 v3 Extended Key Usage: clientAuth).\n\n"
                 . "Dateien:\n"
-                . "- client_cert.pem: X.509 Client-Zertifikat\n"
+                . "- client_cert.pem: X.509 Client-Zertifikat (LG-signiert)\n"
                 . "- client_private_key.pem: Privater Schlüssel (PEM, unverschlüsselt)\n"
                 . "- client_public_key.pem: Öffentlicher Schlüssel\n"
                 . ($csrOut !== '' ? "- client_csr.pem: Certificate Signing Request (CSR)\n" : '')
                 . "\nHinweise:\n"
                 . "- Importieren Sie Zertifikat und privaten Schlüssel dort, wo Ihr MQTT-Client diese benötigt.\n"
-                . "- Für produktive Umgebungen empfiehlt sich die Verwendung einer vertrauenswürdigen CA statt Selbstsignierung.\n";
+                . "- Die CN (Common Name) muss exakt der MQTT ClientID entsprechen.\n";
             $zip->addFromString('README.txt', $readme);
 
             $zip->close();
