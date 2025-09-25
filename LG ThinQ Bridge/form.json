@@ -16,6 +16,9 @@
         { "type": "NumberSpinner", "name": "EventTTLHrs", "caption": "Event subscription TTL (hours)", "minimum": 1, "maximum": 24, "suffix": "h" },
         { "type": "NumberSpinner", "name": "EventRenewLeadMin", "caption": "Renew before expiry (minutes)", "minimum": 1, "maximum": 59, "suffix": "min" },
 
+        { "type": "Label", "label": "Diagnostics" },
+        { "type": "CheckBox", "name": "Debug", "caption": "Debug logging" },
+
         { "type": "Label", "label": "Hint: Create a PAT at https://connect-pat.lgthinq.com and provide a two-letter ISO country code (e.g., DE). The Client ID is generated automatically and is unique per system (UUID)." }
     ],
     "actions": [

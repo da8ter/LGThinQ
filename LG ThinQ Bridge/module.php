@@ -64,6 +64,11 @@ class LGThinQBridge extends IPSModule
         }
 
         $this->configureTimers();
+
+        // Extra diagnostics when Debug is enabled
+        if ((bool)$this->ReadPropertyBoolean('Debug')) {
+            $this->debugMqttParentInfo();
+        }
     }
 
     public function ForwardData($JSONString)
@@ -478,6 +483,36 @@ class LGThinQBridge extends IPSModule
 
     }
 
+    private function debugMqttParentInfo(): void
+    {
+        if (!(bool)$this->ReadPropertyBoolean('Debug')) {
+            return;
+        }
+        $instInfo = @IPS_GetInstance($this->InstanceID);
+        $parentId = is_array($instInfo) ? (int)($instInfo['ConnectionID'] ?? 0) : 0;
+        $this->SendDebug('MQTT', 'Bridge InstanceID=' . $this->InstanceID . ' ParentID=' . $parentId, 0);
+        if ($parentId > 0) {
+            $parentInfo = @IPS_GetInstance($parentId);
+            $this->SendDebug('MQTT', 'Parent ModuleID=' . ($parentInfo['ModuleID'] ?? ''), 0);
+            $this->SendDebug('MQTT', 'Parent Status=' . ($parentInfo['InstanceStatus'] ?? ''), 0);
+            $parentCfgJson = @IPS_GetConfiguration($parentId);
+            if (is_string($parentCfgJson) && $parentCfgJson !== '') {
+                $this->SendDebug('MQTT', 'Parent Config=' . $parentCfgJson, 0);
+            }
+            $ioId = (int)($parentInfo['ConnectionID'] ?? 0);
+            $this->SendDebug('MQTT', 'IO (Client Socket) ID=' . $ioId, 0);
+            if ($ioId > 0) {
+                $ioInfo = @IPS_GetInstance($ioId);
+                $this->SendDebug('MQTT', 'IO ModuleID=' . ($ioInfo['ModuleID'] ?? ''), 0);
+                $this->SendDebug('MQTT', 'IO Status=' . ($ioInfo['InstanceStatus'] ?? ''), 0);
+                $ioCfgJson = @IPS_GetConfiguration($ioId);
+                if (is_string($ioCfgJson) && $ioCfgJson !== '') {
+                    $this->SendDebug('MQTT', 'IO Config=' . $ioCfgJson, 0);
+                }
+            }
+        }
+    }
+
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -617,6 +652,10 @@ class LGThinQBridge extends IPSModule
         if (!is_string($subjectCN) || trim($subjectCN) === '') {
             $subjectCN = 'client-' . (string)$this->InstanceID;
         }
+        if ((bool)$this->ReadPropertyBoolean('Debug')) {
+            $this->SendDebug('CertGen', 'Effective CN=' . $subjectCN . ' (Bridge ClientID=' . $clientId . ')', 0);
+            $this->debugMqttParentInfo();
+        }
 
         $cfgPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'lgtq_mqtt_' . $this->InstanceID . '_' . bin2hex(random_bytes(4)) . '.cnf';
         $nl = "\r\n";
@@ -651,6 +690,9 @@ class LGThinQBridge extends IPSModule
         }
         fwrite($cfgHandle, $strCONFIG);
         fclose($cfgHandle);
+        if ((bool)$this->ReadPropertyBoolean('Debug')) {
+            $this->SendDebug('CertGen', 'OpenSSL cfg written: ' . $cfgPath, 0);
+        }
             $dn = [
                 'commonName'       => $subjectCN
             ];
@@ -687,6 +729,12 @@ class LGThinQBridge extends IPSModule
                 throw new \RuntimeException('openssl_pkey_get_details fehlgeschlagen');
             }
             $pkPublic = (string)$pkDetails['key'];
+            if ((bool)$this->ReadPropertyBoolean('Debug')) {
+                $typeStr = (($pkDetails['type'] ?? null) === OPENSSL_KEYTYPE_EC) ? 'EC' : 'RSA';
+                $bits = (int)($pkDetails['bits'] ?? 0);
+                $this->SendDebug('CertGen', 'Key generated: ' . $typeStr . ' bits=' . $bits, 0);
+                $this->SendDebug('CertGen', 'Key PEM lengths: private=' . strlen($pkPrivate) . ' public=' . strlen($pkPublic), 0);
+            }
 
             $csr = openssl_csr_new($dn, $pkGenerate, $config);
             if ($csr === false) {
@@ -756,6 +804,10 @@ class LGThinQBridge extends IPSModule
             // Export CSR PEM for API
             $csrPemForApi = '';
             @openssl_csr_export($csr, $csrPemForApi);
+            if ((bool)$this->ReadPropertyBoolean('Debug')) {
+                $this->SendDebug('CertGen', 'CSR length=' . strlen((string)$csrPemForApi), 0);
+                $this->SendDebug('CertGen', 'Register client and request certificate for x-client-id=' . $subjectCN, 0);
+            }
 
             // 1) Register client (idempotent)
             try {
@@ -810,6 +862,22 @@ class LGThinQBridge extends IPSModule
         if (!openssl_csr_export($csr, $csrOut)) {
             // Non-fatal, but log
             $csrOut = '';
+        }
+        if ((bool)$this->ReadPropertyBoolean('Debug')) {
+            $fpSha = hash('sha256', (string)$certOut);
+            $x509 = @openssl_x509_read($certOut);
+            if ($x509 !== false) {
+                $parsed = @openssl_x509_parse($x509);
+                if (is_array($parsed)) {
+                    $subCN = $parsed['subject']['CN'] ?? ($parsed['subject']['commonName'] ?? '');
+                    $issuer = $parsed['issuer']['CN'] ?? ($parsed['issuer']['commonName'] ?? '');
+                    $eku = $parsed['extensions']['extendedKeyUsage'] ?? '';
+                    $ku = $parsed['extensions']['keyUsage'] ?? '';
+                    $this->SendDebug('CertGen', 'Cert subjectCN=' . $subCN . ' issuer=' . $issuer, 0);
+                    $this->SendDebug('CertGen', 'Cert KU=' . $ku . ' EKU=' . $eku, 0);
+                }
+            }
+            $this->SendDebug('CertGen', 'Cert PEM length=' . strlen($certOut) . ' sha256=' . $fpSha, 0);
         }
 
         // Create ZIP
