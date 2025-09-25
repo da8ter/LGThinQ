@@ -4,7 +4,7 @@
       "ident": "CEILING_FAN_OPERATION",
       "name": "Lüfterbetrieb",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 0, "caption": "Stop", "color": 16711680 },
         { "value": 1, "caption": "Start", "color": 52651 },
         { "value": 2, "caption": "Pause", "color": 16026947 }
@@ -33,7 +33,7 @@
       "ident": "FAN_MODE",
       "name": "Lüfterstufe",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 10, "caption": "Auto", "color": 52651 },
         { "value": 11, "caption": "Niedrig", "color": 3442154 },
         { "value": 12, "caption": "Mittel", "color": 16777215 },
@@ -56,7 +56,7 @@
       "ident": "FAN_DIRECTION",
       "name": "Drehrichtung",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 0, "caption": "Vorwärts", "color": 52651 },
         { "value": 1, "caption": "Rückwärts", "color": 3442154 }
       ] },

@@ -4,7 +4,7 @@
       "ident": "PLANT_OPERATION",
       "name": "Betrieb",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 0, "caption": "Stop", "color": 16711680 },
         { "value": 1, "caption": "Start", "color": 52651 },
         { "value": 2, "caption": "Pause", "color": 16026947 }
@@ -33,7 +33,7 @@
       "ident": "GROWTH_MODE",
       "name": "Wachstumsmodus",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 1, "caption": "Keimung", "color": 52651 },
         { "value": 2, "caption": "Keimling", "color": 3442154 },
         { "value": 3, "caption": "Vegetativ", "color": 16777215 },
@@ -82,7 +82,7 @@
       "ident": "WATERING_OPERATION",
       "name": "Bewässerung",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 0, "caption": "Stop", "color": 16711680 },
         { "value": 1, "caption": "Start", "color": 52651 }
       ] },

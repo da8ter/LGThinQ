@@ -4,7 +4,7 @@
       "ident": "MINI_COMBO_OPERATION",
       "name": "Mini Wash/Trocken Betrieb",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 1, "caption": "Start", "color": 52651 },
         { "value": 2, "caption": "Pause", "color": 16026947 },
         { "value": 3, "caption": "Stop", "color": 16711680 }
@@ -110,7 +110,7 @@
       "ident": "SPIN_SPEED",
       "name": "Schleudern",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 0, "caption": "Ohne", "color": 8421504 },
         { "value": 1, "caption": "Niedrig", "color": 3442154 },
         { "value": 2, "caption": "Mittel", "color": 16777215 },
@@ -133,7 +133,7 @@
       "ident": "WASH_WATER_TEMP",
       "name": "Wassertemperatur",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 0, "caption": "Kalt", "color": 3442154 },
         { "value": 1, "caption": "Kühl", "color": 52651 },
         { "value": 2, "caption": "Warm", "color": 16026947 },
@@ -154,7 +154,7 @@
       "ident": "DRY_LEVEL",
       "name": "Trocknungsgrad",
       "type": "integer",
-      "presentation": { "kind": "buttons", "options": [
+      "presentation": { "kind": "enumeration", "options": [
         { "value": 0, "caption": "Standard", "color": 8421504 },
         { "value": 1, "caption": "Leicht feucht", "color": 3442154 },
         { "value": 2, "caption": "Normal", "color": 52651 },
