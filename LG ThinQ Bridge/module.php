@@ -732,7 +732,6 @@ class LGThinQBridge extends IPSModule
                 // Use config2 for signing as well
                 $config = $config2;
             }
-        }
 
         // Try to obtain LG-signed certificate first (preferred)
         $lgCertOut = '';
