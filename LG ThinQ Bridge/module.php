@@ -645,6 +645,7 @@ class LGThinQBridge extends IPSModule
         $strCONFIG .= 'extendedKeyUsage = clientAuth' . $nl;
         $strCONFIG .= 'subjectKeyIdentifier = hash' . $nl;
         $strCONFIG .= 'authorityKeyIdentifier = keyid' . $nl;
+        try {
         $cfgHandle = fopen($cfgPath, 'w');
         if ($cfgHandle === false) {
             throw new \RuntimeException('Konnte temporäre OpenSSL-Konfiguration nicht erstellen');
@@ -652,7 +653,7 @@ class LGThinQBridge extends IPSModule
         fwrite($cfgHandle, $strCONFIG);
         fclose($cfgHandle);
 
-        try {
+        {
             $dn = [
                 'commonName'       => $subjectCN
             ];
