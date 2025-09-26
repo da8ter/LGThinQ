@@ -154,7 +154,9 @@ class LGThinQDevice extends IPSModule
 
     public function FinalizeSetup(): void
     {
-        $deviceID = (string)$this->ReadPropertyString('DeviceID');
+        // Safe property read: during kernel reconfigure or early timer fires,
+        // InstanceInterface may be temporarily unavailable, which would emit warnings.
+        $deviceID = (string)@($this->ReadPropertyString('DeviceID'));
         if ($deviceID === '') {
             return;
         }
@@ -763,7 +765,8 @@ class LGThinQDevice extends IPSModule
 
     public function AutoSubscribe(): void
     {
-        $deviceID = (string)$this->ReadPropertyString('DeviceID');
+        // Safe property read: avoid noisy warnings if instance interface is not yet available
+        $deviceID = (string)@($this->ReadPropertyString('DeviceID'));
         if ($deviceID === '') {
             return;
         }
@@ -960,6 +963,13 @@ class LGThinQDevice extends IPSModule
     {
         $out = [];
         foreach ($data as $k => $v) {
+            // Preserve specific fields verbatim (requested: deviceType, modelName)
+            $keyNorm = strtolower((string)$k);
+            $preserve = ($keyNorm === 'devicetype' || $keyNorm === 'modelname' || $keyNorm === 'device_type' || $keyNorm === 'model_name');
+            if ($preserve && is_string($v)) {
+                $out[$k] = $v;
+                continue;
+            }
             if (is_array($v)) {
                 $out[$k] = $this->anonymizeArray($v);
             } elseif (is_string($v)) {

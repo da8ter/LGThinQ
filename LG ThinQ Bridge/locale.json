@@ -14,7 +14,7 @@
             "Event API (Auto-Renew)": "Event API (Auto-Renew)",
             "Event subscription TTL (hours)": "Event subscription TTL (hours)",
             "Renew before expiry (minutes)": "Renew before expiry (minutes)",
-            "Hint: Create a PAT at https://connect-pat.lgthinq.com and provide a two-letter ISO country code (e.g., DE). The Client ID is generated automatically and is unique per system (UUID).": "Hint: Create a PAT at https://connect-pat.lgthinq.com and provide a two-letter ISO country code (e.g., DE). The Client ID is generated automatically and is unique per system (UUID).",
+            "Hint: Create a PAT at https://connect-pat.lgthinq.com.": "Hint: Create a PAT at https://connect-pat.lgthinq.com.",
             "Test connection": "Test connection",
             "Sync devices": "Sync devices",
             "Update now": "Update now",
@@ -23,7 +23,7 @@
             "Renew all now": "Renew all now",
             "Creating": "Creating",
             "Ready": "Ready",
-            "Please check: PAT or Country Code missing": "Please check: PAT or Country Code missing",
+            "Please check: PAT": "Please check: PAT",
             "h": "h",
             "min": "min"
         },
@@ -41,7 +41,7 @@
             "Event API (Auto-Renew)": "Event API (Auto-Renew)",
             "Event subscription TTL (hours)": "Event-Subscription TTL (Stunden)",
             "Renew before expiry (minutes)": "Erneuern vor Ablauf (Minuten)",
-            "Hint: Create a PAT at https://connect-pat.lgthinq.com and provide a two-letter ISO country code (e.g., DE). The Client ID is generated automatically and is unique per system (UUID).": "Hinweis: Erzeuge einen PAT unter https://connect-pat.lgthinq.com und trage den zweistelligen ISO-Ländercode ein (z. B. DE). Die Client-ID wird automatisch generiert und ist pro System eindeutig (UUID).",
+            "Hint: Create a PAT at https://connect-pat.lgthinq.com.": "Hinweis: Erzeuge einen PAT unter https://connect-pat.lgthinq.com.",
             "Test connection": "Verbindung testen",
             "Sync devices": "Geräte synchronisieren",
             "Update now": "Jetzt aktualisieren",
@@ -50,7 +50,7 @@
             "Renew all now": "Alle jetzt erneuern",
             "Creating": "Wird erstellt",
             "Ready": "Bereit",
-            "Please check: PAT or Country Code missing": "Bitte prüfen: PAT oder Country Code fehlt",
+            "Please check: PAT": "Bitte prüfen: PAT",
             "h": "h",
             "min": "min"
         }

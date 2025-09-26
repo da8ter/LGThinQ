@@ -36,7 +36,7 @@ class LGThinQBridge extends IPSModule
         $this->RegisterPropertyBoolean('Debug', false);
         $this->RegisterPropertyBoolean('UseMQTT', true);
         $this->RegisterPropertyInteger('MQTTClientID', 0);
-        $this->RegisterPropertyString('MQTTTopicFilter', 'app/clients/*/#');
+        $this->RegisterPropertyString('MQTTTopicFilter', 'app/clients/{ClientID}/push');
         $this->RegisterPropertyBoolean('IgnoreRetained', true);
         $this->RegisterPropertyInteger('EventTTLHrs', 24);
         $this->RegisterPropertyInteger('EventRenewLeadMin', 5);
@@ -45,13 +45,33 @@ class LGThinQBridge extends IPSModule
         $this->RegisterAttributeString('Devices', '[]');
         $this->RegisterAttributeString('EventSubscriptions', '{}');
         $this->RegisterTimer('EventRenewTimer', 0, 'LGTQ_RenewEvents($_IPS[\'TARGET\']);');
+        // Initialize default ClientID on first installation so it appears in the form
+        $propCID = trim((string)$this->ReadPropertyString('ClientID'));
+        $attrCID = trim((string)$this->ReadAttributeString('ClientID'));
+        if ($propCID === '' && $attrCID === '') {
+            try {
+                $rand5 = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+            } catch (\Throwable $e) {
+                $rand5 = str_pad((string)mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
+            }
+            $cid = 'Symcon' . $rand5;
+            $this->WriteAttributeString('ClientID', $cid);
+            @IPS_SetProperty($this->InstanceID, 'ClientID', $cid);
+            // Persist immediately so the configuration UI can display it
+            @IPS_ApplyChanges($this->InstanceID);
+            // Also set a concrete default MQTT topic filter using the generated ClientID
+            $curFilter = trim((string)$this->ReadPropertyString('MQTTTopicFilter'));
+            if ($curFilter === '' || $curFilter === 'app/clients/{ClientID}/push' || $curFilter === 'app/clients/*/#' || $curFilter === 'app/clients/*/push') {
+                @IPS_SetProperty($this->InstanceID, 'MQTTTopicFilter', 'app/clients/' . $cid . '/push');
+                @IPS_ApplyChanges($this->InstanceID);
+            }
+        }
     }
 
     public function ApplyChanges()
     {
         parent::ApplyChanges();
         $this->bootServices();
-
 
         $errors = $this->config->validate();
         if (!empty($errors)) {
@@ -65,13 +85,70 @@ class LGThinQBridge extends IPSModule
 
         $this->configureTimers();
 
-        // Ensure MQTT parent is connected when MQTT is enabled
-        $this->ensureMqttParent();
-
         // Extra diagnostics when Debug is enabled
         if ((bool)$this->ReadPropertyBoolean('Debug')) {
             $this->debugMqttParentInfo();
         }
+    }
+
+    public function GetConfigurationForm(): string
+    {
+        $json = @file_get_contents(__DIR__ . '/form.json');
+        if (!is_string($json) || $json === '') {
+            return '{"elements":[],"actions":[],"status":[]}';
+        }
+        $form = json_decode($json, true);
+        if (!is_array($form)) {
+            return $json;
+        }
+
+        $propClientId = trim((string)$this->ReadPropertyString('ClientID'));
+        $attrClientId = trim((string)$this->ReadAttributeString('ClientID'));
+        $effectiveId = $propClientId !== '' ? $propClientId : $attrClientId;
+        // Ensure property is populated so the bound field shows a value
+        if ($effectiveId === '') {
+            // Generate first-install default 'Symcon#####'
+            try {
+                $rand5 = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+            } catch (\Throwable $e) {
+                $rand5 = str_pad((string)mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
+            }
+            $effectiveId = 'Symcon' . $rand5;
+            $this->WriteAttributeString('ClientID', $effectiveId);
+            @IPS_SetProperty($this->InstanceID, 'ClientID', $effectiveId);
+            // Persist so it's available as property value on next open
+            @IPS_ApplyChanges($this->InstanceID);
+        } elseif ($propClientId === '' && $attrClientId !== '') {
+            // Mirror attribute into property for display
+            @IPS_SetProperty($this->InstanceID, 'ClientID', $attrClientId);
+            @IPS_ApplyChanges($this->InstanceID);
+        }
+
+        if (isset($form['elements']) && is_array($form['elements'])) {
+            foreach ($form['elements'] as &$el) {
+                if (is_array($el) && isset($el['name']) && $el['name'] === 'ClientID') {
+                    $el['value'] = $effectiveId;
+                }
+            }
+            unset($el);
+            // Insert an info label right after the ClientID field to show the effective ID immediately
+            $idxClient = null;
+            foreach ($form['elements'] as $i => $el2) {
+                if (is_array($el2) && isset($el2['name']) && $el2['name'] === 'ClientID') {
+                    $idxClient = $i;
+                    break;
+                }
+            }
+            if ($idxClient !== null) {
+                $labelEl = [
+                    'type'  => 'Label',
+                    'label' => 'Aktuelle effektive Client ID: ' . $effectiveId
+                ];
+                array_splice($form['elements'], $idxClient + 1, 0, [$labelEl]);
+            }
+        }
+
+        return json_encode($form, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
     public function ForwardData($JSONString)
@@ -445,8 +522,16 @@ class LGThinQBridge extends IPSModule
         $clientIdAttr = trim($this->ReadAttributeString('ClientID'));
         $clientId = $clientIdProperty !== '' ? $clientIdProperty : $clientIdAttr;
         if ($clientId === '') {
-            $clientId = ThinQHelpers::generateUUIDv4();
+            // First installation: generate 'Symcon' + 5-digit random number
+            try {
+                $rand5 = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+            } catch (\Throwable $e) {
+                // Fallback for environments without random_int
+                $rand5 = str_pad((string)mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
+            }
+            $clientId = 'Symcon' . $rand5;
             $this->WriteAttributeString('ClientID', $clientId);
+            @IPS_SetProperty($this->InstanceID, 'ClientID', $clientId);
         } elseif ($clientIdProperty !== '' && $clientIdProperty !== $clientIdAttr) {
             $this->WriteAttributeString('ClientID', $clientIdProperty);
             $clientId = $clientIdProperty;
@@ -459,8 +544,9 @@ class LGThinQBridge extends IPSModule
             $parentClientId = trim((string)@IPS_GetProperty($parentId, 'ClientID'));
             if ($parentClientId !== '') {
                 if ($clientId !== $parentClientId) {
-                    // Update attribute to reflect parent ClientID and use it for HTTP client
+                    // Update attribute and property to reflect parent ClientID so the form shows the effective value
                     $this->WriteAttributeString('ClientID', $parentClientId);
+                    @IPS_SetProperty($this->InstanceID, 'ClientID', $parentClientId);
                     $clientId = $parentClientId;
                 }
             }
@@ -496,7 +582,6 @@ class LGThinQBridge extends IPSModule
         $this->SetTimerInterval('EventRenewTimer', empty($errors) ? $interval * 1000 : 0);
     }
 
-
     private function ensureMqttParent(): void
     {
         if (!(bool)$this->ReadPropertyBoolean('UseMQTT')) {
@@ -510,7 +595,6 @@ class LGThinQBridge extends IPSModule
         if (method_exists($this, 'ConnectParent')) {
             $this->ConnectParent(self::MQTT_MODULE_GUID);
         }
-
     }
 
     private function debugMqttParentInfo(): void
@@ -723,93 +807,93 @@ class LGThinQBridge extends IPSModule
         if ((bool)$this->ReadPropertyBoolean('Debug')) {
             $this->SendDebug('CertGen', 'OpenSSL cfg written: ' . $cfgPath, 0);
         }
-            $dn = [
-                'commonName'       => $subjectCN
+        $dn = [
+            'commonName'       => $subjectCN
+        ];
+        $config = [
+            'config' => $cfgPath,
+            'digest_alg' => 'sha256'
+        ];
+        // Prefer EC P-256 key, fallback to RSA 2048
+        $configKey = [
+            'config'           => $cfgPath,
+            'private_key_type' => OPENSSL_KEYTYPE_EC,
+            'curve_name'       => 'prime256v1'
+        ];
+
+        $pkGenerate = @openssl_pkey_new($configKey);
+        if ($pkGenerate === false) {
+            $configKey = [
+                'config'           => $cfgPath,
+                'private_key_bits' => 2048,
+                'private_key_type' => OPENSSL_KEYTYPE_RSA
             ];
-            $config = [
+            $pkGenerate = openssl_pkey_new($configKey);
+        }
+        if ($pkGenerate === false) {
+            throw new \RuntimeException('openssl_pkey_new fehlgeschlagen');
+        }
+
+        $pkPrivate = '';
+        if (!openssl_pkey_export($pkGenerate, $pkPrivate, null, $config)) { // unverschlüsselt
+            throw new \RuntimeException('openssl_pkey_export fehlgeschlagen');
+        }
+        $pkDetails = openssl_pkey_get_details($pkGenerate);
+        if ($pkDetails === false || !isset($pkDetails['key'])) {
+            throw new \RuntimeException('openssl_pkey_get_details fehlgeschlagen');
+        }
+        $pkPublic = (string)$pkDetails['key'];
+        if ((bool)$this->ReadPropertyBoolean('Debug')) {
+            $typeStr = (($pkDetails['type'] ?? null) === OPENSSL_KEYTYPE_EC) ? 'EC' : 'RSA';
+            $bits = (int)($pkDetails['bits'] ?? 0);
+            $this->SendDebug('CertGen', 'Key generated: ' . $typeStr . ' bits=' . $bits, 0);
+            $this->SendDebug('CertGen', 'Key PEM lengths: private=' . strlen($pkPrivate) . ' public=' . strlen($pkPublic), 0);
+        }
+
+        $csr = openssl_csr_new($dn, $pkGenerate, $config);
+        if ($csr === false) {
+            // Retry without req_extensions to support OpenSSL builds that can't load custom req sections
+            if (method_exists($this, 'SendDebug')) {
+                $this->SendDebug('CertGen', 'CSR with v3_req failed; retrying without req_extensions', 0);
+            }
+            $strCONFIG2  = 'default_md = sha256' . $nl;
+            $strCONFIG2 .= 'default_days = 3650' . $nl;
+            $strCONFIG2 .= $nl;
+            $strCONFIG2 .= '[ req ]' . $nl;
+            $strCONFIG2 .= 'default_bits = 2048' . $nl;
+            $strCONFIG2 .= 'distinguished_name = req_DN' . $nl;
+            $strCONFIG2 .= 'string_mask = nombstr' . $nl;
+            $strCONFIG2 .= 'prompt = no' . $nl;
+            $strCONFIG2 .= 'x509_extensions = v3_client' . $nl;
+            $strCONFIG2 .= $nl;
+            $strCONFIG2 .= '[ req_DN ]' . $nl;
+            $strCONFIG2 .= 'commonName = "' . addslashes($subjectCN) . '"' . $nl;
+            $strCONFIG2 .= $nl;
+            $strCONFIG2 .= '[ v3_client ]' . $nl;
+            $strCONFIG2 .= 'basicConstraints = critical, CA:FALSE' . $nl;
+            $strCONFIG2 .= 'keyUsage = critical, digitalSignature' . $nl;
+            $strCONFIG2 .= 'extendedKeyUsage = clientAuth' . $nl;
+            $strCONFIG2 .= 'subjectKeyIdentifier = hash' . $nl;
+            $strCONFIG2 .= 'authorityKeyIdentifier = keyid' . $nl;
+
+            $cfgHandle2 = fopen($cfgPath, 'w');
+            if ($cfgHandle2 === false) {
+                throw new \RuntimeException('Konnte temporäre OpenSSL-Konfiguration (Fallback) nicht erstellen');
+            }
+            fwrite($cfgHandle2, $strCONFIG2);
+            fclose($cfgHandle2);
+
+            $config2 = [
                 'config' => $cfgPath,
                 'digest_alg' => 'sha256'
             ];
-            // Prefer EC P-256 key, fallback to RSA 2048
-            $configKey = [
-                'config'           => $cfgPath,
-                'private_key_type' => OPENSSL_KEYTYPE_EC,
-                'curve_name'       => 'prime256v1'
-            ];
-
-            $pkGenerate = @openssl_pkey_new($configKey);
-            if ($pkGenerate === false) {
-                $configKey = [
-                    'config'           => $cfgPath,
-                    'private_key_bits' => 2048,
-                    'private_key_type' => OPENSSL_KEYTYPE_RSA
-                ];
-                $pkGenerate = openssl_pkey_new($configKey);
-            }
-            if ($pkGenerate === false) {
-                throw new \RuntimeException('openssl_pkey_new fehlgeschlagen');
-            }
-
-            $pkPrivate = '';
-            if (!openssl_pkey_export($pkGenerate, $pkPrivate, null, $config)) { // unverschlüsselt
-                throw new \RuntimeException('openssl_pkey_export fehlgeschlagen');
-            }
-            $pkDetails = openssl_pkey_get_details($pkGenerate);
-            if ($pkDetails === false || !isset($pkDetails['key'])) {
-                throw new \RuntimeException('openssl_pkey_get_details fehlgeschlagen');
-            }
-            $pkPublic = (string)$pkDetails['key'];
-            if ((bool)$this->ReadPropertyBoolean('Debug')) {
-                $typeStr = (($pkDetails['type'] ?? null) === OPENSSL_KEYTYPE_EC) ? 'EC' : 'RSA';
-                $bits = (int)($pkDetails['bits'] ?? 0);
-                $this->SendDebug('CertGen', 'Key generated: ' . $typeStr . ' bits=' . $bits, 0);
-                $this->SendDebug('CertGen', 'Key PEM lengths: private=' . strlen($pkPrivate) . ' public=' . strlen($pkPublic), 0);
-            }
-
-            $csr = openssl_csr_new($dn, $pkGenerate, $config);
+            $csr = openssl_csr_new($dn, $pkGenerate, $config2);
             if ($csr === false) {
-                // Retry without req_extensions to support OpenSSL builds that can't load custom req sections
-                if (method_exists($this, 'SendDebug')) {
-                    $this->SendDebug('CertGen', 'CSR with v3_req failed; retrying without req_extensions', 0);
-                }
-                $strCONFIG2  = 'default_md = sha256' . $nl;
-                $strCONFIG2 .= 'default_days = 3650' . $nl;
-                $strCONFIG2 .= $nl;
-                $strCONFIG2 .= '[ req ]' . $nl;
-                $strCONFIG2 .= 'default_bits = 2048' . $nl;
-                $strCONFIG2 .= 'distinguished_name = req_DN' . $nl;
-                $strCONFIG2 .= 'string_mask = nombstr' . $nl;
-                $strCONFIG2 .= 'prompt = no' . $nl;
-                $strCONFIG2 .= 'x509_extensions = v3_client' . $nl;
-                $strCONFIG2 .= $nl;
-                $strCONFIG2 .= '[ req_DN ]' . $nl;
-                $strCONFIG2 .= 'commonName = "' . addslashes($subjectCN) . '"' . $nl;
-                $strCONFIG2 .= $nl;
-                $strCONFIG2 .= '[ v3_client ]' . $nl;
-                $strCONFIG2 .= 'basicConstraints = critical, CA:FALSE' . $nl;
-                $strCONFIG2 .= 'keyUsage = critical, digitalSignature' . $nl;
-                $strCONFIG2 .= 'extendedKeyUsage = clientAuth' . $nl;
-                $strCONFIG2 .= 'subjectKeyIdentifier = hash' . $nl;
-                $strCONFIG2 .= 'authorityKeyIdentifier = keyid' . $nl;
-
-                $cfgHandle2 = fopen($cfgPath, 'w');
-                if ($cfgHandle2 === false) {
-                    throw new \RuntimeException('Konnte temporäre OpenSSL-Konfiguration (Fallback) nicht erstellen');
-                }
-                fwrite($cfgHandle2, $strCONFIG2);
-                fclose($cfgHandle2);
-
-                $config2 = [
-                    'config' => $cfgPath,
-                    'digest_alg' => 'sha256'
-                ];
-                $csr = openssl_csr_new($dn, $pkGenerate, $config2);
-                if ($csr === false) {
-                    throw new \RuntimeException('openssl_csr_new fehlgeschlagen');
-                }
-                // Use config2 for signing as well
-                $config = $config2;
+                throw new \RuntimeException('openssl_csr_new fehlgeschlagen');
             }
+            // Use config2 for signing as well
+            $config = $config2;
+        }
 
         // Try to obtain LG-signed certificate first (preferred)
         $lgCertOut = '';
@@ -918,7 +1002,7 @@ class LGThinQBridge extends IPSModule
 
         // Create ZIP
         $zip = new \ZipArchive();
-        $tmpZip = tempnam(sys_get_temp_dir(), 'lgtq_mqtt_zip_');
+        $tmpZip = tempnam(sys_get_temp_dir(), 'lgtq_mqtt_' . $this->InstanceID . '_' . bin2hex(random_bytes(4)) . '.cnf');
         if ($tmpZip === false) {
             throw new \RuntimeException('Konnte temporäre ZIP-Datei nicht erstellen');
         }
@@ -941,7 +1025,7 @@ class LGThinQBridge extends IPSModule
             'phpVersion' => PHP_VERSION,
             'kernelVersion' => function_exists('IPS_GetKernelVersion') ? @IPS_GetKernelVersion() : ''
         ];
-        $zip->addFromString('00_meta.json', json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+        $zip->addFromString('00_meta.json', json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
         // Cert material
         $zip->addFromString('client_cert.pem', $certOut);
@@ -970,5 +1054,855 @@ class LGThinQBridge extends IPSModule
         }
         @unlink($cfgPath);
         return $data;
+    }
+
+    // --- UI: One-click MQTT setup (create certs, MQTT Client, Client Socket) ---
+    public function UISetupMqttConnection(): void
+    {
+        try {
+            $this->ensureBooted();
+            // 1) Determine broker host/port from LG /route endpoint (preferred)
+            $route = $this->fetchRouteBroker();
+            $HOST = (string)$route['host'];
+            $USE_TLS = (bool)$route['tls'];
+            $PORT = (int)$route['port'];
+            $mqttUrl = (string)($route['url'] ?? '');
+            $routeCA = (string)($route['ca'] ?? '');
+
+            // 2) Generate/get LG-signed certificate (also returns subscriptions; used as fallback for host discovery)
+            $certInfo = $this->generateMqttClientCertMaterial();
+            $subjectCN = (string)$certInfo['cn'];
+            $certPem   = (string)$certInfo['cert'];
+            $keyPem    = (string)$certInfo['key'];
+            $subsMeta  = $certInfo['subscriptions'];
+
+            // Fallback: if /route did not yield a host, try to extract from certificate response subscriptions
+            if ($HOST === '') {
+                $broker = $this->extractBrokerFromSubscriptions($subsMeta);
+                $HOST = (string)$broker['host'];
+                $USE_TLS = (bool)$broker['tls'];
+                $PORT = (int)$broker['port'];
+            }
+
+            $VERIFY_PEER = true;
+            $VERIFY_HOST = true;
+
+            if ($HOST === '') {
+                throw new \RuntimeException('Broker-Host konnte nicht aus den API-Daten ermittelt werden.');
+            }
+            if ($PORT <= 0) {
+                $PORT = $USE_TLS ? 8883 : 1883;
+            }
+            // 3) Subscriptions: if a custom filter is set in the module, use it; otherwise subscribe to the LG push topic for this ClientID
+            $filter = trim((string)$this->ReadPropertyString('MQTTTopicFilter'));
+            if ($filter !== '') {
+                $topic = $filter;
+                // Support placeholder replacement and the common wildcard pattern
+                if (strpos($topic, '{ClientID}') !== false) {
+                    $topic = str_replace('{ClientID}', $subjectCN, $topic);
+                } elseif ($topic === 'app/clients/*/push' || $topic === 'app/clients/*/#') {
+                    $topic = 'app/clients/' . $subjectCN . '/push';
+                }
+                $SUB_TOPICS = [$topic];
+            } else {
+                // Exact push topic for this client
+                $SUB_TOPICS = ['app/clients/' . $subjectCN . '/push'];
+            }
+
+            // 0) DNS check to avoid host-not-found later
+            $ip = @gethostbyname($HOST);
+            if ($ip === $HOST && !filter_var($HOST, FILTER_VALIDATE_IP)) {
+                throw new \RuntimeException("Hostname '$HOST' kann nicht aufgelöst werden.");
+            }
+
+            // 4) Create or reuse MQTT Client instance
+            $NAME_MQTT = 'LGThinQ MQTT Client (' . $HOST . ')';
+            $NAME_IO   = 'LGThinQ MQTT Client Socket (' . $HOST . ')';
+            $mqttGUID = $this->findModuleGUIDByName('MQTT Client');
+            if ($mqttGUID === null) {
+                throw new \RuntimeException("Modul 'MQTT Client' nicht gefunden.");
+            }
+            $mqttID = 0;
+            foreach ($this->instancesOf('MQTT Client') as $id) {
+                if (@IPS_GetName($id) === $NAME_MQTT) { $mqttID = $id; break; }
+                $c = $this->cfg($id);
+                if ($subjectCN !== '' && (($c['ClientID'] ?? null) === $subjectCN)) { $mqttID = $id; break; }
+            }
+            if ($mqttID === 0) {
+                $mqttID = IPS_CreateInstance($mqttGUID);
+                IPS_SetName($mqttID, $NAME_MQTT);
+            }
+
+            // Configure MQTT Client first
+            if ($subjectCN !== '') { $this->safeSetProperty($mqttID, 'ClientID', $subjectCN); }
+            $this->setFirstAvailableProperty($mqttID, ['UserName','Username'], '');
+            $this->safeSetProperty($mqttID, 'Password', '');
+            $this->safeSetProperty($mqttID, 'KeepAlive', 60);
+            $this->safeSetProperty($mqttID, 'CleanSession', true);
+            $subs = array_map(function ($t) { return ['Topic' => $t, 'QoS' => 0]; }, $SUB_TOPICS);
+            if (!$this->setJsonCompatibleProperty($mqttID, 'Subscriptions', $subs)) {
+                $this->setJsonCompatibleProperty($mqttID, 'Subscribe', $subs);
+            }
+            IPS_ApplyChanges($mqttID);
+
+            // 5) Find/Create IO (Client Socket) and connect
+            $ioID = (int)(@IPS_GetInstance($mqttID)['ConnectionID'] ?? 0);
+            if ($ioID === 0) {
+                // give Symcon a chance to auto-create
+                for ($i = 0; $i < 20 && $ioID === 0; $i++) { IPS_Sleep(100); $ioID = (int)(@IPS_GetInstance($mqttID)['ConnectionID'] ?? 0); }
+            }
+            if ($ioID === 0) {
+                $ioGUID = $this->findModuleGUIDByName('Client Socket');
+                if ($ioGUID === null) { throw new \RuntimeException("Modul 'Client Socket' nicht gefunden."); }
+                $ioID = IPS_CreateInstance($ioGUID);
+                IPS_SetName($ioID, $NAME_IO);
+                IPS_ConnectInstance($mqttID, $ioID);
+                IPS_Sleep(100);
+            }
+
+            // Configure IO
+            if ($this->isInstanceOfModule($ioID, 'Client Socket')) {
+                $this->safeSetProperty($ioID, 'Open', false);
+                $this->safeSetProperty($ioID, 'Host', $HOST);
+                $this->safeSetProperty($ioID, 'Port', (int)$PORT);
+                $this->setFirstAvailableProperty($ioID, ['UseSSL','EnableSSL'], (bool)$USE_TLS);
+                $this->safeSetProperty($ioID, 'VerifyPeer', (bool)$VERIFY_PEER);
+                $this->safeSetProperty($ioID, 'VerifyHost', (bool)$VERIFY_HOST);
+                // Set exact Client Socket properties (per your environment)
+                $ioCfg = $this->cfg($ioID);
+                // Some Symcon versions expect file paths (chain/key/ca) rather than raw PEM strings.
+                $baseDir = '';
+                if (function_exists('IPS_GetKernelDir')) {
+                    $baseDir = rtrim((string)@IPS_GetKernelDir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'lgthinq' . DIRECTORY_SEPARATOR . 'mqtt' . DIRECTORY_SEPARATOR . (string)$this->InstanceID . DIRECTORY_SEPARATOR;
+                }
+                if ($baseDir === '' || (!is_dir($baseDir) && !@mkdir($baseDir, 0777, true))) {
+                    $baseDir = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'lgthinq_mqtt_' . (string)$this->InstanceID . DIRECTORY_SEPARATOR;
+                    if (!is_dir($baseDir)) { @mkdir($baseDir, 0777, true); }
+                }
+                $certPath = $baseDir . 'client_cert.pem';
+                $keyPath  = $baseDir . 'client_key.pem';
+                $caPath   = $baseDir . 'ca.pem';
+                
+                // Ensure proper PEM formatting with correct line endings
+                $certPemFormatted = $this->ensureCertificatePEM($certPem);
+                $keyPemFormatted = $this->ensurePrivateKeyPEM($keyPem);
+                $caPemFormatted = '';
+                
+                @file_put_contents($certPath, $certPemFormatted);
+                @file_put_contents($keyPath, $keyPemFormatted);
+                @chmod($certPath, 0600);
+                @chmod($keyPath, 0600);
+                
+                // Validate and format CA PEM before using it (accept headerless base64 from route as well)
+                $haveCA = false;
+                if ($routeCA !== '') {
+                    $caPemFormatted = $this->ensureCertificatePEM($routeCA);
+                    if (@openssl_x509_read($caPemFormatted) !== false) {
+                        $haveCA = (@file_put_contents($caPath, $caPemFormatted) !== false);
+                        if ($haveCA) { @chmod($caPath, 0600); }
+                    } else if ((bool)$this->ReadPropertyBoolean('Debug')) {
+                        $this->SendDebug('MQTT', 'Route-provided CA invalid, length=' . strlen((string)$routeCA), 0);
+                    }
+                }
+                // Prefer CA from LG API subscriptions metadata (if present)
+                if (!$haveCA && $subsMeta !== null) {
+                    $apiCAPem = $this->extractCAPEMFromSubscriptions($subsMeta);
+                    if (is_string($apiCAPem) && $apiCAPem !== '') {
+                        $caPemFormatted = $this->ensureCertificatePEM($apiCAPem);
+                        if (@openssl_x509_read($caPemFormatted) !== false) {
+                            $haveCA = (@file_put_contents($caPath, $caPemFormatted) !== false);
+                            if ($haveCA) { @chmod($caPath, 0600); }
+                            if ((bool)$this->ReadPropertyBoolean('Debug')) {
+                                $this->SendDebug('MQTT', 'CA from LG API subscriptions applied (len=' . strlen($caPemFormatted) . ')', 0);
+                            }
+                        }
+                    }
+                }
+                // Fallback: try to fetch Amazon Root CA 1 for AWS IoT ATS endpoints
+                if (!$haveCA) {
+                    $awsCA = $this->downloadAmazonRootCA1();
+                    if (is_string($awsCA) && $awsCA !== '' && strpos($awsCA, '-----BEGIN CERTIFICATE-----') !== false) {
+                        $caPemFormatted = $this->ensureCertificatePEM($awsCA);
+                        if (@openssl_x509_read($caPemFormatted) !== false) {
+                            $haveCA = (@file_put_contents($caPath, $caPemFormatted) !== false);
+                            if ($haveCA) { @chmod($caPath, 0600); }
+                            if ((bool)$this->ReadPropertyBoolean('Debug')) {
+                                $this->SendDebug('MQTT', 'CA fallback: Amazon Root CA 1 applied (len=' . strlen($caPemFormatted) . ')', 0);
+                            }
+                        }
+                    }
+                }
+
+                // Also persist a concatenated chain file and a small README for manual assignment/tests
+                $chainPath = $baseDir . 'client_cert_chain.pem';
+                $chainPem = rtrim($certPemFormatted) . "\n";
+                if ($haveCA) { $chainPem .= rtrim($caPemFormatted) . "\n"; }
+                @file_put_contents($chainPath, $chainPem);
+                @chmod($chainPath, 0600);
+                clearstatcache(true, $certPath);
+                clearstatcache(true, $keyPath);
+                clearstatcache(true, $caPath);
+                clearstatcache(true, $chainPath);
+
+                $readmePath = $baseDir . 'README.txt';
+                $readme = "LG ThinQ MQTT TLS material\n\n"
+                        . "Directory: " . $baseDir . "\n\n"
+                        . "Files:\n"
+                        . "- client_cert.pem         (leaf certificate)\n"
+                        . "- client_key.pem          (private key, PKCS#8, unencrypted)\n"
+                        . "- client_cert_chain.pem   (leaf + CA if available)\n"
+                        . "- ca.pem                  (Certificate Authority, if available)\n\n"
+                        . "Symcon manual assignment hints:\n"
+                        . "- Certificate           = client_cert_chain.pem (or client_cert.pem)\n"
+                        . "- PrivateKey            = client_key.pem\n"
+                        . "- CertificateAuthority  = ca.pem (recommended for VerifyPeer=true)\n\n"
+                        . "Broker: " . $HOST . ":" . $PORT . "\n"
+                        . "VerifyPeer/VerifyHost: true\n";
+                @file_put_contents($readmePath, $readme);
+                @chmod($readmePath, 0644);
+                if ((bool)$this->ReadPropertyBoolean('Debug')) {
+                    $this->SendDebug('MQTT', 'Saved TLS material to ' . $baseDir . ' (cert=' . @filesize($certPath) . 'B, key=' . @filesize($keyPath) . 'B, ca=' . ($haveCA ? @filesize($caPath) . 'B' : 0) . 'B, chain=' . @filesize($chainPath) . 'B)', 0);
+                }
+
+                // Assign INLINE PEM content directly to properties (Certificate, PrivateKey, CertificateAuthority)
+                $this->safeSetProperty($ioID, 'UseCertificate', true);
+                // Clear any file-path properties to avoid conflicts
+                foreach (['CertificateFile','ClientCertificateFile','LocalCert','LocalCertificate'] as $prop) { $this->safeSetProperty($ioID, $prop, ''); }
+                foreach (['PrivateKeyFile','ClientKeyFile','LocalPrivateKey','LocalPrivateKeyFile'] as $prop) { $this->safeSetProperty($ioID, $prop, ''); }
+                foreach (['CertificateAuthorityFile','CAFile','CACertificateFile','RootCertificateFile','RootCAFile','CACertFile'] as $prop) { $this->safeSetProperty($ioID, $prop, ''); }
+
+                // Write inline PEMs as base64 (mirrors manual UI behavior)
+                $this->safeSetProperty($ioID, 'Certificate', base64_encode($chainPem));
+                $this->safeSetProperty($ioID, 'PrivateKey', base64_encode($keyPemFormatted));
+                if ($haveCA) {
+                    $this->safeSetProperty($ioID, 'CertificateAuthority', base64_encode($caPemFormatted));
+                } else {
+                    // ensure we don't keep stale inline CA
+                    $this->safeSetProperty($ioID, 'CertificateAuthority', '');
+                }
+
+                // Private key is unencrypted; ensure empty password (handled by $usedPwdProp if available)
+                $usedPwdProp  = $this->setFirstAvailableProperty($ioID, ['Password','PassPhrase'], '');
+
+                if ((bool)$this->ReadPropertyBoolean('Debug')) {
+                    $this->SendDebug('MQTT', 'IO keys: ' . implode(',', array_keys($ioCfg)), 0);
+                    $this->SendDebug('MQTT', 'Using cert prop: inline(base64) Certificate, key prop: inline(base64) PrivateKey', 0);
+                    $okCert = @openssl_x509_read($certPemFormatted) !== false;
+                    $okKey  = @openssl_pkey_get_private($keyPemFormatted) !== false;
+                    $okPair = @openssl_x509_check_private_key($certPemFormatted, $keyPemFormatted);
+                    $this->SendDebug('MQTT', 'Props applied: UseCertificate, Certificate(len=' . strlen($chainPem) . ', parse=' . ($okCert?'OK':'FAIL') . '), PrivateKey(len=' . strlen($keyPemFormatted) . ', parse=' . ($okKey?'OK':'FAIL') . '), PairMatch=' . ($okPair?'yes':'no') . ', Password(empty), CA(' . ($haveCA ? ('len=' . strlen($caPemFormatted)) : 'none') . ')', 0);
+                }
+                IPS_ApplyChanges($ioID);
+                IPS_SetName($ioID, $NAME_IO);
+
+                // Validate that inline PEMs persisted correctly; if not, fall back to file-path properties
+                try {
+                    $curCfg = $this->cfg($ioID);
+                    $curCert = (string)($curCfg['Certificate'] ?? '');
+                    $curKey  = (string)($curCfg['PrivateKey'] ?? '');
+                    $curCA   = (string)($curCfg['CertificateAuthority'] ?? '');
+
+                    // Helper to decode if base64-encoded PEM was returned
+                    $decodeIfB64 = function (string $s): string {
+                        $trim = trim($s);
+                        if ($trim === '') { return ''; }
+                        if (strpos($trim, '-----BEGIN') === 0) { return $trim; }
+                        // try base64 decode
+                        $bin = base64_decode($trim, true);
+                        if ($bin !== false && strpos($bin, '-----BEGIN') !== false) { return $bin; }
+                        return $trim; // unknown format; return as-is
+                    };
+
+                    $curCertPem = $decodeIfB64($curCert);
+                    $curKeyPem  = $decodeIfB64($curKey);
+                    $curCAPem   = $decodeIfB64($curCA);
+
+                    $okCertPersist = (strpos($curCertPem, '-----BEGIN CERTIFICATE-----') !== false) && (@openssl_x509_read($curCertPem) !== false);
+                    $okKeyPersist  = (strpos($curKeyPem, '-----BEGIN') !== false) && (@openssl_pkey_get_private($curKeyPem) !== false);
+                    $okCAPersist   = ($haveCA === false) || ((strpos($curCAPem, '-----BEGIN CERTIFICATE-----') !== false) && (@openssl_x509_read($curCAPem) !== false));
+
+                    if ((bool)$this->ReadPropertyBoolean('Debug')) {
+                        $this->SendDebug('MQTT', 'Post-write check: certLen=' . strlen($curCert) . ' keyLen=' . strlen($curKey) . ' caLen=' . strlen($curCA) . ' okCert=' . ($okCertPersist?'yes':'no') . ' okKey=' . ($okKeyPersist?'yes':'no') . ' okCA=' . ($okCAPersist?'yes':'no'), 0);
+                    }
+
+                    if (!$okCertPersist || !$okKeyPersist || !$okCAPersist) {
+                        // Fallback to file-based assignment (paths) and clear inline fields
+                        if ((bool)$this->ReadPropertyBoolean('Debug')) {
+                            $this->SendDebug('MQTT', 'Inline PEM persistence check failed (cert/key/ca). Falling back to file-path properties.', 0);
+                        }
+                        // Assign file-path properties
+                        $this->setFirstAvailableProperty($ioID, ['CertificateFile','ClientCertificateFile','LocalCert','LocalCertificate','Certificate'], $chainPath);
+                        $this->setFirstAvailableProperty($ioID, ['PrivateKeyFile','ClientKeyFile','LocalPrivateKey','LocalPrivateKeyFile','PrivateKey'], $keyPath);
+                        if ($haveCA) {
+                            $this->setFirstAvailableProperty($ioID, ['CertificateAuthorityFile','CAFile','CACertificateFile','RootCertificateFile','RootCAFile','CACertFile','CertificateAuthority'], $caPath);
+                        }
+                        // Clear inline fields
+                        $this->safeSetProperty($ioID, 'Certificate', '');
+                        $this->safeSetProperty($ioID, 'PrivateKey', '');
+                        $this->safeSetProperty($ioID, 'CertificateAuthority', '');
+
+                        IPS_ApplyChanges($ioID);
+
+                        if ((bool)$this->ReadPropertyBoolean('Debug')) {
+                            $this->SendDebug('MQTT', 'Fallback applied: Certificate=' . $chainPath . ', PrivateKey=' . $keyPath . ', CA=' . ($haveCA ? $caPath : 'none'), 0);
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    if ((bool)$this->ReadPropertyBoolean('Debug')) {
+                        $this->SendDebug('MQTT', 'Post-write check exception: ' . $e->getMessage(), 0);
+                    }
+                }
+
+                // Open socket now
+                $this->safeSetProperty($ioID, 'Open', true);
+                IPS_ApplyChanges($ioID);
+                // Log final parent/io configuration for diagnostics
+                if ((bool)$this->ReadPropertyBoolean('Debug')) {
+                    $this->debugMqttParentInfo();
+                }
+            } else {
+                $this->SendDebug('MQTT', 'Warnung: Parent #' . $ioID . ' ist kein Client Socket', 0);
+            }
+
+            // 6) Connect this Bridge to the configured MQTT Client and persist setting
+            @IPS_ConnectInstance($this->InstanceID, $mqttID);
+            @IPS_SetProperty($this->InstanceID, 'UseMQTT', true);
+            @IPS_SetProperty($this->InstanceID, 'MQTTClientID', (int)$mqttID);
+            @IPS_ApplyChanges($this->InstanceID);
+
+            // 7) Post-setup: register client idempotently with final ClientID (subjectCN)
+            try {
+                $baseCfg2 = $this->createBridgeConfig();
+                $tmpCfg2 = ThinQBridgeConfig::create(
+                    $baseCfg2->accessToken,
+                    $baseCfg2->countryCode,
+                    $subjectCN,
+                    $baseCfg2->debug,
+                    $baseCfg2->useMqtt,
+                    $baseCfg2->mqttClientId,
+                    $baseCfg2->mqttTopicFilter,
+                    $baseCfg2->ignoreRetained,
+                    $baseCfg2->eventTtlHours,
+                    $baseCfg2->eventRenewLeadMin
+                );
+                $http2 = new ThinQHttpClient($this, $tmpCfg2, self::API_KEY);
+                try {
+                    $http2->request('POST', 'client', ['body' => ['type' => 'MQTT', 'service-code' => 'SVC202', 'device-type' => '607']]);
+                } catch (\Throwable $e) {
+                    // ignore failures (idempotent), but log for diagnostics
+                    $this->SendDebug('UISetupMqttConnection', 'Register client ignored: ' . $e->getMessage(), 0);
+                }
+            } catch (\Throwable $e) {
+                $this->SendDebug('UISetupMqttConnection', 'Register client failed: ' . $e->getMessage(), 0);
+            }
+
+            // Done / Report
+            echo "Fertig.\nClient Socket ID: $ioID\nMQTT Client ID:   $mqttID\nTLS Verzeichnis:  $baseDir\nDateien: client_cert.pem, client_key.pem, client_cert_chain.pem, ca.pem\n";
+            $this->NotifyUser('MQTT-Verbindung eingerichtet (ClientID=' . $subjectCN . ', Host=' . $HOST . ':' . $PORT . ').');
+        } catch (\Throwable $e) {
+            $this->SendDebug('UISetupMqttConnection', $e->getMessage(), 0);
+            echo 'Fehler: ' . $e->getMessage();
+        }
+    }
+
+    /**
+     * @return array{cn:string, cert:string, key:string, public:string, subscriptions:mixed}
+     */
+    private function generateMqttClientCertMaterial(): array
+    {
+        if (!function_exists('openssl_pkey_new')) {
+            throw new \RuntimeException('OpenSSL wird nicht unterstützt (openssl_* Funktionen fehlen)');
+        }
+
+        // Determine CN (prefer parent MQTT ClientID); init ClientID if missing
+        $clientId = trim((string)$this->ReadAttributeString('ClientID'));
+        if ($clientId === '') {
+            $propId = trim((string)$this->ReadPropertyString('ClientID'));
+            if ($propId !== '') {
+                $clientId = $propId;
+                $this->WriteAttributeString('ClientID', $clientId);
+            } else {
+                try {
+                    $rand5 = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+                } catch (\Throwable $e) {
+                    $rand5 = str_pad((string)mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
+                }
+                $clientId = 'Symcon' . $rand5;
+                $this->WriteAttributeString('ClientID', $clientId);
+                @IPS_SetProperty($this->InstanceID, 'ClientID', $clientId);
+            }
+        }
+        $subjectCN = $clientId;
+        $instInfo = @IPS_GetInstance($this->InstanceID);
+        if (is_array($instInfo)) {
+            $parentId = (int)($instInfo['ConnectionID'] ?? 0);
+            if ($parentId > 0) {
+                $parentClientId = trim((string)@IPS_GetProperty($parentId, 'ClientID'));
+                if ($parentClientId !== '') {
+                    $subjectCN = $parentClientId;
+                }
+            }
+        }
+        $subjectCN = preg_replace('/[^A-Za-z0-9._-]/', '_', (string)$subjectCN);
+        if (!is_string($subjectCN) || trim($subjectCN) === '') {
+            $subjectCN = 'Symcon00000';
+        }
+
+        // OpenSSL temp config
+        $cfgPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'lgtq_mqtt_' . $this->InstanceID . '_' . bin2hex(random_bytes(4)) . '.cnf';
+        $nl = "\r\n";
+        $strCONFIG  = 'default_md = sha256' . $nl;
+        $strCONFIG .= 'default_days = 3650' . $nl;
+        $strCONFIG .= $nl;
+        $strCONFIG .= '[ req ]' . $nl;
+        $strCONFIG .= 'default_bits = 2048' . $nl;
+        $strCONFIG .= 'distinguished_name = req_DN' . $nl;
+        $strCONFIG .= 'string_mask = nombstr' . $nl;
+        $strCONFIG .= 'prompt = no' . $nl;
+        $strCONFIG .= 'x509_extensions = v3_client' . $nl;
+        $strCONFIG .= $nl;
+        $strCONFIG .= '[ req_DN ]' . $nl;
+        $strCONFIG .= 'commonName = "' . addslashes($subjectCN) . '"' . $nl;
+        $strCONFIG .= $nl;
+        $strCONFIG .= '[ v3_client ]' . $nl;
+        $strCONFIG .= 'basicConstraints = critical, CA:FALSE' . $nl;
+        $strCONFIG .= 'keyUsage = critical, digitalSignature' . $nl;
+        $strCONFIG .= 'extendedKeyUsage = clientAuth' . $nl;
+        $strCONFIG .= 'subjectKeyIdentifier = hash' . $nl;
+        $strCONFIG .= 'authorityKeyIdentifier = keyid' . $nl;
+        $cfgHandle = fopen($cfgPath, 'w');
+        if ($cfgHandle === false) { throw new \RuntimeException('Konnte temporäre OpenSSL-Konfiguration nicht erstellen'); }
+        fwrite($cfgHandle, $strCONFIG); fclose($cfgHandle);
+
+        // Generate key (EC P-256 preferred)
+        $configKey = ['config' => $cfgPath, 'private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1'];
+        $pkGenerate = @openssl_pkey_new($configKey);
+        if ($pkGenerate === false) {
+            $configKey = ['config' => $cfgPath, 'private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA];
+            $pkGenerate = openssl_pkey_new($configKey);
+        }
+        if ($pkGenerate === false) { throw new \RuntimeException('openssl_pkey_new fehlgeschlagen'); }
+
+        $pkPrivate = '';
+        if (!openssl_pkey_export($pkGenerate, $pkPrivate, null, ['config' => $cfgPath, 'digest_alg' => 'sha256'])) {
+            throw new \RuntimeException('openssl_pkey_export fehlgeschlagen');
+        }
+        $pkDetails = openssl_pkey_get_details($pkGenerate);
+        if ($pkDetails === false || !isset($pkDetails['key'])) { throw new \RuntimeException('openssl_pkey_get_details fehlgeschlagen'); }
+        $pkPublic = (string)$pkDetails['key'];
+
+        // CSR (with fallback minimal config)
+        $dn = ['commonName' => $subjectCN];
+        $config = ['config' => $cfgPath, 'digest_alg' => 'sha256'];
+        $csr = openssl_csr_new($dn, $pkGenerate, $config);
+        if ($csr === false) {
+            $strCONFIG2  = 'default_md = sha256' . $nl;
+            $strCONFIG2 .= 'default_days = 3650' . $nl;
+            $strCONFIG2 .= $nl;
+            $strCONFIG2 .= '[ req ]' . $nl;
+            $strCONFIG2 .= 'default_bits = 2048' . $nl;
+            $strCONFIG2 .= 'distinguished_name = req_DN' . $nl;
+            $strCONFIG2 .= 'string_mask = nombstr' . $nl;
+            $strCONFIG2 .= 'prompt = no' . $nl;
+            $strCONFIG2 .= 'x509_extensions = v3_client' . $nl;
+            $strCONFIG2 .= $nl;
+            $strCONFIG2 .= '[ req_DN ]' . $nl;
+            $strCONFIG2 .= 'commonName = "' . addslashes($subjectCN) . '"' . $nl;
+            $strCONFIG2 .= $nl;
+            $strCONFIG2 .= '[ v3_client ]' . $nl;
+            $strCONFIG2 .= 'basicConstraints = critical, CA:FALSE' . $nl;
+            $strCONFIG2 .= 'keyUsage = critical, digitalSignature' . $nl;
+            $strCONFIG2 .= 'extendedKeyUsage = clientAuth' . $nl;
+            $strCONFIG2 .= 'subjectKeyIdentifier = hash' . $nl;
+            $strCONFIG2 .= 'authorityKeyIdentifier = keyid' . $nl;
+            $cfgHandle2 = fopen($cfgPath, 'w'); if ($cfgHandle2 === false) { throw new \RuntimeException('Konnte temporäre OpenSSL-Konfiguration (Fallback) nicht erstellen'); }
+            fwrite($cfgHandle2, $strCONFIG2); fclose($cfgHandle2);
+            $config = ['config' => $cfgPath, 'digest_alg' => 'sha256'];
+            $csr = openssl_csr_new($dn, $pkGenerate, $config);
+            if ($csr === false) { throw new \RuntimeException('openssl_csr_new fehlgeschlagen'); }
+        }
+
+        // Request LG-signed certificate; ensure x-client-id equals CSR CN
+        $baseCfg = $this->createBridgeConfig();
+        $tmpCfg = ThinQBridgeConfig::create(
+            $baseCfg->accessToken,
+            $baseCfg->countryCode,
+            $subjectCN,
+            $baseCfg->debug,
+            $baseCfg->useMqtt,
+            $baseCfg->mqttClientId,
+            $baseCfg->mqttTopicFilter,
+            $baseCfg->ignoreRetained,
+            $baseCfg->eventTtlHours,
+            $baseCfg->eventRenewLeadMin
+        );
+        $tmpHttp = new ThinQHttpClient($this, $tmpCfg, self::API_KEY);
+        $csrPemForApi = '';
+        @openssl_csr_export($csr, $csrPemForApi);
+
+        try {
+            // idempotent register
+            try {
+                $tmpHttp->request('POST', 'client', ['body' => ['type' => 'MQTT', 'service-code' => 'SVC202', 'device-type' => '607']]);
+            } catch (\Throwable $e) {
+                // ignore errors (idempotent/register may already exist)
+                $this->SendDebug('CertGen', 'Register client ignored: ' . $e->getMessage(), 0);
+            }
+            $resp = $tmpHttp->request('POST', 'client/certificate', ['body' => ['service-code' => 'SVC202', 'csr' => $csrPemForApi]]);
+        } catch (\Throwable $e) {
+            // Fallback without body wrapper
+            $resp = $tmpHttp->request('POST', 'client/certificate', ['service-code' => 'SVC202', 'csr' => $csrPemForApi]);
+        }
+        $resNode = $resp;
+        if (isset($resp['result']) && is_array($resp['result'])) { $resNode = $resp['result']; }
+        $certOut = (string)($resNode['certificatePem'] ?? '');
+        if ($certOut === '') { throw new \RuntimeException('LG certificate request returned no certificatePem'); }
+        @unlink($cfgPath);
+        return [
+            'cn' => $subjectCN,
+            'cert' => $certOut,
+            'key' => $pkPrivate,
+            'public' => $pkPublic,
+            'subscriptions' => $resNode['subscriptions'] ?? null
+        ];
+    }
+
+    /**
+     * @param mixed $subscriptions
+     * @return array{host:string, port:int, tls:bool}
+     */
+    private function extractBrokerFromSubscriptions($subscriptions): array
+    {
+        $host = '';
+        $port = 0;
+        $tls = true;
+        $scan = function ($node) use (&$host, &$port, &$tls, &$scan): void {
+            if (!is_array($node)) { return; }
+            foreach ($node as $k => $v) {
+                $lk = strtolower((string)$k);
+                if ($lk === 'host' && is_string($v) && $host === '') { $host = $v; }
+                if ($lk === 'port' && is_numeric($v) && $port === 0) { $port = (int)$v; }
+                if (($lk === 'tls' || $lk === 'secure' || $lk === 'ssl') && is_bool($v)) { $tls = (bool)$v; }
+                if ($lk === 'url' || $lk === 'endpoint' || $lk === 'broker' || $lk === 'server') {
+                    if (is_string($v)) {
+                        $p = @parse_url($v);
+                        if (is_array($p)) {
+                            if ($host === '' && isset($p['host'])) { $host = (string)$p['host']; }
+                            if ($port === 0 && isset($p['port'])) { $port = (int)$p['port']; }
+                            if (isset($p['scheme'])) { $tls = (strtolower((string)$p['scheme']) !== 'mqtt'); }
+                        }
+                    }
+                }
+                if (is_array($v)) { $scan($v); }
+            }
+        };
+        $scan($subscriptions);
+        return ['host' => (string)$host, 'port' => (int)$port, 'tls' => (bool)$tls];
+    }
+
+    /**
+     * Determine MQTT broker from LG /route endpoint.
+     * @return array{url:string, host:string, port:int, tls:bool}
+     */
+    private function fetchRouteBroker(): array
+    {
+        $url = '';
+        $host = '';
+        $port = 0;
+        $tls = true;
+        $usedWssFallback = false;
+        $caPem = '';
+        try {
+            $resp = $this->httpClient->request('GET', 'route');
+            // ThinQHttpClient already unwraps ['response'] if present.
+            $mqtt = $resp['mqttServer'] ?? ($resp['mqtt'] ?? null);
+            $wss  = $resp['webSocketServer'] ?? null;
+            // Heuristic: Some routes may provide certificate authority material
+            $caPem = (string)($resp['certificateAuthority'] ?? ($resp['caCertificate'] ?? ($resp['caPem'] ?? '')));
+
+            // Accept either a string URL or an object { url: "mqtts://..." }
+            if (is_string($mqtt)) {
+                $url = $mqtt;
+            } elseif (is_array($mqtt)) {
+                $url = (string)($mqtt['url'] ?? ($mqtt['endpoint'] ?? ($mqtt['server'] ?? '')));
+                if ($url === '' && isset($mqtt['host'])) {
+                    $host = (string)$mqtt['host'];
+                    $port = (int)$mqtt['port'];
+                    $tls  = (bool)$mqtt['tls'];
+                }
+                if ($caPem === '') {
+                    $caPem = (string)($mqtt['certificateAuthority'] ?? ($mqtt['ca'] ?? ($mqtt['caPem'] ?? '')));
+                }
+            }
+
+            if ($url === '' && is_string($wss) && stripos($wss, 'wss://') === 0) {
+                // last-resort: derive host from web socket server; do NOT use port 443 for raw MQTT
+                $url = $wss;
+                $usedWssFallback = true;
+            }
+
+            if ($url !== '') {
+                $p = @parse_url($url);
+                if (is_array($p)) {
+                    if ($host === '' && isset($p['host'])) { $host = (string)$p['host']; }
+                    if ($port === 0 && isset($p['port'])) { $port = (int)$p['port']; }
+                    $scheme = strtolower((string)($p['scheme'] ?? ''));
+                    if ($scheme !== '') {
+                        $tls = ($scheme !== 'mqtt'); // mqtts/wss => TLS; mqtt => no TLS
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            if ((bool)$this->ReadPropertyBoolean('Debug')) {
+                $this->SendDebug('Route', 'Route-Call fehlgeschlagen: ' . $e->getMessage(), 0);
+            }
+        }
+
+        if ($host === '') {
+            // Let caller attempt fallback via certificate subscriptions
+            return ['url' => (string)$url, 'host' => '', 'port' => 0, 'tls' => (bool)$tls];
+        }
+        // If we derived from WSS, force standard MQTT TLS port 8883 (MQTT Client does not use WebSocket)
+        if ($usedWssFallback) {
+            $port = 8883;
+        } elseif ($port <= 0) {
+            $port = $tls ? 8883 : 1883;
+        }
+        if ((bool)$this->ReadPropertyBoolean('Debug')) {
+            $this->SendDebug('Route', 'MQTT: url=' . $url . ' host=' . $host . ' port=' . $port . ' tls=' . ($tls ? 'true' : 'false') . ' caLen=' . strlen((string)$caPem), 0);
+        }
+        return ['url' => (string)$url, 'host' => (string)$host, 'port' => (int)$port, 'tls' => (bool)$tls, 'ca' => (string)$caPem];
+    }
+
+    /**
+     * Format PEM content with proper line endings and structure
+     */
+    private function formatPemContent(string $pemContent): string
+    {
+        if (trim($pemContent) === '') {
+            return '';
+        }
+        
+        // Normalize line endings to Unix style
+        $content = str_replace(["\r\n", "\r"], "\n", $pemContent);
+        
+        // Remove any extra whitespace and ensure proper structure
+        $lines = explode("\n", $content);
+        $cleanLines = [];
+        
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if ($trimmed !== '') {
+                $cleanLines[] = $trimmed;
+            }
+        }
+        
+        // Ensure it ends with a newline
+        return implode("\n", $cleanLines) . "\n";
+    }
+
+    /**
+     * Ensure a valid single CERTIFICATE PEM with proper headers and 64-char wrapping.
+     */
+    private function ensureCertificatePEM(string $input): string
+    {
+        $norm = str_replace(["\r\n", "\r"], "\n", trim($input));
+        // Try to extract existing PEM block
+        if (preg_match('/-----BEGIN CERTIFICATE-----([A-Za-z0-9+\/=`\n\r\s]+)-----END CERTIFICATE-----/m', $norm, $m)) {
+            $body = $m[1] ?? '';
+            $b64 = preg_replace('/[^A-Za-z0-9+\/=]/', '', (string)$body);
+            $bin = base64_decode((string)$b64, true);
+            if ($bin === false) {
+                return $this->formatPemContent($norm) ?: $norm . "\n";
+            }
+            $wrapped = chunk_split(base64_encode($bin), 64, "\n");
+            return "-----BEGIN CERTIFICATE-----\n" . rtrim($wrapped, "\n") . "\n-----END CERTIFICATE-----\n";
+        }
+        // Fallback: assume base64 content (possibly with whitespace)
+        $b64 = preg_replace('/[^A-Za-z0-9+\/=]/', '', $norm);
+        $bin = base64_decode((string)$b64, true);
+        if ($bin === false) {
+            // As a last resort, try to treat entire input as already PEM and tidy it
+            return $this->formatPemContent($norm) ?: $norm . "\n";
+        }
+        $wrapped = chunk_split(base64_encode($bin), 64, "\n");
+        return "-----BEGIN CERTIFICATE-----\n" . rtrim($wrapped, "\n") . "\n-----END CERTIFICATE-----\n";
+    }
+
+    /**
+     * Ensure a valid PRIVATE KEY PEM (EC/RSA/PKCS#8) with proper headers and 64-char wrapping.
+     */
+    private function ensurePrivateKeyPEM(string $input): string
+    {
+        $norm = str_replace(["\r\n", "\r"], "\n", trim($input));
+        if ($norm === '') { return ''; }
+        // Try to detect existing PRIVATE KEY PEM (EC/RSA/PKCS#8)
+        if (preg_match('/-----BEGIN ([A-Z ]*?)PRIVATE KEY-----([A-Za-z0-9+\/=`\n\r\s]+)-----END \1PRIVATE KEY-----/m', $norm, $m)) {
+            $type = trim((string)($m[1] ?? ''));
+            $body = (string)($m[2] ?? '');
+            $b64 = preg_replace('/[^A-Za-z0-9+\/=]/', '', $body);
+            $bin = base64_decode($b64, true);
+            if ($bin === false) {
+                return $this->formatPemContent($norm) ?: $norm . "\n";
+            }
+            $wrapped = chunk_split(base64_encode($bin), 64, "\n");
+            $hdr = '-----BEGIN ' . ($type !== '' ? ($type . ' ') : '') . 'PRIVATE KEY-----';
+            $ftr = '-----END '   . ($type !== '' ? ($type . ' ') : '') . 'PRIVATE KEY-----';
+            return $hdr . "\n" . rtrim($wrapped, "\n") . "\n" . $ftr . "\n";
+        }
+        // Fallback: assume base64 of key and wrap as generic PKCS#8 PRIVATE KEY
+        $b64 = preg_replace('/[^A-Za-z0-9+\/=]/', '', $norm);
+        $bin = base64_decode($b64, true);
+        if ($bin === false) {
+            return $this->formatPemContent($norm) ?: $norm . "\n";
+        }
+        $wrapped = chunk_split(base64_encode($bin), 64, "\n");
+        return "-----BEGIN PRIVATE KEY-----\n" . rtrim($wrapped, "\n") . "\n-----END PRIVATE KEY-----\n";
+    }
+
+    /**
+     * Try to find a CA certificate within the 'subscriptions' metadata returned by the LG API.
+     * Accept nested arrays/strings; returns a PEM string or empty string if none found.
+     * @param mixed $subscriptions
+     */
+    private function extractCAPEMFromSubscriptions($subscriptions): string
+    {
+        $found = '';
+        $scan = function ($node) use (&$scan, &$found): void {
+            if ($found !== '') { return; }
+            if (is_string($node)) {
+                $str = trim($node);
+                if ($str === '') { return; }
+                // Direct PEM present
+                if (strpos($str, '-----BEGIN CERTIFICATE-----') !== false) {
+                    $pem = $str;
+                    if (@openssl_x509_read($pem) !== false) { $found = $pem; }
+                    return;
+                }
+                // Base64 candidate -> wrap to PEM and validate
+                $b64 = preg_replace('/[^A-Za-z0-9+\/=]/', '', $str);
+                if ($b64 !== '') {
+                    $bin = base64_decode($b64, true);
+                    if ($bin !== false) {
+                        $wrapped = "-----BEGIN CERTIFICATE-----\n" . rtrim(chunk_split(base64_encode($bin), 64, "\n"), "\n") . "\n-----END CERTIFICATE-----\n";
+                        if (@openssl_x509_read($wrapped) !== false) { $found = $wrapped; }
+                    }
+                }
+                return;
+            }
+            if (is_array($node)) {
+                // Check common CA-related keys first
+                foreach (['ca','CA','certificateAuthority','root','rootCA','cacert','cacertificate'] as $k) {
+                    if (isset($node[$k])) { $scan($node[$k]); if ($found !== '') { return; } }
+                }
+                foreach ($node as $v) { $scan($v); if ($found !== '') { return; } }
+            }
+        };
+        $scan($subscriptions);
+        return is_string($found) ? $found : '';
+    }
+
+    /**
+     * Download Amazon Root CA 1 from Amazon's repository for AWS IoT ATS endpoints.
+     * @return string PEM or empty string on failure
+     */
+    private function downloadAmazonRootCA1(): string
+    {
+        $url = 'https://www.amazontrust.com/repository/AmazonRootCA1.pem';
+        // Try cURL first
+        if (function_exists('curl_init')) {
+            $ch = @curl_init($url);
+            if ($ch !== false) {
+                @curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_TIMEOUT => 10,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_SSL_VERIFYHOST => 2,
+                    CURLOPT_USERAGENT => 'LGThinQBridge/1.0 (+Symcon)'
+                ]);
+                $resp = @curl_exec($ch);
+                $code = (int)@curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                @curl_close($ch);
+                if (is_string($resp) && $code === 200 && strpos($resp, '-----BEGIN CERTIFICATE-----') !== false) {
+                    return (string)$resp;
+                }
+            }
+        }
+        // Fallback to file_get_contents with short timeout
+        $ctx = @stream_context_create([
+            'http' => ['timeout' => 10, 'method' => 'GET', 'header' => "User-Agent: LGThinQBridge/1.0\r\n"],
+            'https' => ['timeout' => 10]
+        ]);
+        $resp = @file_get_contents($url, false, $ctx);
+        if (is_string($resp) && strpos($resp, '-----BEGIN CERTIFICATE-----') !== false) {
+            return (string)$resp;
+        }
+        return '';
+    }
+
+    // ---- helper methods for instance/properties ----
+    private function findModuleGUIDByName(string $name): ?string
+    {
+        foreach (@IPS_GetModuleList() as $guid) {
+            $m = @IPS_GetModule($guid);
+            if (!is_array($m)) { continue; }
+            $names = array_merge([$m['ModuleName'] ?? ''], $m['Aliases'] ?? []);
+            foreach ($names as $n) {
+                if (mb_strtolower((string)$n) === mb_strtolower($name)) { return (string)$guid; }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @return array<int,int>
+     */
+    private function instancesOf(string $moduleName): array
+    {
+        $guid = $this->findModuleGUIDByName($moduleName);
+        return $guid ? @IPS_GetInstanceListByModuleID($guid) : [];
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function cfg(int $id): array
+    {
+        $raw = @IPS_GetConfiguration($id);
+        $data = is_string($raw) ? json_decode($raw, true) : null;
+        return is_array($data) ? $data : [];
+    }
+
+    private function safeSetProperty(int $id, string $prop, $value): bool
+    {
+        $c = $this->cfg($id);
+        if (!array_key_exists($prop, $c)) { return false; }
+        @IPS_SetProperty($id, $prop, $value);
+        return true;
+    }
+
+    private function setFirstAvailableProperty(int $id, array $keys, $value): ?string
+    {
+        foreach ($keys as $k) {
+            if ($this->safeSetProperty($id, $k, $value)) { return (string)$k; }
+        }
+        return null;
+    }
+
+    private function setJsonCompatibleProperty(int $id, string $prop, $arrayValue): bool
+    {
+        $c = $this->cfg($id);
+        if (!array_key_exists($prop, $c)) { return false; }
+        $cur = $c[$prop] ?? null;
+        $val = is_string($cur) ? json_encode($arrayValue, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : $arrayValue;
+        @IPS_SetProperty($id, $prop, $val);
+        return true;
+    }
+
+    private function isInstanceOfModule(int $instanceID, string $moduleName): bool
+    {
+        foreach ($this->instancesOf($moduleName) as $id) { if ($id === $instanceID) { return true; } }
+        return false;
     }
 }
