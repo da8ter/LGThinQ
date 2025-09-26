@@ -16,6 +16,20 @@ class LGThinQConfigurator extends IPSModule
     public function ApplyChanges()
     {
         parent::ApplyChanges();
+        // Best Practice: Avoid heavy work before KR_READY. Re-run on IPS_KERNELSTARTED
+        if (function_exists('IPS_GetKernelRunlevel') && IPS_GetKernelRunlevel() !== KR_READY) {
+            if (method_exists($this, 'RegisterMessage')) {
+                $this->RegisterMessage(0, IPS_KERNELSTARTED);
+            }
+            return;
+        }
+    }
+
+    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
+    {
+        if ($Message === IPS_KERNELSTARTED) {
+            $this->ApplyChanges();
+        }
     }
 
     public function GetConfigurationForm()

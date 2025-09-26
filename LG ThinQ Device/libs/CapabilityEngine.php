@@ -281,10 +281,10 @@ class CapabilityEngine
      */
     public function ensureVariables(array $profile, ?array $status, string $deviceType): void
     {
-        @IPS_LogMessage('CapabilityEngine', sprintf('ensureVariables called with deviceType: %s', $deviceType));
-        @IPS_LogMessage('CapabilityEngine', sprintf('DEBUG: instanceId=%d, profile keys=%s', $this->instanceId, implode(',', array_keys($profile))));
+        //@IPS_LogMessage('CapabilityEngine', sprintf('ensureVariables called with deviceType: %s', $deviceType));
+        //@IPS_LogMessage('CapabilityEngine', sprintf('DEBUG: instanceId=%d, profile keys=%s', $this->instanceId, implode(',', array_keys($profile))));
         $this->loadCapabilities($deviceType, $profile);
-        @IPS_LogMessage('CapabilityEngine', sprintf('Loaded %d capabilities', count($this->caps)));
+        //@IPS_LogMessage('CapabilityEngine', sprintf('Loaded %d capabilities', count($this->caps)));
         
         $flatStatus = is_array($status) ? $this->flatten($status) : [];
         $this->flatStatus = $flatStatus;
@@ -293,17 +293,17 @@ class CapabilityEngine
             $ident = (string)($cap['ident'] ?? '');
             if ($ident === '') continue;
             
-            @IPS_LogMessage('CapabilityEngine', sprintf('Processing capability: %s', $ident));
+            //@IPS_LogMessage('CapabilityEngine', sprintf('Processing capability: %s', $ident));
             
             $should = $this->shouldCreate($cap, $this->flatProfile, $flatStatus);
             $vid = $this->getVarId($ident);
             
-            @IPS_LogMessage('CapabilityEngine', sprintf('Capability %s: should=%s, vid=%d', $ident, $should ? 'true' : 'false', $vid));
+            //@IPS_LogMessage('CapabilityEngine', sprintf('Capability %s: should=%s, vid=%d', $ident, $should ? 'true' : 'false', $vid));
             
             // Create variable if required or if it already exists proceed to action enabling
             if ($vid === 0 && !$should) {
                 // Nothing to do for variables that should not exist and do not exist
-                @IPS_LogMessage('CapabilityEngine', sprintf('Skipping %s: should not exist and does not exist', $ident));
+                //@IPS_LogMessage('CapabilityEngine', sprintf('Skipping %s: should not exist and does not exist', $ident));
                 continue;
             }
             // Ensure variable exists
@@ -320,7 +320,7 @@ class CapabilityEngine
                 IPS_SetParent($vid, $this->instanceId);
                 IPS_SetIdent($vid, $ident);
                 IPS_SetName($vid, $name);
-                @IPS_LogMessage('CapabilityEngine', sprintf('Created variable %s with VID: %d', $ident, $vid));
+                //@IPS_LogMessage('CapabilityEngine', sprintf('Created variable %s with VID: %d', $ident, $vid));
             }
             // Hidden
             $hidden = (bool)($cap['visibility']['hidden'] ?? false);
@@ -328,26 +328,26 @@ class CapabilityEngine
             
             // EnableAction: always, profile writeable, or fallback when a write mapping exists
             $enableWhen = strtolower((string)($cap['action']['enableWhen'] ?? ''));
-            @IPS_LogMessage('CapabilityEngine', sprintf('Capability %s: enableWhen=%s', $ident, $enableWhen));
+            //@IPS_LogMessage('CapabilityEngine', sprintf('Capability %s: enableWhen=%s', $ident, $enableWhen));
             
             if ($enableWhen === 'always') {
-                @IPS_LogMessage('CapabilityEngine', sprintf('Enabling action for %s (always)', $ident));
+                //@IPS_LogMessage('CapabilityEngine', sprintf('Enabling action for %s (always)', $ident));
                 $this->enableAction($ident);
             } elseif ($enableWhen === 'profilewriteableany') {
                 $writeKeys = $cap['action']['writeableKeys'] ?? [];
                 $hasWrite = is_array($writeKeys) && $this->profileHasWriteAny($writeKeys);
-                @IPS_LogMessage('CapabilityEngine', sprintf('Capability %s: hasWrite=%s, writeKeys=%s', $ident, $hasWrite ? 'true' : 'false', json_encode($writeKeys)));
+                //@IPS_LogMessage('CapabilityEngine', sprintf('Capability %s: hasWrite=%s, writeKeys=%s', $ident, $hasWrite ? 'true' : 'false', json_encode($writeKeys)));
                 
                 if ($hasWrite) {
-                    @IPS_LogMessage('CapabilityEngine', sprintf('Enabling action for %s (profile writeable)', $ident));
+                    //@IPS_LogMessage('CapabilityEngine', sprintf('Enabling action for %s (profile writeable)', $ident));
                     $this->enableAction($ident);
                 } else {
                     // Fallback: if the capability defines a write mapping, still enable action
                     if ($this->capHasWriteDefinition($cap)) {
-                        @IPS_LogMessage('CapabilityEngine', sprintf('Enabling action for %s (fallback - has write definition)', $ident));
+                        //@IPS_LogMessage('CapabilityEngine', sprintf('Enabling action for %s (fallback - has write definition)', $ident));
                         $this->enableAction($ident);
                     } else {
-                        @IPS_LogMessage('CapabilityEngine', sprintf('NOT enabling action for %s (no write definition)', $ident));
+                        //@IPS_LogMessage('CapabilityEngine', sprintf('NOT enabling action for %s (no write definition)', $ident));
                     }
                 }
             } else {
@@ -598,7 +598,7 @@ class CapabilityEngine
                 if (isset($opt['template']) && is_array($opt['template'])) {
                     $converted = $this->convertValueForType($cap, $value);
                     $out = $this->replaceTemplatePlaceholders($opt['template'], $converted);
-                    @IPS_LogMessage('CapabilityEngine', sprintf('firstOf: using template for ident=%s with keys=%s', (string)($cap['ident'] ?? ''), implode(',', array_keys($opt['template']))));
+                    //@IPS_LogMessage('CapabilityEngine', sprintf('firstOf: using template for ident=%s with keys=%s', (string)($cap['ident'] ?? ''), implode(',', array_keys($opt['template']))));
                     return $out;
                 }
                 // Support enumMap within firstOf (optional)
@@ -610,7 +610,7 @@ class CapabilityEngine
                         foreach ($map[$key] as $path => $v) {
                             $this->setByPath($out, (string)$path, $v);
                         }
-                        @IPS_LogMessage('CapabilityEngine', sprintf('firstOf: using enumMap for ident=%s on paths=%s', (string)($cap['ident'] ?? ''), implode(',', array_keys($map[$key]))));
+                        //@IPS_LogMessage('CapabilityEngine', sprintf('firstOf: using enumMap for ident=%s on paths=%s', (string)($cap['ident'] ?? ''), implode(',', array_keys($map[$key]))));
                         return $out;
                     }
                 }
@@ -628,7 +628,7 @@ class CapabilityEngine
                         $out = [];
                         if ($t0 !== '') $this->setByPath($out, $t0, $h);
                         if ($t1 !== '') $this->setByPath($out, $t1, $m);
-                        @IPS_LogMessage('CapabilityEngine', sprintf('firstOf: using composite(minutes_to_hm) for ident=%s targets=%s,%s', (string)($cap['ident'] ?? ''), $t0, $t1));
+                        //@IPS_LogMessage('CapabilityEngine', sprintf('firstOf: using composite(minutes_to_hm) for ident=%s targets=%s,%s', (string)($cap['ident'] ?? ''), $t0, $t1));
                         return $out;
                     }
                 }

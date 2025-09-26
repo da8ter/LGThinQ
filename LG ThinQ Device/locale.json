@@ -111,6 +111,10 @@
       "Temperature control not possible in mode": "Temperature control not possible in mode",
       "Unknown action": "Unknown action",
 
+      "Info": "Info",
+      "Status": "Status",
+      "Error creating support package": "Error creating support package",
+
       "An": "On",
       "Aus": "Off",
       "Offen": "Open",
@@ -287,6 +291,10 @@
       "Temperature control not possible: device is POWER_OFF": "Temperatursteuerung nicht möglich: Gerät ist POWER_OFF",
       "Temperature control not possible in mode": "Temperatursteuerung im Modus",
       "Unknown action": "Unbekannte Aktion"
+      ,
+      "Info": "Info",
+      "Status": "Status",
+      "Error creating support package": "Fehler beim Erstellen des Support-Pakets"
     }
   }
 }

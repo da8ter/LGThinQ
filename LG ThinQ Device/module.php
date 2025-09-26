@@ -39,6 +39,13 @@ class LGThinQDevice extends IPSModule
     public function ApplyChanges()
     {
         parent::ApplyChanges();
+        // Best Practice: Avoid heavy work before KR_READY. Re-run on IPS_KERNELSTARTED
+        if ($this->isKernelReady() === false) {
+            if (method_exists($this, 'RegisterMessage')) {
+                $this->RegisterMessage(0, IPS_KERNELSTARTED);
+            }
+            return;
+        }
 
         $alias = trim((string)$this->ReadPropertyString('Alias'));
         if ($alias !== '' && IPS_GetName($this->InstanceID) !== $alias) {
@@ -113,6 +120,18 @@ class LGThinQDevice extends IPSModule
         }
 
         $this->updateReferences();
+    }
+
+    private function isKernelReady(): bool
+    {
+        return function_exists('IPS_GetKernelRunlevel') ? (IPS_GetKernelRunlevel() === KR_READY) : true;
+    }
+
+    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
+    {
+        if ($Message === IPS_KERNELSTARTED) {
+            $this->ApplyChanges();
+        }
     }
 
     public function UpdateStatus(): void
@@ -1015,7 +1034,7 @@ class LGThinQDevice extends IPSModule
             return 'data:application/zip;base64,' . base64_encode($zipData);
         } catch (\Throwable $e) {
             $this->SendDebug('UIExportSupportBundle', $e->getMessage(), 0);
-            return 'data:text/plain,' . rawurlencode('Fehler beim Erstellen des Support-Pakets: ' . $e->getMessage());
+            return 'data:text/plain,' . rawurlencode($this->t('Error creating support package') . ': ' . $e->getMessage());
         }
     }
 

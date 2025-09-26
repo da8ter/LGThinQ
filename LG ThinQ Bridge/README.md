@@ -1,110 +1,66 @@
-# LG ThinQ
-Beschreibung des Moduls.
+# LG ThinQ Bridge
 
-### Inhaltsverzeichnis
+Die `LG ThinQ Bridge` stellt die Verbindung zwischen IP‑Symcon und der LG ThinQ Cloud her. Sie authentifiziert sich über einen Personal Access Token (PAT), ruft Geräte/Status/Profile ab und leitet Steuerbefehle weiter. Optional richtet sie eine MQTT‑/Event‑Anbindung ein, um Gerätestatus nahezu in Echtzeit zu empfangen.
 
-1. [Funktionsumfang](#1-funktionsumfang)
-2. [Voraussetzungen](#2-voraussetzungen)
-3. [Software-Installation](#3-software-installation)
-4. [Einrichten der Instanzen in IP-Symcon](#4-einrichten-der-instanzen-in-ip-symcon)
-5. [Statusvariablen und Profile](#5-statusvariablen-und-profile)
-6. [WebFront](#6-webfront)
-7. [PHP-Befehlsreferenz](#7-php-befehlsreferenz)
+## Funktionsumfang
+- **PAT‑basierte Cloud‑Anbindung** zur LG ThinQ API
+- **Geräteverwaltung**: Abrufen der Geräteliste, Profile und Statusdaten
+- **Steuerung**: Weitergabe von Befehlen (Control) an Geräte
+- **Ereignisse**: MQTT/Event‑Route, Client‑Zertifikatserzeugung und automatische Subscriptions
 
-### 1. Funktionsumfang
+## Voraussetzungen
+- IP‑Symcon ab Version 7.1
+- LG‑Konto und ein gültiger Personal Access Token (PAT)
+  - PAT erstellen: https://connect-pat.lgthinq.com
 
-* Cloud-Anbindung an LG ThinQ Connect API mittels Personal Access Token (PAT)
-* Abruf der Geräte-Liste und Anlage eines Gerätebaums unterhalb der Instanz
-* Abfrage des Gerätestatus (zyklisches Polling mit einstellbarem Intervall)
-* API-Funktionen für Status, Profile, Steuerung (Control) und Energiedaten
-* Debug-Logging optional aktivierbar
+## Installation
+- Über den Module Store „LG ThinQ“ installieren oder via Module Control hinzufügen.
 
-### 2. Voraussetzungen
+## Einrichtung (Konfiguration)
+Name | Beschreibung
+---- | -----------
+Personal Access Token (PAT) | Pflichtfeld. Wird in der Bridge hinterlegt.
+Country Code | Zweistelliger Ländercode (z. B. DE, US). Bestimmt die Region der API.
+Client ID | Client‑Kennung; automatisch erzeugt.
 
-- IP-Symcon ab Version 7.1
-- LG ThinQ Account und ein Personal Access Token (PAT)
-  - Siehe Home Assistant Anleitung: https://www.home-assistant.io/integrations/lg_thinq/
-  - PAT: https://connect-pat.lgthinq.com
+## Aktionen (Konfig‑Seite)
+- **MQTT Verbindung einrichten**: Erstellt/erneuert Client‑Zertifikate, ermittelt Broker‑Route und richtet das Event‑Routing ein. Erzeugt einen MQTT Client und Client Socket.
+- **Verbindung testen**: Prüft die Erreichbarkeit der Cloud‑API mit dem hinterlegten PAT/Region.
+- **Geräte synchronisieren**: Lädt die Geräteliste und synchronisiert bekannte Geräte.
+- **Jetzt aktualisieren**: Führt sofortige Aktualisierungen (z. B. Status/Profile) durch.
+- **Alle bekannten Geräte abonnieren**: Abonniert Ereignisse für alle bekannten Geräte.
+- **Alle bekannten Geräte abmelden**: Beendet alle Abonnements.
 
-### 3. Software-Installation
+## Zusammenspiel mit anderen Modulen
+- Der **LG ThinQ Configurator** nutzt die Bridge, um Geräte zu finden und `LG ThinQ Device`‑Instanzen anzulegen.
+- Jedes **LG ThinQ Device** hängt als Kind an der Bridge, erhält Status/Ereignisse und sendet Steuerbefehle über sie.
 
-* Über den Module Store das 'LG ThinQ'-Modul installieren.
-* Alternativ über das Module Control folgende URL hinzufügen
+## PHP‑Befehlsreferenz (Auszug)
+Alle Funktionen werden mit dem Präfix `LGTQ_` bereitgestellt (Bridge‑Instanz als Ziel):
 
-### 4. Einrichten der Instanzen in IP-Symcon
-
- Unter 'Instanz hinzufügen' kann das 'LG ThinQ'-Modul mithilfe des Schnellfilters gefunden werden.  
-	- Weitere Informationen zum Hinzufügen von Instanzen in der [Dokumentation der Instanzen](https://www.symcon.de/service/dokumentation/konzepte/instanzen/#Instanz_hinzufügen)
-
-__Konfigurationsseite__:
-
-Name              | Beschreibung
------------------ | ------------------
-PAT               | Personal Access Token (Pflichtfeld)
-Country Code      | Zweistelliger ISO-Code, z.B. DE, US, GB
-Client ID         | Wird bei leerem Feld automatisch als UUID generiert
-Polling-Intervall | Aktualisierungsintervall in Sekunden (0 = deaktiviert)
-Debug             | Ausführliches Debug-Logging aktivieren
-
-__Aktionen__:
-
-* Verbindung testen – prüft API-Erreichbarkeit und PAT/Country-Einstellungen
-* Geräte synchronisieren – lädt Geräte-Liste und legt Gerätebaum an
-* Jetzt aktualisieren – aktualisiert Statuswerte aller bekannten Geräte
-
-### 5. Statusvariablen und Profile
-
-Die Statusvariablen/Kategorien werden automatisch angelegt. Das Löschen einzelner kann zu Fehlfunktionen führen.
-
-#### Statusvariablen
-
-Name           | Typ     | Beschreibung
--------------- | ------- | ------------
-Info           | String  | Geräte-Metadaten aus der LG ThinQ API
-Status         | String  | Gerätestatus (Rohdaten JSON)
-Letzte Aktualisierung | Integer | UnixTimestamp der letzten Status-Abfrage
-
-#### Profile
-
-Name   | Typ
------- | -------
-       |
-       |
-
-### 6. Visualisierung
-
-Die Funktionalität, die das Modul in der Visualisierung bietet.
-
-### 7. PHP-Befehlsreferenz
-
-Alle Funktionen werden mit dem Präfix `LGTQ_` bereitgestellt.
-
-```
+```php
 string LGTQ_GetDevices(int $InstanzID)
 ```
-Gibt die Liste der Geräte als JSON-String zurück.
+Gibt die Liste der Geräte als JSON zurück.
 
-```
+```php
 string LGTQ_GetDeviceStatus(int $InstanzID, string $DeviceID)
 ```
-Ruft den Status eines Gerätes ab und gibt ihn als JSON-String zurück.
+Ruft den Status eines Gerätes ab.
 
-```
+```php
 string LGTQ_GetDeviceProfile(int $InstanzID, string $DeviceID)
 ```
-Ruft das Profil eines Gerätes ab und gibt es als JSON-String zurück.
+Ruft das Geräteprofil ab.
 
-```
+```php
 bool LGTQ_ControlDevice(int $InstanzID, string $DeviceID, string $JSONPayload)
 ```
-Sendet einen Control-Befehl an ein Gerät. Das Payload muss ein gültiges JSON im Format der LG API sein.
+Sendet einen Steuerbefehl (Control) an das angegebene Gerät.
 
-```
-string LGTQ_GetEnergyUsage(int $InstanzID, string $DeviceID, string $Property, string $Period, string $StartDate, string $EndDate)
-```
-Ruft Energiedaten für ein Gerät ab. Period z.B. `DAY`, `WEEK`, `MONTH`.
 
-Beispiel:
-```
-$devices = LGTQ_GetDevices(12345);
-echo $devices;
+## Schnellstart
+1. Bridge‑Instanz anlegen, **PAT** eintragen, Verbindung testen.
+2. „MQTT Verbindung einrichten“ aktivieren.
+3. Mit dem **LG ThinQ Configurator** Geräte suchen und als `LG ThinQ Device` anlegen.
+4. In den Device‑Instanzen erscheinen Variablen und Aktionen gemäß Gerät/Capabilities.

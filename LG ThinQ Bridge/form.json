@@ -3,22 +3,21 @@
         { "type": "Label", "label": "LG ThinQ Cloud Connection (PAT-based)" },
         { "type": "ValidationTextBox", "name": "AccessToken", "caption": "Personal Access Token (PAT)", "width": "600px" },
         { "type": "Label", "label": "Hint: Create a PAT at https://connect-pat.lgthinq.com." },
-        { "type": "ValidationTextBox", "enabled": false, "name": "CountryCode", "caption": "Country Code (e.g., DE, US)", "width": "120px" },
+        { "type": "ValidationTextBox", "enabled": false, "name": "CountryCode", "caption": "Country Code (e.g., DE, US)", "width": "150px" },
 
 
-        { "type": "Label", "label": "MQTT Push (Symcon MQTT Client)", "visible": true },
         { "type": "ValidationTextBox", "enabled": false, "name": "ClientID", "caption": "Client ID (CN for certificate)", "width": "400px", "placeholder": "leave empty to auto-generate / inherit" },
-        { "type": "CheckBox", "enabled": false, "name": "UseMQTT", "caption": "Use MQTT for events", "visible": true },
+        { "type": "CheckBox", "enabled": false, "name": "UseMQTT", "caption": "Use MQTT for events", "visible": false },
         
-        { "type": "ValidationTextBox", "enabled": false, "name": "MQTTTopicFilter", "caption": "Topic filter", "width": "600px", "placeholder": "app/clients/*/#" },
-        { "type": "CheckBox", "enabled": false, "name": "IgnoreRetained", "caption": "Ignore retained MQTT messages", "visible": true },
+        { "type": "ValidationTextBox", "enabled": false, "name": "MQTTTopicFilter", "caption": "Topic filter", "visible": false, "width": "600px", "placeholder": "app/clients/*/#" },
+        { "type": "CheckBox", "enabled": false, "name": "IgnoreRetained", "caption": "Ignore retained MQTT messages", "visible": false },
 
-        { "type": "Label", "label": "Event API (Auto-Renew)" },
-        { "type": "NumberSpinner", "name": "EventTTLHrs", "caption": "Event subscription TTL (hours)", "minimum": 1, "maximum": 24, "suffix": "h" },
-        { "type": "NumberSpinner", "name": "EventRenewLeadMin", "caption": "Renew before expiry (minutes)", "minimum": 1, "maximum": 59, "suffix": "min" },
+        { "type": "Label", "label": "Event API (Auto-Renew)", "visible": false },
+        { "type": "NumberSpinner", "name": "EventTTLHrs", "caption": "Event subscription TTL (hours)", "minimum": 1, "maximum": 24, "suffix": "h", "visible": false },
+        { "type": "NumberSpinner", "name": "EventRenewLeadMin", "caption": "Renew before expiry (minutes)", "minimum": 1, "maximum": 59, "suffix": "min", "visible": false },
 
-        { "type": "Label", "label": "Diagnostics" },
-        { "type": "CheckBox", "name": "Debug", "caption": "Debug logging" }
+        { "type": "Label", "label": "Diagnostics", "visible": false },
+        { "type": "CheckBox", "name": "Debug", "caption": "Debug logging", "visible": false }
 
     ],
     "actions": [

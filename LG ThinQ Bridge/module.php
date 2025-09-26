@@ -26,6 +26,16 @@ class LGThinQBridge extends IPSModule
     private ?ThinQEventPipeline $eventPipeline = null;
     private ?ThinQMqttRouter $mqttRouter = null;
 
+    private function t(string $text): string
+    {
+        return method_exists($this, 'Translate') ? $this->Translate($text) : $text;
+    }
+
+    private function isKernelReady(): bool
+    {
+        return function_exists('IPS_GetKernelRunlevel') ? (IPS_GetKernelRunlevel() === KR_READY) : true;
+    }
+
     public function Create()
     {
         parent::Create();
@@ -42,6 +52,7 @@ class LGThinQBridge extends IPSModule
         $this->RegisterPropertyInteger('EventRenewLeadMin', 5);
 
         $this->RegisterAttributeString('ClientID', '');
+        $this->RegisterAttributeString('AccessTokenBackup', '');
         $this->RegisterAttributeString('Devices', '[]');
         $this->RegisterAttributeString('EventSubscriptions', '{}');
         $this->RegisterTimer('EventRenewTimer', 0, 'LGTQ_RenewEvents($_IPS[\'TARGET\']);');
@@ -56,14 +67,17 @@ class LGThinQBridge extends IPSModule
             }
             $cid = 'Symcon' . $rand5;
             $this->WriteAttributeString('ClientID', $cid);
-            @IPS_SetProperty($this->InstanceID, 'ClientID', $cid);
-            // Persist immediately so the configuration UI can display it
-            @IPS_ApplyChanges($this->InstanceID);
+            $okProp = IPS_SetProperty($this->InstanceID, 'ClientID', $cid);
+            if (!$okProp) {
+                $this->SendDebug('Create', 'Failed to set default ClientID property', 0);
+            }
+            // (removed) Avoid ApplyChanges during Create to prevent state mutation loops
             // Also set a concrete default MQTT topic filter using the generated ClientID
             $curFilter = trim((string)$this->ReadPropertyString('MQTTTopicFilter'));
             if ($curFilter === '' || $curFilter === 'app/clients/{ClientID}/push' || $curFilter === 'app/clients/*/#' || $curFilter === 'app/clients/*/push') {
-                @IPS_SetProperty($this->InstanceID, 'MQTTTopicFilter', 'app/clients/' . $cid . '/push');
-                @IPS_ApplyChanges($this->InstanceID);
+                $okProp2 = IPS_SetProperty($this->InstanceID, 'MQTTTopicFilter', 'app/clients/' . $cid . '/push');
+                if (!$okProp2) { $this->SendDebug('Create', 'Failed to set default MQTTTopicFilter', 0); }
+                // (removed) Avoid ApplyChanges during Create to prevent state mutation loops
             }
         }
     }
@@ -71,6 +85,15 @@ class LGThinQBridge extends IPSModule
     public function ApplyChanges()
     {
         parent::ApplyChanges();
+        // Best Practice: Avoid heavy work before KR_READY. Re-run on IPS_KERNELSTARTED
+        if (!$this->isKernelReady()) {
+            if (method_exists($this, 'RegisterMessage')) {
+                $this->RegisterMessage(0, IPS_KERNELSTARTED);
+            }
+            return;
+        }
+        // Ensure PAT survives module reloads (restore from backup if property got cleared)
+        $this->ensureAccessTokenPersistence();
         $this->bootServices();
 
         $errors = $this->config->validate();
@@ -91,6 +114,14 @@ class LGThinQBridge extends IPSModule
         }
     }
 
+    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
+    {
+        if ($Message === IPS_KERNELSTARTED) {
+            // Kernel is ready now. Apply changes again to finish initialization
+            $this->ApplyChanges();
+        }
+    }
+
     public function GetConfigurationForm(): string
     {
         $json = @file_get_contents(__DIR__ . '/form.json');
@@ -101,54 +132,55 @@ class LGThinQBridge extends IPSModule
         if (!is_array($form)) {
             return $json;
         }
+        // Do not mutate properties during form generation; only read current values
 
         $propClientId = trim((string)$this->ReadPropertyString('ClientID'));
         $attrClientId = trim((string)$this->ReadAttributeString('ClientID'));
         $effectiveId = $propClientId !== '' ? $propClientId : $attrClientId;
-        // Ensure property is populated so the bound field shows a value
+        // For display only: if nothing set, show a generated default (do not persist here)
         if ($effectiveId === '') {
-            // Generate first-install default 'Symcon#####'
             try {
                 $rand5 = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
             } catch (\Throwable $e) {
                 $rand5 = str_pad((string)mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
             }
             $effectiveId = 'Symcon' . $rand5;
-            $this->WriteAttributeString('ClientID', $effectiveId);
-            @IPS_SetProperty($this->InstanceID, 'ClientID', $effectiveId);
-            // Persist so it's available as property value on next open
-            @IPS_ApplyChanges($this->InstanceID);
-        } elseif ($propClientId === '' && $attrClientId !== '') {
-            // Mirror attribute into property for display
-            @IPS_SetProperty($this->InstanceID, 'ClientID', $attrClientId);
-            @IPS_ApplyChanges($this->InstanceID);
         }
 
         if (isset($form['elements']) && is_array($form['elements'])) {
             foreach ($form['elements'] as &$el) {
-                if (is_array($el) && isset($el['name']) && $el['name'] === 'ClientID') {
+                if (!is_array($el) || !isset($el['name'])) { continue; }
+                if ($el['name'] === 'ClientID') {
                     $el['value'] = $effectiveId;
+                } elseif ($el['name'] === 'AccessToken') {
+                    // Keep PAT visible after module reload
+                    $el['value'] = (string)$this->ReadPropertyString('AccessToken');
+                } elseif ($el['name'] === 'CountryCode') {
+                    $el['value'] = (string)$this->ReadPropertyString('CountryCode');
                 }
             }
             unset($el);
-            // Insert an info label right after the ClientID field to show the effective ID immediately
-            $idxClient = null;
-            foreach ($form['elements'] as $i => $el2) {
-                if (is_array($el2) && isset($el2['name']) && $el2['name'] === 'ClientID') {
-                    $idxClient = $i;
-                    break;
-                }
-            }
-            if ($idxClient !== null) {
-                $labelEl = [
-                    'type'  => 'Label',
-                    'label' => 'Aktuelle effektive Client ID: ' . $effectiveId
-                ];
-                array_splice($form['elements'], $idxClient + 1, 0, [$labelEl]);
-            }
         }
 
         return json_encode($form, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * Restore AccessToken (PAT) from attribute backup if the property is empty (e.g., after module reload),
+     * and keep the attribute in sync when the property is set.
+     */
+    private function ensureAccessTokenPersistence(): void
+    {
+        try {
+            $prop = (string)@($this->ReadPropertyString('AccessToken'));
+            $attr = (string)@($this->ReadAttributeString('AccessTokenBackup'));
+            // Only keep backup attribute in sync; do not modify properties here
+            if ($prop !== '' && $attr !== $prop) {
+                $this->WriteAttributeString('AccessTokenBackup', $prop);
+            }
+        } catch (\Throwable $e) {
+            // Do not log secrets; just ignore
+        }
     }
 
     public function ForwardData($JSONString)
@@ -245,14 +277,14 @@ class LGThinQBridge extends IPSModule
         try {
             $devices = $this->fetchDevices();
             $count = count($devices);
-            $this->NotifyUser('Verbindung OK. Geräte: ' . $count);
+            $this->NotifyUser($this->t('Verbindung OK. Geräte') . ': ' . $count);
             $this->SetStatus(102);
-            echo 'Verbindung OK. Geräte: ' . $count;
+            echo $this->t('Verbindung OK. Geräte') . ': ' . $count;
         } catch (Throwable $e) {
             $this->SetStatus(104);
             $this->SendDebug('TestConnection', $e->getMessage(), 0);
-            $this->NotifyUser('Verbindung fehlgeschlagen: ' . $e->getMessage());
-            echo 'Verbindung fehlgeschlagen: ' . $e->getMessage();
+            $this->NotifyUser($this->t('Verbindung fehlgeschlagen') . ': ' . $e->getMessage());
+            echo $this->t('Verbindung fehlgeschlagen') . ': ' . $e->getMessage();
         }
     }
 
@@ -262,10 +294,10 @@ class LGThinQBridge extends IPSModule
         try {
             $devices = $this->fetchDevices();
             $this->deviceRepository->saveAll($devices);
-            $this->NotifyUser('Geräteliste aktualisiert: ' . count($devices) . ' Geräte.');
+            $this->NotifyUser($this->t('Geräteliste aktualisiert') . ': ' . count($devices) . ' ' . $this->t('Geräte') . '.');
         } catch (Throwable $e) {
             $this->SendDebug('SyncDevices', $e->getMessage(), 0);
-            $this->NotifyUser('Sync fehlgeschlagen: ' . $e->getMessage());
+            $this->NotifyUser($this->t('Sync fehlgeschlagen') . ': ' . $e->getMessage());
         }
     }
 
@@ -305,10 +337,10 @@ class LGThinQBridge extends IPSModule
                 $this->SendDebug('SubscribeAll Push', $e->getMessage(), 0);
             }
 
-            $this->NotifyUser(sprintf('SubscribeAll: %d/%d Geräte abonniert', $ok, $total));
+            $this->NotifyUser(sprintf($this->t('SubscribeAll: %d/%d Geräte abonniert'), $ok, $total));
         } catch (Throwable $e) {
             $this->SendDebug('SubscribeAll', $e->getMessage(), 0);
-            $this->NotifyUser('SubscribeAll fehlgeschlagen: ' . $e->getMessage());
+            $this->NotifyUser($this->t('SubscribeAll fehlgeschlagen') . ': ' . $e->getMessage());
         }
     }
 
@@ -341,10 +373,10 @@ class LGThinQBridge extends IPSModule
                 $this->SendDebug('UnsubscribeAll Push', $e->getMessage(), 0);
             }
             $this->subscriptionRepository->saveAll([]);
-            $this->NotifyUser(sprintf('UnsubscribeAll: %d/%d Geräte abgemeldet', $ok, $total));
+            $this->NotifyUser(sprintf($this->t('UnsubscribeAll: %d/%d Geräte abgemeldet'), $ok, $total));
         } catch (Throwable $e) {
             $this->SendDebug('UnsubscribeAll', $e->getMessage(), 0);
-            $this->NotifyUser('UnsubscribeAll fehlgeschlagen: ' . $e->getMessage());
+            $this->NotifyUser($this->t('UnsubscribeAll fehlgeschlagen') . ': ' . $e->getMessage());
         }
     }
 
@@ -363,10 +395,10 @@ class LGThinQBridge extends IPSModule
                     $ok++;
                 }
             }
-            $this->NotifyUser(sprintf('RenewAll: %d/%d Event-Abos erneuert', $ok, $total));
+            $this->NotifyUser(sprintf($this->t('RenewAll: %d/%d Event-Abos erneuert'), $ok, $total));
         } catch (Throwable $e) {
             $this->SendDebug('RenewAll', $e->getMessage(), 0);
-            $this->NotifyUser('RenewAll fehlgeschlagen: ' . $e->getMessage());
+            $this->NotifyUser($this->t('RenewAll fehlgeschlagen') . ': ' . $e->getMessage());
         }
     }
 
@@ -531,7 +563,6 @@ class LGThinQBridge extends IPSModule
             }
             $clientId = 'Symcon' . $rand5;
             $this->WriteAttributeString('ClientID', $clientId);
-            @IPS_SetProperty($this->InstanceID, 'ClientID', $clientId);
         } elseif ($clientIdProperty !== '' && $clientIdProperty !== $clientIdAttr) {
             $this->WriteAttributeString('ClientID', $clientIdProperty);
             $clientId = $clientIdProperty;
@@ -541,12 +572,11 @@ class LGThinQBridge extends IPSModule
         $instInfo = @IPS_GetInstance($this->InstanceID);
         $parentId = is_array($instInfo) ? (int)($instInfo['ConnectionID'] ?? 0) : 0;
         if ($parentId > 0) {
-            $parentClientId = trim((string)@IPS_GetProperty($parentId, 'ClientID'));
+            $parentClientId = trim((string)IPS_GetProperty($parentId, 'ClientID'));
             if ($parentClientId !== '') {
                 if ($clientId !== $parentClientId) {
-                    // Update attribute and property to reflect parent ClientID so the form shows the effective value
+                    // Reflect parent ClientID via attribute only; avoid mutating properties here
                     $this->WriteAttributeString('ClientID', $parentClientId);
-                    @IPS_SetProperty($this->InstanceID, 'ClientID', $parentClientId);
                     $clientId = $parentClientId;
                 }
             }
@@ -731,14 +761,14 @@ class LGThinQBridge extends IPSModule
             return 'data:application/zip;base64,' . base64_encode($zipData);
         } catch (\Throwable $e) {
             $this->SendDebug('UIGenerateMQTTClientCerts', $e->getMessage(), 0);
-            return 'data:text/plain,' . rawurlencode('Fehler beim Erstellen der Zertifikate: ' . $e->getMessage());
+            return 'data:text/plain,' . rawurlencode($this->t('Error generating certificates') . ': ' . $e->getMessage());
         }
     }
 
     private function buildMQTTClientCertsZip(): string
     {
         if (!function_exists('openssl_pkey_new')) {
-            throw new \RuntimeException('OpenSSL wird nicht unterstützt (openssl_* Funktionen fehlen)');
+            throw new \RuntimeException($this->t('OpenSSL is not supported (openssl_* functions missing)'));
         }
 
         $clientId = trim((string)$this->ReadAttributeString('ClientID'));
@@ -800,7 +830,7 @@ class LGThinQBridge extends IPSModule
         $strCONFIG .= 'authorityKeyIdentifier = keyid' . $nl;
         $cfgHandle = fopen($cfgPath, 'w');
         if ($cfgHandle === false) {
-            throw new \RuntimeException('Konnte temporäre OpenSSL-Konfiguration nicht erstellen');
+            throw new \RuntimeException($this->t('Failed to create temporary OpenSSL configuration'));
         }
         fwrite($cfgHandle, $strCONFIG);
         fclose($cfgHandle);
@@ -831,16 +861,16 @@ class LGThinQBridge extends IPSModule
             $pkGenerate = openssl_pkey_new($configKey);
         }
         if ($pkGenerate === false) {
-            throw new \RuntimeException('openssl_pkey_new fehlgeschlagen');
+            throw new \RuntimeException($this->t('openssl_pkey_new failed'));
         }
 
         $pkPrivate = '';
         if (!openssl_pkey_export($pkGenerate, $pkPrivate, null, $config)) { // unverschlüsselt
-            throw new \RuntimeException('openssl_pkey_export fehlgeschlagen');
+            throw new \RuntimeException($this->t('openssl_pkey_export failed'));
         }
         $pkDetails = openssl_pkey_get_details($pkGenerate);
         if ($pkDetails === false || !isset($pkDetails['key'])) {
-            throw new \RuntimeException('openssl_pkey_get_details fehlgeschlagen');
+            throw new \RuntimeException($this->t('openssl_pkey_get_details failed'));
         }
         $pkPublic = (string)$pkDetails['key'];
         if ((bool)$this->ReadPropertyBoolean('Debug')) {
@@ -878,7 +908,7 @@ class LGThinQBridge extends IPSModule
 
             $cfgHandle2 = fopen($cfgPath, 'w');
             if ($cfgHandle2 === false) {
-                throw new \RuntimeException('Konnte temporäre OpenSSL-Konfiguration (Fallback) nicht erstellen');
+                throw new \RuntimeException($this->t('Failed to create temporary OpenSSL configuration (fallback)'));
             }
             fwrite($cfgHandle2, $strCONFIG2);
             fclose($cfgHandle2);
@@ -889,7 +919,7 @@ class LGThinQBridge extends IPSModule
             ];
             $csr = openssl_csr_new($dn, $pkGenerate, $config2);
             if ($csr === false) {
-                throw new \RuntimeException('openssl_csr_new fehlgeschlagen');
+                throw new \RuntimeException($this->t('openssl_csr_new failed'));
             }
             // Use config2 for signing as well
             $config = $config2;
@@ -969,7 +999,7 @@ class LGThinQBridge extends IPSModule
 
         // Require LG-signed certificate; no self-signed fallback
         if ($lgCertOut === '') {
-            throw new \RuntimeException('LG certificate request returned no certificatePem');
+            throw new \RuntimeException($this->t('LG certificate request returned no certificatePem'));
         }
         $certOut = $lgCertOut;
         $csrOut = '';
@@ -1004,11 +1034,11 @@ class LGThinQBridge extends IPSModule
         $zip = new \ZipArchive();
         $tmpZip = tempnam(sys_get_temp_dir(), 'lgtq_mqtt_' . $this->InstanceID . '_' . bin2hex(random_bytes(4)) . '.cnf');
         if ($tmpZip === false) {
-            throw new \RuntimeException('Konnte temporäre ZIP-Datei nicht erstellen');
+            throw new \RuntimeException($this->t('Failed to create temporary ZIP file'));
         }
         if ($zip->open($tmpZip, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             @unlink($tmpZip);
-            throw new \RuntimeException('Konnte ZIP nicht öffnen');
+            throw new \RuntimeException($this->t('Failed to open ZIP'));
         }
 
         // 00_meta.json
@@ -1050,7 +1080,7 @@ class LGThinQBridge extends IPSModule
         $data = file_get_contents($tmpZip);
         @unlink($tmpZip);
         if ($data === false) {
-            throw new \RuntimeException('Konnte ZIP-Inhalt nicht lesen');
+            throw new \RuntimeException($this->t('Failed to read ZIP content'));
         }
         @unlink($cfgPath);
         return $data;
@@ -1088,7 +1118,7 @@ class LGThinQBridge extends IPSModule
             $VERIFY_HOST = true;
 
             if ($HOST === '') {
-                throw new \RuntimeException('Broker-Host konnte nicht aus den API-Daten ermittelt werden.');
+                throw new \RuntimeException($this->t('Broker host could not be determined from API data.'));
             }
             if ($PORT <= 0) {
                 $PORT = $USE_TLS ? 8883 : 1883;
@@ -1112,7 +1142,7 @@ class LGThinQBridge extends IPSModule
             // 0) DNS check to avoid host-not-found later
             $ip = @gethostbyname($HOST);
             if ($ip === $HOST && !filter_var($HOST, FILTER_VALIDATE_IP)) {
-                throw new \RuntimeException("Hostname '$HOST' kann nicht aufgelöst werden.");
+                throw new \RuntimeException(sprintf($this->t("Hostname '%s' could not be resolved."), $HOST));
             }
 
             // 4) Create or reuse MQTT Client instance
@@ -1120,17 +1150,38 @@ class LGThinQBridge extends IPSModule
             $NAME_IO   = 'LGThinQ MQTT Client Socket (' . $HOST . ')';
             $mqttGUID = $this->findModuleGUIDByName('MQTT Client');
             if ($mqttGUID === null) {
-                throw new \RuntimeException("Modul 'MQTT Client' nicht gefunden.");
+                throw new \RuntimeException($this->t("Module 'MQTT Client' not found."));
             }
             $mqttID = 0;
-            foreach ($this->instancesOf('MQTT Client') as $id) {
-                if (@IPS_GetName($id) === $NAME_MQTT) { $mqttID = $id; break; }
-                $c = $this->cfg($id);
-                if ($subjectCN !== '' && (($c['ClientID'] ?? null) === $subjectCN)) { $mqttID = $id; break; }
+            // Prefer configured property if it points to a valid MQTT Client instance
+            $propMqttId = (int)$this->ReadPropertyInteger('MQTTClientID');
+            if ($propMqttId > 0 && @IPS_InstanceExists($propMqttId)) {
+                $info = @IPS_GetInstance($propMqttId);
+                if (is_array($info) && isset($info['ModuleID']) && (string)$info['ModuleID'] === (string)$mqttGUID) {
+                    $mqttID = $propMqttId;
+                }
+            }
+            // Next: find by ObjectIdent marker
+            if ($mqttID === 0) {
+                $targetIdent = 'LGThinQ.MQTT.' . (string)$this->InstanceID;
+                foreach ($this->instancesOf('MQTT Client') as $id) {
+                    $obj = @IPS_GetObject($id);
+                    $ident = is_array($obj) ? (string)($obj['ObjectIdent'] ?? '') : '';
+                    if ($ident === $targetIdent) { $mqttID = $id; break; }
+                }
+            }
+            // Next: find by exact ClientID match
+            if ($mqttID === 0 && $subjectCN !== '') {
+                foreach ($this->instancesOf('MQTT Client') as $id) {
+                    $c = $this->cfg($id);
+                    if (($c['ClientID'] ?? null) === $subjectCN) { $mqttID = $id; break; }
+                }
             }
             if ($mqttID === 0) {
                 $mqttID = IPS_CreateInstance($mqttGUID);
                 IPS_SetName($mqttID, $NAME_MQTT);
+                // Mark instance with stable ident for diagnostics (do not rely on names in lookups)
+                try { IPS_SetIdent($mqttID, 'LGThinQMQTT' . (string)$this->InstanceID); } catch (\Throwable $e) { /* ignore */ }
             }
 
             // Configure MQTT Client first
@@ -1152,12 +1203,27 @@ class LGThinQBridge extends IPSModule
                 for ($i = 0; $i < 20 && $ioID === 0; $i++) { IPS_Sleep(100); $ioID = (int)(@IPS_GetInstance($mqttID)['ConnectionID'] ?? 0); }
             }
             if ($ioID === 0) {
-                $ioGUID = $this->findModuleGUIDByName('Client Socket');
-                if ($ioGUID === null) { throw new \RuntimeException("Modul 'Client Socket' nicht gefunden."); }
-                $ioID = IPS_CreateInstance($ioGUID);
-                IPS_SetName($ioID, $NAME_IO);
-                IPS_ConnectInstance($mqttID, $ioID);
-                IPS_Sleep(100);
+                // Try to reuse a pre-existing IO by ident
+                $reuse = 0;
+                $targetIdentIO = 'LGThinQ.IO.' . (string)$this->InstanceID;
+                foreach ($this->instancesOf('Client Socket') as $id) {
+                    $obj = @IPS_GetObject($id);
+                    $ident = is_array($obj) ? (string)($obj['ObjectIdent'] ?? '') : '';
+                    if ($ident === $targetIdentIO) { $reuse = $id; break; }
+                }
+                if ($reuse > 0) {
+                    $ioID = $reuse;
+                    IPS_ConnectInstance($mqttID, $ioID);
+                    IPS_Sleep(100);
+                } else {
+                    $ioGUID = $this->findModuleGUIDByName('Client Socket');
+                    if ($ioGUID === null) { throw new \RuntimeException($this->t("Module 'Client Socket' not found.")); }
+                    $ioID = IPS_CreateInstance($ioGUID);
+                    IPS_SetName($ioID, $NAME_IO);
+                    IPS_ConnectInstance($mqttID, $ioID);
+                    IPS_Sleep(100);
+                    try { IPS_SetIdent($ioID, 'LGThinQ.IO.' . (string)$this->InstanceID); } catch (\Throwable $e) { /* ignore */ }
+                }
             }
 
             // Configure IO
@@ -1168,38 +1234,20 @@ class LGThinQBridge extends IPSModule
                 $this->setFirstAvailableProperty($ioID, ['UseSSL','EnableSSL'], (bool)$USE_TLS);
                 $this->safeSetProperty($ioID, 'VerifyPeer', (bool)$VERIFY_PEER);
                 $this->safeSetProperty($ioID, 'VerifyHost', (bool)$VERIFY_HOST);
-                // Set exact Client Socket properties (per your environment)
+                // Set exact Client Socket properties (inline base64 PEMs)
                 $ioCfg = $this->cfg($ioID);
-                // Some Symcon versions expect file paths (chain/key/ca) rather than raw PEM strings.
-                $baseDir = '';
-                if (function_exists('IPS_GetKernelDir')) {
-                    $baseDir = rtrim((string)@IPS_GetKernelDir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'lgthinq' . DIRECTORY_SEPARATOR . 'mqtt' . DIRECTORY_SEPARATOR . (string)$this->InstanceID . DIRECTORY_SEPARATOR;
-                }
-                if ($baseDir === '' || (!is_dir($baseDir) && !@mkdir($baseDir, 0777, true))) {
-                    $baseDir = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'lgthinq_mqtt_' . (string)$this->InstanceID . DIRECTORY_SEPARATOR;
-                    if (!is_dir($baseDir)) { @mkdir($baseDir, 0777, true); }
-                }
-                $certPath = $baseDir . 'client_cert.pem';
-                $keyPath  = $baseDir . 'client_key.pem';
-                $caPath   = $baseDir . 'ca.pem';
-                
                 // Ensure proper PEM formatting with correct line endings
                 $certPemFormatted = $this->ensureCertificatePEM($certPem);
                 $keyPemFormatted = $this->ensurePrivateKeyPEM($keyPem);
                 $caPemFormatted = '';
-                
-                @file_put_contents($certPath, $certPemFormatted);
-                @file_put_contents($keyPath, $keyPemFormatted);
-                @chmod($certPath, 0600);
-                @chmod($keyPath, 0600);
+                $haveCA = false;
                 
                 // Validate and format CA PEM before using it (accept headerless base64 from route as well)
                 $haveCA = false;
                 if ($routeCA !== '') {
                     $caPemFormatted = $this->ensureCertificatePEM($routeCA);
                     if (@openssl_x509_read($caPemFormatted) !== false) {
-                        $haveCA = (@file_put_contents($caPath, $caPemFormatted) !== false);
-                        if ($haveCA) { @chmod($caPath, 0600); }
+                        $haveCA = true;
                     } else if ((bool)$this->ReadPropertyBoolean('Debug')) {
                         $this->SendDebug('MQTT', 'Route-provided CA invalid, length=' . strlen((string)$routeCA), 0);
                     }
@@ -1210,8 +1258,7 @@ class LGThinQBridge extends IPSModule
                     if (is_string($apiCAPem) && $apiCAPem !== '') {
                         $caPemFormatted = $this->ensureCertificatePEM($apiCAPem);
                         if (@openssl_x509_read($caPemFormatted) !== false) {
-                            $haveCA = (@file_put_contents($caPath, $caPemFormatted) !== false);
-                            if ($haveCA) { @chmod($caPath, 0600); }
+                            $haveCA = true;
                             if ((bool)$this->ReadPropertyBoolean('Debug')) {
                                 $this->SendDebug('MQTT', 'CA from LG API subscriptions applied (len=' . strlen($caPemFormatted) . ')', 0);
                             }
@@ -1224,8 +1271,7 @@ class LGThinQBridge extends IPSModule
                     if (is_string($awsCA) && $awsCA !== '' && strpos($awsCA, '-----BEGIN CERTIFICATE-----') !== false) {
                         $caPemFormatted = $this->ensureCertificatePEM($awsCA);
                         if (@openssl_x509_read($caPemFormatted) !== false) {
-                            $haveCA = (@file_put_contents($caPath, $caPemFormatted) !== false);
-                            if ($haveCA) { @chmod($caPath, 0600); }
+                            $haveCA = true;
                             if ((bool)$this->ReadPropertyBoolean('Debug')) {
                                 $this->SendDebug('MQTT', 'CA fallback: Amazon Root CA 1 applied (len=' . strlen($caPemFormatted) . ')', 0);
                             }
@@ -1233,36 +1279,9 @@ class LGThinQBridge extends IPSModule
                     }
                 }
 
-                // Also persist a concatenated chain file and a small README for manual assignment/tests
-                $chainPath = $baseDir . 'client_cert_chain.pem';
+                // Build concatenated chain (leaf + optional CA) for inline usage
                 $chainPem = rtrim($certPemFormatted) . "\n";
                 if ($haveCA) { $chainPem .= rtrim($caPemFormatted) . "\n"; }
-                @file_put_contents($chainPath, $chainPem);
-                @chmod($chainPath, 0600);
-                clearstatcache(true, $certPath);
-                clearstatcache(true, $keyPath);
-                clearstatcache(true, $caPath);
-                clearstatcache(true, $chainPath);
-
-                $readmePath = $baseDir . 'README.txt';
-                $readme = "LG ThinQ MQTT TLS material\n\n"
-                        . "Directory: " . $baseDir . "\n\n"
-                        . "Files:\n"
-                        . "- client_cert.pem         (leaf certificate)\n"
-                        . "- client_key.pem          (private key, PKCS#8, unencrypted)\n"
-                        . "- client_cert_chain.pem   (leaf + CA if available)\n"
-                        . "- ca.pem                  (Certificate Authority, if available)\n\n"
-                        . "Symcon manual assignment hints:\n"
-                        . "- Certificate           = client_cert_chain.pem (or client_cert.pem)\n"
-                        . "- PrivateKey            = client_key.pem\n"
-                        . "- CertificateAuthority  = ca.pem (recommended for VerifyPeer=true)\n\n"
-                        . "Broker: " . $HOST . ":" . $PORT . "\n"
-                        . "VerifyPeer/VerifyHost: true\n";
-                @file_put_contents($readmePath, $readme);
-                @chmod($readmePath, 0644);
-                if ((bool)$this->ReadPropertyBoolean('Debug')) {
-                    $this->SendDebug('MQTT', 'Saved TLS material to ' . $baseDir . ' (cert=' . @filesize($certPath) . 'B, key=' . @filesize($keyPath) . 'B, ca=' . ($haveCA ? @filesize($caPath) . 'B' : 0) . 'B, chain=' . @filesize($chainPath) . 'B)', 0);
-                }
 
                 // Assign INLINE PEM content directly to properties (Certificate, PrivateKey, CertificateAuthority)
                 $this->safeSetProperty($ioID, 'UseCertificate', true);
@@ -1295,7 +1314,7 @@ class LGThinQBridge extends IPSModule
                 IPS_ApplyChanges($ioID);
                 IPS_SetName($ioID, $NAME_IO);
 
-                // Validate that inline PEMs persisted correctly; if not, fall back to file-path properties
+                // Validate that inline PEMs persisted correctly; if not, log diagnostics (no file fallback)
                 try {
                     $curCfg = $this->cfg($ioID);
                     $curCert = (string)($curCfg['Certificate'] ?? '');
@@ -1326,26 +1345,8 @@ class LGThinQBridge extends IPSModule
                     }
 
                     if (!$okCertPersist || !$okKeyPersist || !$okCAPersist) {
-                        // Fallback to file-based assignment (paths) and clear inline fields
-                        if ((bool)$this->ReadPropertyBoolean('Debug')) {
-                            $this->SendDebug('MQTT', 'Inline PEM persistence check failed (cert/key/ca). Falling back to file-path properties.', 0);
-                        }
-                        // Assign file-path properties
-                        $this->setFirstAvailableProperty($ioID, ['CertificateFile','ClientCertificateFile','LocalCert','LocalCertificate','Certificate'], $chainPath);
-                        $this->setFirstAvailableProperty($ioID, ['PrivateKeyFile','ClientKeyFile','LocalPrivateKey','LocalPrivateKeyFile','PrivateKey'], $keyPath);
-                        if ($haveCA) {
-                            $this->setFirstAvailableProperty($ioID, ['CertificateAuthorityFile','CAFile','CACertificateFile','RootCertificateFile','RootCAFile','CACertFile','CertificateAuthority'], $caPath);
-                        }
-                        // Clear inline fields
-                        $this->safeSetProperty($ioID, 'Certificate', '');
-                        $this->safeSetProperty($ioID, 'PrivateKey', '');
-                        $this->safeSetProperty($ioID, 'CertificateAuthority', '');
-
-                        IPS_ApplyChanges($ioID);
-
-                        if ((bool)$this->ReadPropertyBoolean('Debug')) {
-                            $this->SendDebug('MQTT', 'Fallback applied: Certificate=' . $chainPath . ', PrivateKey=' . $keyPath . ', CA=' . ($haveCA ? $caPath : 'none'), 0);
-                        }
+                        // No file fallback anymore; surface diagnostics so the user can adjust manually if needed
+                        $this->SendDebug('MQTT', 'Inline PEM persistence check failed (cert=' . ($okCertPersist?'ok':'fail') . ', key=' . ($okKeyPersist?'ok':'fail') . ', ca=' . ($okCAPersist?'ok':'fail') . '). Please verify your Symcon version supports inline certificate properties.', 0);
                     }
                 } catch (\Throwable $e) {
                     if ((bool)$this->ReadPropertyBoolean('Debug')) {
@@ -1364,11 +1365,11 @@ class LGThinQBridge extends IPSModule
                 $this->SendDebug('MQTT', 'Warnung: Parent #' . $ioID . ' ist kein Client Socket', 0);
             }
 
-            // 6) Connect this Bridge to the configured MQTT Client and persist setting
-            @IPS_ConnectInstance($this->InstanceID, $mqttID);
-            @IPS_SetProperty($this->InstanceID, 'UseMQTT', true);
-            @IPS_SetProperty($this->InstanceID, 'MQTTClientID', (int)$mqttID);
-            @IPS_ApplyChanges($this->InstanceID);
+            // 6) Connect this Bridge to the configured MQTT Client and persist setting (no name matching)
+            IPS_ConnectInstance($this->InstanceID, $mqttID);
+            IPS_SetProperty($this->InstanceID, 'UseMQTT', true);
+            IPS_SetProperty($this->InstanceID, 'MQTTClientID', (int)$mqttID);
+            IPS_ApplyChanges($this->InstanceID);
 
             // 7) Post-setup: register client idempotently with final ClientID (subjectCN)
             try {
@@ -1397,11 +1398,11 @@ class LGThinQBridge extends IPSModule
             }
 
             // Done / Report
-            echo "Fertig.\nClient Socket ID: $ioID\nMQTT Client ID:   $mqttID\nTLS Verzeichnis:  $baseDir\nDateien: client_cert.pem, client_key.pem, client_cert_chain.pem, ca.pem\n";
-            $this->NotifyUser('MQTT-Verbindung eingerichtet (ClientID=' . $subjectCN . ', Host=' . $HOST . ':' . $PORT . ').');
+            echo $this->t('Done') . ".\n" . 'Client Socket ID: ' . $ioID . "\n" . 'MQTT Client ID:   ' . $mqttID . "\n";
+            $this->NotifyUser($this->t('MQTT connection configured') . ' (ClientID=' . $subjectCN . ', Host=' . $HOST . ':' . $PORT . ').');
         } catch (\Throwable $e) {
             $this->SendDebug('UISetupMqttConnection', $e->getMessage(), 0);
-            echo 'Fehler: ' . $e->getMessage();
+            echo $this->t('Error') . ': ' . $e->getMessage();
         }
     }
 
