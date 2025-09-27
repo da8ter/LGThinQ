@@ -90,7 +90,7 @@
       "ident": "DOOR_FRIDGE",
       "name": "Tür Kühlschrank",
       "type": "boolean",
-      "presentation": { "kind": "switch", "captionOn": "Offen", "captionOff": "Zu" },
+      "presentation": { "kind": "value", "captionOn": "Offen", "captionOff": "Zu" },
       "create": { "when": "statusHasAny", "keys": ["doorRefrigerator", "door_fridge", "refrigeratorDoorOpen"] },
       "action": { "enableWhen": "never" },
       "read": { "sources": ["doorRefrigerator", "door_fridge", "refrigeratorDoorOpen"] }
@@ -99,10 +99,28 @@
       "ident": "DOOR_FREEZER",
       "name": "Tür Gefrier",
       "type": "boolean",
-      "presentation": { "kind": "switch", "captionOn": "Offen", "captionOff": "Zu" },
+      "presentation": { "kind": "value", "captionOn": "Offen", "captionOff": "Zu" },
       "create": { "when": "statusHasAny", "keys": ["doorFreezer", "door_freezer", "freezerDoorOpen"] },
       "action": { "enableWhen": "never" },
       "read": { "sources": ["doorFreezer", "door_freezer", "freezerDoorOpen"] }
+    },
+    {
+      "ident": "DOOR_MAIN",
+      "name": "Tür (Main)",
+      "type": "boolean",
+      "presentation": { "kind": "value", "captionOn": "Offen", "captionOff": "Zu" },
+      "create": { "when": "profileHasAny", "keys": ["doorStatus"] },
+      "action": { "enableWhen": "never" },
+      "read": { "array": { "container": "doorStatus", "where": { "locationName": "MAIN" }, "path": "doorState" }, "string_true": ["OPEN"], "string_false": ["CLOSE"] }
+    },
+    {
+      "ident": "WATER_FILTER_STATE",
+      "name": "Wasserfilter Zustand",
+      "type": "string",
+      "presentation": { "kind": "value" },
+      "create": { "when": "profileHasAny", "keys": ["waterFilterInfo.waterFilterState"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["waterFilterInfo.waterFilterState"] }
     }
   ]
 }

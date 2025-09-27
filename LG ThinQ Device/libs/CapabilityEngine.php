@@ -647,21 +647,27 @@ class CapabilityEngine
         $keys = $create['keys'] ?? [];
         if ($when === 'always') return true;
         if (!is_array($keys) || empty($keys)) return false;
+        if ($when === 'profilehasall') {
+            // All keys must be present in profile (direct or substring match)
+            foreach ($keys as $k) {
+                $k = (string)$k;
+                if ($k === '') return false;
+                $found = array_key_exists($k, $flatProfile);
+                if (!$found) {
+                    foreach ($flatProfile as $fk => $_) {
+                        if (strpos($fk, $k) !== false) { $found = true; break; }
+                    }
+                }
+                if (!$found) return false;
+            }
+            return true;
+        }
         if ($when === 'profilehasany') {
             foreach ($keys as $k) { if (array_key_exists($k, $flatProfile)) return true; }
             // Substring match (handles array prefixes like property.0.*)
             foreach ($keys as $k) {
                 foreach ($flatProfile as $fk => $_) {
                     if (strpos($fk, $k) !== false) return true;
-                }
-            }
-            // Consider presence of common schema nodes even if not writeable
-            foreach ($keys as $b) {
-                foreach ([$b . '.mode', $b . '.type', $b . '.value', $b . '.value.r', $b . '.value.w'] as $probe) {
-                    if (array_key_exists($probe, $flatProfile)) return true;
-                    foreach ($flatProfile as $fk => $_) {
-                        if (strpos($fk, $probe) !== false) return true;
-                    }
                 }
             }
             // As a last resort, treat writeable mode as present

@@ -24,6 +24,11 @@ class LGThinQDevice extends IPSModule
 
         $this->RegisterPropertyString('DeviceID', '');
         $this->RegisterPropertyString('Alias', '');
+        // Dry-Run simulation inputs (Option A)
+        $this->RegisterPropertyString('SimulatedDeviceID', '');
+        $this->RegisterPropertyString('SimulatedDevicesJson', '');
+        $this->RegisterPropertyString('SimulatedProfileJson', '');
+        $this->RegisterPropertyString('SimulatedStatusJson', '');
 
         $this->RegisterAttributeString('LastStatus', '');
         $this->RegisterAttributeString('DeviceType', '');
@@ -515,6 +520,255 @@ class LGThinQDevice extends IPSModule
         return 'ac';
     }
 
+    /**
+     * Dry-Run device detection and planning from JSON properties without any side effects.
+     * Reads SimulatedDevicesJson and SimulatedProfileJson, resolves device type, loads capabilities,
+     * builds a plan and returns a compact JSON summary. No variables are created or modified.
+     *
+     * @return string JSON summary: { deviceType, capabilityCount, idents:[], plan:[{ident,name,type,shouldCreate,enableAction,presentationKind}] }
+     */
+    public function DryRunDetectFromJSON(): string
+    {
+        $simId = trim((string)$this->ReadPropertyString('SimulatedDeviceID'));
+        $devicesRaw = (string)$this->ReadPropertyString('SimulatedDevicesJson');
+        $profileRaw = (string)$this->ReadPropertyString('SimulatedProfileJson');
+
+        $devicesData = $this->dryRunParseJson($devicesRaw);
+        $profileData = $this->dryRunParseJson($profileRaw);
+
+        $devices = $this->dryRunNormalizeDevices($devicesData);
+        $profile = $this->dryRunNormalizeProfile($profileData);
+
+        $type = $this->dryRunResolveDeviceTypeFromData($simId, $devices, $profile);
+
+        $engine = $this->getCapabilityEngine();
+        $engine->loadCapabilities($type, $profile);
+        $descriptors = $engine->getDescriptors();
+
+        $plan = $engine->buildPlan($type, $profile, null);
+
+        // Build compact summary
+        $idents = [];
+        foreach ($descriptors as $cap) {
+            if (is_array($cap) && isset($cap['ident'])) {
+                $idents[] = (string)$cap['ident'];
+            }
+        }
+
+        $simplePlan = [];
+        foreach ($plan as $ident => $entry) {
+            $simplePlan[] = [
+                'ident' => (string)$ident,
+                'name'  => (string)($entry['name'] ?? $ident),
+                'type'  => (string)($entry['type'] ?? 'STRING'),
+                'shouldCreate' => (bool)($entry['shouldCreate'] ?? false),
+                'enableAction' => (bool)($entry['enableAction'] ?? false),
+                'presentationKind' => is_array($entry['presentation'] ?? null) ? (string)(($entry['presentation']['kind'] ?? '')) : ''
+            ];
+        }
+
+        $summary = [
+            'deviceType' => $type,
+            'capabilityCount' => count($descriptors),
+            'idents' => $idents,
+            'plan' => $simplePlan
+        ];
+
+        $json = json_encode($summary, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->SendDebug('DryRun', 'Summary=' . (string)$json, 0);
+        @IPS_LogMessage('LGThinQDevice DryRun', 'deviceType=' . $type . ' capabilities=' . count($descriptors));
+        return (string)$json;
+    }
+
+    /**
+     * Create/Update variables based on simulated JSON properties (devices/profile/status) without contacting parent.
+     * This runs the same plan logic as setupDevice() but uses local JSON instead of sendAction().
+     * Returns a JSON summary of what was created/updated.
+     */
+    public function RunSimulatedSetup(): string
+    {
+        $simId = trim((string)$this->ReadPropertyString('SimulatedDeviceID'));
+        $devicesRaw = (string)$this->ReadPropertyString('SimulatedDevicesJson');
+        $profileRaw = (string)$this->ReadPropertyString('SimulatedProfileJson');
+        $statusRaw  = (string)$this->ReadPropertyString('SimulatedStatusJson');
+
+        $devicesData = $this->dryRunParseJson($devicesRaw);
+        $profileData = $this->dryRunParseJson($profileRaw);
+        $statusData  = $this->dryRunParseJson($statusRaw);
+
+        $devices = $this->dryRunNormalizeDevices($devicesData);
+        $profile = $this->dryRunNormalizeProfile($profileData);
+        $status  = is_array($statusData) ? $statusData : [];
+
+        $type = $this->dryRunResolveDeviceTypeFromData($simId, $devices, $profile);
+
+        // Persist for later debugging/inspection
+        $this->WriteAttributeString('LastProfile', json_encode($profile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        $this->WriteAttributeString('DeviceType', $type);
+
+        $engine = $this->getCapabilityEngine();
+        $plan = $engine->buildPlan($type, $profile, $status);
+        $flatProfile = $this->flatten($profile);
+
+        $currentPlanIdents = [];
+        $created = [];
+        $updated = [];
+        $presented = [];
+        $enabled = [];
+
+        foreach ($plan as $ident => $entry) {
+            $keep = (bool)($entry['shouldCreate'] ?? false);
+
+            $ipsType = match (strtoupper((string)($entry['type'] ?? 'STRING'))) {
+                'BOOLEAN' => VARIABLETYPE_BOOLEAN,
+                'INTEGER' => VARIABLETYPE_INTEGER,
+                'FLOAT' => VARIABLETYPE_FLOAT,
+                default => VARIABLETYPE_STRING
+            };
+
+            $preExistingVid = (int)@IPS_GetObjectIDByIdent((string)$ident, $this->InstanceID);
+
+            if (!$keep) {
+                continue;
+            }
+
+            $this->MaintainVariable(
+                (string)$ident,
+                (string)($entry['name'] ?? $ident),
+                $ipsType,
+                '',
+                0,
+                true
+            );
+
+            $vid = $this->getVarId((string)$ident);
+            $wasCreatedNow = ($preExistingVid <= 0 && $vid > 0);
+            $currentPlanIdents[] = (string)$ident;
+            if ($wasCreatedNow) {
+                $created[] = (string)$ident;
+            } else {
+                $updated[] = (string)$ident;
+            }
+
+            if (($entry['hidden'] ?? false) && $vid > 0) {
+                @IPS_SetHidden($vid, true);
+            }
+
+            if ($wasCreatedNow && isset($entry['presentation']) && is_array($entry['presentation'])) {
+                $this->applyPresentation($vid, (string)$ident, $entry['presentation'], $flatProfile, (string)($entry['type'] ?? 'STRING'));
+                $presented[] = (string)$ident;
+            }
+
+            if (($entry['enableAction'] ?? false) && method_exists($this, 'EnableAction')) {
+                try {
+                    $this->EnableAction((string)$ident);
+                    $enabled[] = (string)$ident;
+                } catch (Throwable $e) {
+                    $this->logThrowable('EnableAction ' . $ident, $e);
+                }
+            }
+
+            if (array_key_exists('initialValue', $entry)) {
+                $this->setValueByVarType((string)$ident, $entry['initialValue']);
+            }
+        }
+
+        // Store plan
+        $this->WriteAttributeString('LastPlan', json_encode($currentPlanIdents, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+        if (!empty($status)) {
+            $engine->applyStatus($status);
+            $this->WriteAttributeString('LastStatus', json_encode($status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        }
+
+        $summary = [
+            'deviceType' => $type,
+            'createdCount' => count($created),
+            'updatedCount' => count($updated),
+            'presentedCount' => count($presented),
+            'enabledCount' => count($enabled),
+            'created' => $created,
+            'updated' => $updated,
+            'presented' => $presented,
+            'enabled' => $enabled
+        ];
+        $json = json_encode($summary, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->SendDebug('SimSetup', 'Summary=' . (string)$json, 0);
+        return (string)$json;
+    }
+
+    /** @return array<string,mixed> */
+    private function dryRunParseJson(string $raw): array
+    {
+        $raw = trim($raw);
+        if ($raw === '') return [];
+        $data = json_decode($raw, true);
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * @param array<int,mixed>|array<string,mixed> $data
+     * @return array<int,array<string,mixed>> devices array
+     */
+    private function dryRunNormalizeDevices($data): array
+    {
+        if (!is_array($data)) return [];
+        // If wrapper { devices: [...] }
+        if (isset($data['devices']) && is_array($data['devices'])) {
+            return array_values(array_filter($data['devices'], 'is_array'));
+        }
+        // If already a list (0-indexed array of entries)
+        $isList = array_keys($data) === range(0, count($data) - 1);
+        if ($isList) {
+            return array_values(array_filter($data, 'is_array'));
+        }
+        // Single entry object
+        if (!empty($data)) {
+            return [ $data ];
+        }
+        return [];
+    }
+
+    /** @param array<string,mixed> $data */
+    private function dryRunNormalizeProfile(array $data): array
+    {
+        if (isset($data['property']) && is_array($data['property'])) {
+            return $data['property'];
+        }
+        if (isset($data['profile']) && is_array($data['profile'])) {
+            return $data['profile'];
+        }
+        return $data;
+    }
+
+    /**
+     * Resolve device type with broader compatibility: checks deviceType on root and under deviceInfo.
+     * @param array<int,array<string,mixed>> $devices
+     */
+    private function dryRunResolveDeviceTypeFromData(string $deviceId, array $devices, array $profile): string
+    {
+        $deviceId = trim($deviceId);
+        if ($deviceId !== '') {
+            foreach ($devices as $entry) {
+                $id = (string)($entry['deviceId'] ?? ($entry['id'] ?? ''));
+                if ($id === '' || strcasecmp($id, $deviceId) !== 0) continue;
+                $type = (string)($entry['deviceType'] ?? '');
+                if ($type !== '') return $type;
+                // Try nested deviceInfo
+                $info = $entry['deviceInfo'] ?? null;
+                if (is_array($info)) {
+                    $type = (string)($info['deviceType'] ?? '');
+                    if ($type !== '') return $type;
+                }
+            }
+        }
+        // Fallback: explicit in profile
+        if (isset($profile['deviceType']) && is_string($profile['deviceType'])) {
+            return (string)$profile['deviceType'];
+        }
+        return 'unknown';
+    }
+
     private function applyPresentation(int $vid, string $ident, array $presentation, array $flatProfile, string $type): void
     {
         $kind = strtolower((string)($presentation['kind'] ?? ''));
@@ -667,6 +921,27 @@ class LGThinQDevice extends IPSModule
             if (array_key_exists('intervals', $presentation) && is_array($presentation['intervals'])) {
                 $payload['INTERVALS'] = $presentation['intervals'];
             }
+            // If BOOLEAN with value-presentation and captionOn/captionOff provided, map them to OPTIONS
+            if (strtoupper((string)$type) === 'BOOLEAN' && (isset($presentation['captionOn']) || isset($presentation['captionOff'])) && !isset($payload['OPTIONS'])) {
+                $onCaption = $this->t((string)($presentation['captionOn'] ?? $this->t('On')));
+                $offCaption = $this->t((string)($presentation['captionOff'] ?? $this->t('Off')));
+                $payload['OPTIONS'] = [
+                    [
+                        'Value' => false,
+                        'Caption' => $offCaption,
+                        'IconActive' => false,
+                        'IconValue' => '',
+                        'Color' => -1
+                    ],
+                    [
+                        'Value' => true,
+                        'Caption' => $onCaption,
+                        'IconActive' => false,
+                        'IconValue' => '',
+                        'Color' => -1
+                    ]
+                ];
+            }
             // Optional: support OPTIONS for string-valued enumerations on value presentation
             if (isset($presentation['options']) && is_array($presentation['options'])) {
                 $options = [];
@@ -678,8 +953,8 @@ class LGThinQDevice extends IPSModule
                         continue;
                     }
                     $opt = [
-                        // For value-presentation we keep string values verbatim
-                        'Value' => (string)$op['value'],
+                        // For value-presentation keep type as-is to support boolean/integer comparisons in UI
+                        'Value' => is_numeric($op['value']) ? (float)$op['value'] + 0 : ( (is_bool($op['value'])) ? ((bool)$op['value'] ? 1 : 0) : (string)$op['value'] ),
                         'Caption' => $this->t((string)$op['caption']),
                         'IconActive' => isset($op['iconActive']) ? (bool)$op['iconActive'] : false,
                         'IconValue' => isset($op['iconValue']) ? (string)$op['iconValue'] : '',

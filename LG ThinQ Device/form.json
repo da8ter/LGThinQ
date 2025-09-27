@@ -2,10 +2,18 @@
   "elements": [
     { "type": "Label", "label": "LG ThinQ Device Instance" },
     { "type": "ValidationTextBox", "name": "Alias", "caption": "Alias", "width": "400px" },
-    { "type": "ValidationTextBox", "name": "DeviceID", "caption": "Device ID", "width": "500px", "enabled": false }
+    { "type": "ValidationTextBox", "name": "DeviceID", "caption": "Device ID", "width": "500px", "enabled": false },
+    { "type": "Label", "label": "Simulation (JSON)" , "visible": false },
+    { "type": "ValidationTextBox", "name": "SimulatedDeviceID", "caption": "Simulated Device ID", "width": "500px", "visible": false },
+    { "type": "ValidationTextBox", "name": "SimulatedDevicesJson", "caption": "Devices JSON (minified)", "width": "100%", "visible": false },
+    { "type": "ValidationTextBox", "name": "SimulatedProfileJson", "caption": "Profile JSON (minified)", "width": "100%", "visible": false },
+    { "type": "ValidationTextBox", "name": "SimulatedStatusJson", "caption": "Status JSON (minified, optional)", "width": "100%", "visible": false }
   ],
   "actions": [
     { "type": "Button", "label": "Update status", "onClick": "LGTQD_UpdateStatus($id);" },
+    { "type": "Label", "label": "Simulation" , "visible": false },
+    { "type": "Button", "caption": "Run Dry-Run", "onClick": ["echo LGTQD_DryRunDetectFromJSON($id);"] , "visible": false },
+    { "type": "Button", "caption": "Run Simulated Setup (create variables)", "onClick": ["echo LGTQD_RunSimulatedSetup($id);"] , "visible": false },
     { "type": "Label", "label": "Diagnose & Support" },
     { "type": "Label", "label": "Hinweis: Falls ein Gerät nicht korrekt funktioniert können Sie eine Diagnose-Datei erstellen. Es werden nur Gerätespezifische Daten gespeichert. Persönliche Daten wie Device-ID oder Tocken werden anonymisiert" },
     { "type": "Button", "caption": "Support-Paket (ZIP) erzeugen", "download": "LGThinQ_Device_Support.zip", "onClick": ["echo LGTQD_UIExportSupportBundle($id);"] }

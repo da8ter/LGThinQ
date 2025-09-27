@@ -201,7 +201,7 @@
       "name": "Timer Start (relativ)",
       "type": "integer",
       "presentation": { "kind": "slider", "range": { "min": 1, "max": 720, "step": 1, "digits": 0, "suffix": " min" } },
-      "create": { "when": "always" },
+      "create": { "when": "profileHasAll", "keys": ["timer.relativeHourToStart", "timer.relativeMinuteToStart"] },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
       "read": { "composite": { "combine": "hm_to_minutes", "parts": [ { "path": "timer.relativeHourToStart" }, { "path": "timer.relativeMinuteToStart" } ] } },
       "write": { "composite": { "decompose": "minutes_to_hm", "targets": [ { "path": "timer.relativeHourToStart" }, { "path": "timer.relativeMinuteToStart" } ] }, "clamp": { "min": 1, "max": 720 } }
@@ -211,7 +211,7 @@
       "name": "Timer Stop (relativ)",
       "type": "integer",
       "presentation": { "kind": "slider", "range": { "min": 1, "max": 720, "step": 1, "digits": 0, "suffix": " min" } },
-      "create": { "when": "always" },
+      "create": { "when": "profileHasAll", "keys": ["timer.relativeHourToStop", "timer.relativeMinuteToStop"] },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
       "read": { "composite": { "combine": "hm_to_minutes", "parts": [ { "path": "timer.relativeHourToStop" }, { "path": "timer.relativeMinuteToStop" } ] } },
       "write": { "composite": { "decompose": "minutes_to_hm", "targets": [ { "path": "timer.relativeHourToStop" }, { "path": "timer.relativeMinuteToStop" } ] }, "clamp": { "min": 1, "max": 720 } }
@@ -221,7 +221,7 @@
       "name": "Sleep Stop (relativ)",
       "type": "integer",
       "presentation": { "kind": "slider", "range": { "min": 1, "max": 720, "step": 1, "digits": 0, "suffix": " min" } },
-      "create": { "when": "always" },
+      "create": { "when": "profileHasAll", "keys": ["sleepTimer.relativeHourToStop", "sleepTimer.relativeMinuteToStop"] },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
       "read": { "composite": { "combine": "hm_to_minutes", "parts": [ { "path": "sleepTimer.relativeHourToStop" }, { "path": "sleepTimer.relativeMinuteToStop" } ] } },
       "write": { "composite": { "decompose": "minutes_to_hm", "targets": [ { "path": "sleepTimer.relativeHourToStop" }, { "path": "sleepTimer.relativeMinuteToStop" } ] }, "clamp": { "min": 1, "max": 720 } }
@@ -329,7 +329,7 @@
       "name": "Timer Start Aktivieren",
       "type": "boolean",
       "presentation": { "kind": "switch", "captionOn": "Aktivieren", "captionOff": "Deaktivieren" },
-      "create": { "when": "always" },
+      "create": { "when": "profileHasAny", "keys": ["timer.relativeEnabled", "timer.relativeStartTimer"] },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
       "read": { "sources": ["timer.relativeEnabled"], "map": { "ON": 1, "OFF": 0, "START": 1, "STOP": 0 } },
       "write": { "template": { "timer": { "relativeStartTimer": "@onoff" } } }
@@ -339,7 +339,7 @@
       "name": "Timer Stop Aktivieren",
       "type": "boolean",
       "presentation": { "kind": "switch", "captionOn": "Aktivieren", "captionOff": "Deaktivieren" },
-      "create": { "when": "always" },
+      "create": { "when": "profileHasAny", "keys": ["timer.relativeStopEnabled", "timer.relativeStopTimer"] },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
       "read": { "sources": ["timer.relativeStopEnabled"], "map": { "ON": 1, "OFF": 0, "START": 1, "STOP": 0 } },
       "write": { "template": { "timer": { "relativeStopTimer": "@onoff" } } }
@@ -349,7 +349,7 @@
       "name": "Sleep Timer Aktivieren",
       "type": "boolean",
       "presentation": { "kind": "switch", "captionOn": "Aktivieren", "captionOff": "Deaktivieren" },
-      "create": { "when": "always" },
+      "create": { "when": "profileHasAny", "keys": ["sleepTimer.relativeEnabled", "sleepTimer.relativeSleepTimer"] },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
       "read": { "sources": ["sleepTimer.relativeEnabled"], "map": { "ON": 1, "OFF": 0, "START": 1, "STOP": 0 } },
       "write": { "template": { "sleepTimer": { "relativeSleepTimer": "@onoff" } } }
