@@ -122,7 +122,7 @@
       "ident": "WATER_TEMP_CUR",
       "name": "Wassertemperatur",
       "type": "float",
-      "presentation": { "kind": "value", "suffix": " °C" },
+      "presentation": { "kind": "value", "suffix": " °C", "usageType": 1 },
       "create": { "when": "statusHasAny", "keys": ["water.temperature.current", "currentTemperature"] },
       "action": { "enableWhen": "never" },
       "read": { "sources": ["water.temperature.current", "currentTemperature"] }

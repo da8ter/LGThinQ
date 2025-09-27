@@ -14,21 +14,27 @@
       "ident": "FRIDGE_SET_TEMP",
       "name": "Kühlschrank Soll",
       "type": "integer",
-      "presentation": { "kind": "slider", "range": { "min": 0, "max": 7, "step": 1, "digits": 0, "suffix": " °C" } },
+      "presentation": { "kind": "slider", "usageType": 0, "gradientType": 1, "range": { "min": 1, "max": 7, "step": 1, "digits": 0, "suffix": " °C" } },
       "create": { "when": "always" },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
-      "read": { "array": { "container": "temperature", "where": { "locationName": "MAIN" }, "path": "targetTemperature" } },
-      "write": { "arrayTemplate": { "container": "temperature", "where": { "locationName": "MAIN" }, "set": { "locationName": "MAIN", "targetTemperature": "@int", "unit": "C" } } }
+      "read": { "array": { "container": "temperature", "where": { "locationName": "FRIDGE" }, "path": "targetTemperature" } },
+      "write": {
+        "clamp": { "min": 1, "max": 7 },
+        "arrayTemplate": { "container": "temperature", "where": { "locationName": "FRIDGE" }, "set": { "locationName": "FRIDGE", "targetTemperature": "@int", "unit": "C" } }
+      }
     },
     {
       "ident": "FREEZER_SET_TEMP",
       "name": "Gefrier Soll",
       "type": "integer",
-      "presentation": { "kind": "slider", "range": { "min": -21, "max": -16, "step": 1, "digits": 0, "suffix": " °C" } },
+      "presentation": { "kind": "slider", "usageType": 0, "gradientType": 1, "range": { "min": -24, "max": -14, "step": 1, "digits": 0, "suffix": " °C" } },
       "create": { "when": "always" },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
       "read": { "array": { "container": "temperature", "where": { "locationName": "FREEZER" }, "path": "targetTemperature" } },
-      "write": { "arrayTemplate": { "container": "temperature", "where": { "locationName": "FREEZER" }, "set": { "locationName": "FREEZER", "targetTemperature": "@int", "unit": "C" } } }
+      "write": {
+        "clamp": { "min": -24, "max": -14 },
+        "arrayTemplate": { "container": "temperature", "where": { "locationName": "FREEZER" }, "set": { "locationName": "FREEZER", "targetTemperature": "@int", "unit": "C" } }
+      }
     },
     {
       "ident": "ICE_PLUS",
@@ -66,7 +72,7 @@
       "ident": "FRIDGE_TEMP",
       "name": "Kühlschrank Temp",
       "type": "float",
-      "presentation": { "kind": "value", "suffix": " °C", "digits": 1 },
+      "presentation": { "kind": "value", "suffix": " °C", "digits": 1, "usageType": 1 },
       "create": { "when": "profileHasAny", "keys": ["fridgeTemperature", "refTemp", "tempRefrigerator"] },
       "action": { "enableWhen": "never" },
       "read": { "sources": ["fridgeTemperature", "refTemp", "tempRefrigerator"] }
@@ -75,7 +81,7 @@
       "ident": "FREEZER_TEMP",
       "name": "Gefrierschrank Temp",
       "type": "float",
-      "presentation": { "kind": "value", "suffix": " °C", "digits": 0 },
+      "presentation": { "kind": "value", "suffix": " °C", "digits": 0, "usageType": 1 },
       "create": { "when": "profileHasAny", "keys": ["freezerTemperature", "frzTemp", "tempFreezer"] },
       "action": { "enableWhen": "never" },
       "read": { "sources": ["freezerTemperature", "frzTemp", "tempFreezer"] }

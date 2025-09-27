@@ -29,6 +29,8 @@
       "presentation": {
         "kind": "slider",
         "suffix": " °C",
+        "usageType": 0,
+        "gradientType": 1,
         "range": { "min": 0, "max": 15, "step": 1 },
         "rangeFromProfile": {
           "min": [
@@ -60,7 +62,7 @@
       "ident": "ZONE1_CUR_TEMP",
       "name": "Zone 1 Ist",
       "type": "float",
-      "presentation": { "kind": "value", "suffix": " °C" },
+      "presentation": { "kind": "value", "suffix": " °C", "usageType": 1 },
       "create": { "when": "statusHasAny", "keys": ["zones.0.temperature.current", "kimchi.temperature.0.current", "temperature.zone1.current", "upperTemperature.current"] },
       "action": { "enableWhen": "never" },
       "read": { "sources": ["zones.0.temperature.current", "kimchi.temperature.0.current", "temperature.zone1.current", "upperTemperature.current"] }
@@ -73,6 +75,8 @@
       "presentation": {
         "kind": "slider",
         "suffix": " °C",
+        "usageType": 0,
+        "gradientType": 1,
         "range": { "min": 0, "max": 15, "step": 1 },
         "rangeFromProfile": {
           "min": [
@@ -104,7 +108,7 @@
       "ident": "ZONE2_CUR_TEMP",
       "name": "Zone 2 Ist",
       "type": "float",
-      "presentation": { "kind": "value", "suffix": " °C" },
+      "presentation": { "kind": "value", "suffix": " °C", "usageType": 1 },
       "create": { "when": "statusHasAny", "keys": ["zones.1.temperature.current", "kimchi.temperature.1.current", "temperature.zone2.current", "lowerTemperature.current"] },
       "action": { "enableWhen": "never" },
       "read": { "sources": ["zones.1.temperature.current", "kimchi.temperature.1.current", "temperature.zone2.current", "lowerTemperature.current"] }

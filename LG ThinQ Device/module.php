@@ -367,11 +367,12 @@ class LGThinQDevice extends IPSModule
         $engine = $this->getCapabilityEngine();
         $plan = $engine->buildPlan($type, $profile, $status);
         $flatProfile = $this->flatten($profile);
+        // Track current plan idents to support pruning of obsolete variables later
+        $currentPlanIdents = [];
 
         foreach ($plan as $ident => $entry) {
-            if (!($entry['shouldCreate'] ?? false)) {
-                continue;
-            }
+            // Determine keep flag directly from plan decision
+            $keep = (bool)($entry['shouldCreate'] ?? false);
 
             $ipsType = match (strtoupper((string)($entry['type'] ?? 'STRING'))) {
                 'BOOLEAN' => VARIABLETYPE_BOOLEAN,
@@ -380,18 +381,39 @@ class LGThinQDevice extends IPSModule
                 default => VARIABLETYPE_STRING
             };
 
-            $vid = $this->ensureVariable(
-                $this->InstanceID,
-                (string)$ident,
-                (string)($entry['name'] ?? $ident),
-                $ipsType
-            );
+            // Detect if variable already exists before MaintainVariable possibly creates it
+            $preExistingVid = (int)@IPS_GetObjectIDByIdent((string)$ident, $this->InstanceID);
+
+            // Only create/update variables when keep=true. Do not delete when keep=false.
+            $vid = $preExistingVid;
+            $wasCreatedNow = false;
+            if ($keep) {
+                // Create/Update variable via Symcon helper (no deletion when keep=false)
+                $this->MaintainVariable(
+                    (string)$ident,
+                    (string)($entry['name'] ?? $ident),
+                    $ipsType,
+                    '',
+                    0,
+                    true
+                );
+                // Fetch VID after MaintainVariable
+                $vid = $this->getVarId((string)$ident);
+                $wasCreatedNow = ($preExistingVid <= 0 && $vid > 0);
+            } else {
+                // Not part of current plan: keep existing variable as-is (no auto-deletion requested)
+                continue;
+            }
+
+            // Track idents we intend to keep this run
+            $currentPlanIdents[] = (string)$ident;
 
             if (($entry['hidden'] ?? false) && $vid > 0) {
                 @IPS_SetHidden($vid, true);
             }
 
-            if (isset($entry['presentation']) && is_array($entry['presentation'])) {
+            // Important: Apply presentation ONLY on first creation to avoid overwriting user customization
+            if ($wasCreatedNow && isset($entry['presentation']) && is_array($entry['presentation'])) {
                 $this->applyPresentation($vid, (string)$ident, $entry['presentation'], $flatProfile, (string)($entry['type'] ?? 'STRING'));
             }
 
@@ -407,6 +429,9 @@ class LGThinQDevice extends IPSModule
                 $this->setValueByVarType((string)$ident, $entry['initialValue']);
             }
         }
+
+        // Store current plan idents for future reference (no automatic pruning)
+        $this->WriteAttributeString('LastPlan', json_encode($currentPlanIdents, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
         if (!empty($status)) {
             $engine->applyStatus($status);
@@ -453,11 +478,7 @@ class LGThinQDevice extends IPSModule
 
     private function resolveDeviceType(string $deviceId, array $profile): string
     {
-        $cached = trim((string)$this->ReadAttributeString('DeviceType'));
-        if ($cached !== '') {
-            return $cached;
-        }
-
+        // Prefer fresh information from the device list each time
         try {
             $listRaw = $this->sendAction('GetDevices');
             $list = json_decode((string)$listRaw, true);
@@ -479,10 +500,18 @@ class LGThinQDevice extends IPSModule
             $this->logThrowable('ResolveDeviceType', $e);
         }
 
+        // Fallback: explicit deviceType in profile, if provided
         if (isset($profile['deviceType']) && is_string($profile['deviceType'])) {
             return (string)$profile['deviceType'];
         }
 
+        // Next fallback: previously detected type (cached)
+        $cached = trim((string)$this->ReadAttributeString('DeviceType'));
+        if ($cached !== '') {
+            return $cached;
+        }
+
+        // Final fallback
         return 'ac';
     }
 
@@ -532,6 +561,13 @@ class LGThinQDevice extends IPSModule
             } else {
                 $stepVal = (float)$payload['STEP_SIZE'];
                 $payload['DIGITS'] = ($stepVal >= 1.0) ? 0 : (($stepVal >= 0.5) ? 1 : 2);
+            }
+            // Optional pass-throughs for slider presentation
+            if (array_key_exists('usageType', $presentation) || array_key_exists('usage_type', $presentation)) {
+                $payload['USAGE_TYPE'] = (int)($presentation['usageType'] ?? $presentation['usage_type']);
+            }
+            if (array_key_exists('gradientType', $presentation) || array_key_exists('gradient_type', $presentation)) {
+                $payload['GRADIENT_TYPE'] = (int)($presentation['gradientType'] ?? $presentation['gradient_type']);
             }
         } elseif ($kind === 'enumeration') {
             // New: Enumeration presentation

@@ -51,6 +51,8 @@
       "presentation": {
         "kind": "slider",
         "suffix": " °C",
+        "usageType": 0,
+        "gradientType": 1,
         "range": { "min": 30, "max": 280, "step": 1 },
         "rangeFromProfile": {
           "min": [
@@ -83,7 +85,7 @@
       "ident": "OVEN_CUR_TEMP",
       "name": "Isttemperatur",
       "type": "float",
-      "presentation": { "kind": "value", "suffix": " °C" },
+      "presentation": { "kind": "value", "suffix": " °C", "usageType": 1 },
       "create": { "when": "statusHasAny", "keys": ["temperature.currentTemperature", "currentTemperature", "oven.temperature.current"] },
       "action": { "enableWhen": "never" },
       "read": { "sources": ["temperature.currentTemperature", "currentTemperature", "oven.temperature.current"] }

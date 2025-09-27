@@ -28,6 +28,8 @@
       "presentation": {
         "kind": "slider",
         "suffix": " °C",
+        "usageType": 0,
+        "gradientType": 1,
         "range": { "min": 4, "max": 18, "step": 1 },
         "rangeFromProfile": {
           "min": [
@@ -56,7 +58,7 @@
       "ident": "UPPER_CUR_TEMP",
       "name": "Oberer Ist",
       "type": "float",
-      "presentation": { "kind": "value", "suffix": " °C" },
+      "presentation": { "kind": "value", "suffix": " °C", "usageType": 1 },
       "create": { "when": "statusHasAny", "keys": ["upperTemperature.current", "temperature.upper.current", "zones.0.temperature.current", "upperCurrentTemperature"] },
       "action": { "enableWhen": "never" },
       "read": { "sources": ["upperTemperature.current", "temperature.upper.current", "zones.0.temperature.current", "upperCurrentTemperature"] }
@@ -69,6 +71,8 @@
       "presentation": {
         "kind": "slider",
         "suffix": " °C",
+        "usageType": 0,
+        "gradientType": 1,
         "range": { "min": 4, "max": 18, "step": 1 },
         "rangeFromProfile": {
           "min": [
@@ -97,7 +101,7 @@
       "ident": "LOWER_CUR_TEMP",
       "name": "Unterer Ist",
       "type": "float",
-      "presentation": { "kind": "value", "suffix": " °C" },
+      "presentation": { "kind": "value", "suffix": " °C", "usageType": 1 },
       "create": { "when": "statusHasAny", "keys": ["lowerTemperature.current", "temperature.lower.current", "zones.1.temperature.current", "lowerCurrentTemperature"] },
       "action": { "enableWhen": "never" },
       "read": { "sources": ["lowerTemperature.current", "temperature.lower.current", "zones.1.temperature.current", "lowerCurrentTemperature"] }

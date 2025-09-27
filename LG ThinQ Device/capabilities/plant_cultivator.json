@@ -109,7 +109,7 @@
       "ident": "TEMP_CUR",
       "name": "Temperatur",
       "type": "float",
-      "presentation": { "kind": "value", "suffix": " °C" },
+      "presentation": { "kind": "value", "suffix": " °C", "usageType": 1 },
       "create": { "when": "statusHasAny", "keys": ["temperature.current", "currentTemperature", "temp.current"] },
       "action": { "enableWhen": "never" },
       "read": { "sources": ["temperature.current", "currentTemperature", "temp.current"] }

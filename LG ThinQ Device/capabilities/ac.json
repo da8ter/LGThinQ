@@ -82,6 +82,8 @@
       "presentation": {
         "kind": "slider",
         "suffix": " °C",
+        "usageType": 0,
+        "gradientType": 1,
         "rangeFromProfile": {
           "min": [
             "temperature.targetTemperature.value.w.min",
@@ -143,7 +145,7 @@
       "ident": "CUR_TEMP",
       "name": "Isttemperatur",
       "type": "float",
-      "presentation": { "kind": "value", "suffix": " °C", "digits": 1 },
+      "presentation": { "kind": "value", "suffix": " °C", "digits": 1, "usageType": 1 },
       "create": { "when": "profileHasAny", "keys": [
         "temperature.currentTemperature",
         "airState.tempState.current",

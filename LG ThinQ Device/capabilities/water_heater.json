@@ -81,6 +81,8 @@
       "presentation": {
         "kind": "slider",
         "suffix": " °C",
+        "usageType": 0,
+        "gradientType": 1,
         "range": { "min": 30, "max": 75, "step": 1 },
         "rangeFromProfile": {
           "min": [
@@ -110,7 +112,7 @@
       "ident": "WATER_TEMP",
       "name": "Wassertemperatur",
       "type": "float",
-      "presentation": { "kind": "value", "suffix": " °C" },
+      "presentation": { "kind": "value", "suffix": " °C", "usageType": 1 },
       "create": { "when": "statusHasAny", "keys": [
         "temperature.water.current", "waterTemperature", "dhwTemperature", "hotWaterTemperature"
       ] },

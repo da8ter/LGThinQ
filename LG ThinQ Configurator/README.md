@@ -21,7 +21,3 @@ Der `LG ThinQ Configurator` hilft dabei, LG ThinQ Geräte aus der Cloud in IP‑
 ## Tipps
 - Nach dem Anlegen kann im jeweiligen `LG ThinQ Device` optional ein **Alias** vergeben werden.
 - Falls Geräte nicht erscheinen, prüfen Sie PAT/Region in der Bridge und die Internet‑Verbindung der Symcon‑Instanz.
-
-## Fehlerbehebung
-- **Keine Geräte gefunden**: Bridge‑Status prüfen, PAT gültig, Country/Region korrekt? Eventuell in der Bridge Verbindung testen.
-- **Instanz lässt sich nicht anlegen**: Prüfen, ob bereits eine `LG ThinQ Device`‑Instanz mit derselben `DeviceID` existiert.

@@ -84,6 +84,8 @@
       "presentation": {
         "kind": "slider",
         "suffix": " °C",
+        "usageType": 0,
+        "gradientType": 1,
         "range": { "min": 5, "max": 35, "step": 0.5 },
         "rangeFromProfile": {
           "min": [
@@ -120,6 +122,8 @@
       "presentation": {
         "kind": "slider",
         "suffix": " °C",
+        "usageType": 0,
+        "gradientType": 1,
         "range": { "min": 30, "max": 75, "step": 1 },
         "rangeFromProfile": {
           "min": [
@@ -149,7 +153,7 @@
       "ident": "ROOM_TEMP",
       "name": "Raumtemperatur",
       "type": "float",
-      "presentation": { "kind": "value", "suffix": " °C" },
+      "presentation": { "kind": "value", "suffix": " °C", "usageType": 1 },
       "create": { "when": "statusHasAny", "keys": [
         "temperature.room.current", "roomTemperature", "indoorTemperature", "air.temperature"
       ] },
@@ -161,7 +165,7 @@
       "ident": "WATER_TEMP",
       "name": "Wassertemperatur",
       "type": "float",
-      "presentation": { "kind": "value", "suffix": " °C" },
+      "presentation": { "kind": "value", "suffix": " °C", "usageType": 1 },
       "create": { "when": "statusHasAny", "keys": [
         "temperature.water.current", "waterTemperature", "dhwTemperature", "hotWaterTemperature"
       ] },
