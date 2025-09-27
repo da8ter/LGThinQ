@@ -2,8 +2,9 @@
 
 Folgende Module beinhaltet das LG ThinQ Repository:
 
-- __LG ThinQ__ ([Dokumentation](LG%20ThinQ))  
-
+- __LG ThinQ Bridge__ ([Dokumentation](LG%20ThinQ%20Bridge))  
+- __LG ThinQ Configurator__ ([Dokumentation](LG%20ThinQ%20Configurator))  
+- __LG ThinQ Device__ ([Dokumentation](LG%20ThinQ%20Device))  
 ## Zweck dieses Moduls
 
 Dieses Repository integriert LG ThinQ Geräte in IP-Symcon. Es stellt eine sichere Cloud-Anbindung über einen Personal Access Token (PAT) her, synchronisiert Gerätezustände, abonniert Ereignisse (Push/Event/MQTT) und ermöglicht die Steuerung einzelner Geräte über sauber modellierte Fähigkeiten (Capabilities). Ziel ist eine robuste, automatisch aktualisierte und benutzerfreundliche Abbildung der LG-Geräte in IP-Symcon.
