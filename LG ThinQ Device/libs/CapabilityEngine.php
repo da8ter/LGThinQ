@@ -701,7 +701,13 @@ class CapabilityEngine
                 if (is_array($writeKeys) && !empty($writeKeys)) {
                     $ok = false;
                     foreach ($writeKeys as $wk) {
-                        if ($this->flatProfileIsWriteable((string)$wk)) { $ok = true; break; }
+                        $wk = (string)$wk;
+                        if ($wk === '') continue;
+                        // Use robust writeability detection that supports ".mode" paths and wrappers
+                        if ($this->profileHasWriteAny([$wk])) { $ok = true; break; }
+                        // Backward-compatibility: if caller provided a base path (or we can derive it), test that too
+                        $base = preg_replace('/\.(mode|type)$/i', '', $wk);
+                        if (is_string($base) && $base !== '' && $this->flatProfileIsWriteable($base)) { $ok = true; break; }
                     }
                     if (!$ok) continue; // not writeable, skip option
                 } else {
