@@ -136,7 +136,11 @@
       "create": { "when": "profileHasAny", "keys": ["display.light", "display"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["display.light.mode", "display.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["display.light", "display"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
-      "write": { "template": { "display": { "light": "@onoff" } } }
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["display.light.mode"], "attribute": { "resource": "display", "property": "light", "valueTemplate": "@onoff" } },
+        { "profileHasAny": ["display.light"], "attribute": { "resource": "display", "property": "light", "valueTemplate": "@onoff" } },
+        { "template": { "display": { "light": "@onoff" } } }
+      ] }
     },
 
     {
@@ -158,7 +162,7 @@
       "create": { "when": "profileHasAny", "keys": ["childLock", "childLock.enabled", "lock.child"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["childLock.mode", "childLock.enabled.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["childLock", "childLock.enabled", "lock.child"] },
-      "write": { "template": { "childLock": { "enabled": "@bool" } } }
+      "write": { "attribute": { "resource": "childLock", "property": "enabled", "valueTemplate": "@bool" } }
     }
   ]
 }

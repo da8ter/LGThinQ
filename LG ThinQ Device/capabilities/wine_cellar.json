@@ -52,7 +52,19 @@
       "create": { "when": "profileHasAny", "keys": ["upperTemperature.target", "temperature.upper.target", "zones.0.temperature.target"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["upperTemperature.target.mode", "temperature.upper.target.mode", "zones.0.temperature.target.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["upperTemperature.target", "temperature.upper.target", "zones.0.temperature.target"] },
-      "write": { "template": { "upperTemperature": { "target": "@float", "unit": "C" } } }
+      "write": {
+        "clamp": { "min": 4, "max": 18 },
+        "firstOf": [
+          { "profileWriteableAny": ["temperatureInUnits.0.targetTemperatureC.mode", "temperatureInUnits.1.targetTemperatureC.mode"],
+            "attribute": { "resource": "temperatureInUnits", "property": "targetTemperatureC", "extras": { "locationName": "WINE_UPPER" }, "clampFromProfile": true } },
+          { "profileWriteableAny": ["upperTemperature.target.mode"],
+            "template": { "upperTemperature": { "target": "@float", "unit": "C" } } },
+          { "profileWriteableAny": ["temperature.upper.target.mode"],
+            "template": { "temperature": { "upper": { "target": "@float", "unit": "C" } } } },
+          { "profileWriteableAny": ["zones.0.temperature.target.mode"],
+            "template": { "zones": { "0": { "temperature": { "target": "@float", "unit": "C" } } } } }
+        ]
+      }
     },
     {
       "ident": "UPPER_CUR_TEMP",
@@ -95,7 +107,19 @@
       "create": { "when": "profileHasAny", "keys": ["lowerTemperature.target", "temperature.lower.target", "zones.1.temperature.target"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["lowerTemperature.target.mode", "temperature.lower.target.mode", "zones.1.temperature.target.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["lowerTemperature.target", "temperature.lower.target", "zones.1.temperature.target"] },
-      "write": { "template": { "lowerTemperature": { "target": "@float", "unit": "C" } } }
+      "write": {
+        "clamp": { "min": 4, "max": 18 },
+        "firstOf": [
+          { "profileWriteableAny": ["temperatureInUnits.0.targetTemperatureC.mode", "temperatureInUnits.1.targetTemperatureC.mode"],
+            "attribute": { "resource": "temperatureInUnits", "property": "targetTemperatureC", "extras": { "locationName": "WINE_LOWER" }, "clampFromProfile": true } },
+          { "profileWriteableAny": ["lowerTemperature.target.mode"],
+            "template": { "lowerTemperature": { "target": "@float", "unit": "C" } } },
+          { "profileWriteableAny": ["temperature.lower.target.mode"],
+            "template": { "temperature": { "lower": { "target": "@float", "unit": "C" } } } },
+          { "profileWriteableAny": ["zones.1.temperature.target.mode"],
+            "template": { "zones": { "1": { "temperature": { "target": "@float", "unit": "C" } } } } }
+        ]
+      }
     },
     {
       "ident": "LOWER_CUR_TEMP",

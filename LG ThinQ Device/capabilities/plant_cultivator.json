@@ -75,7 +75,11 @@
       "create": { "when": "profileHasAny", "keys": ["lighting.level", "light.level", "lamp.level"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["lighting.level.mode", "light.level.mode", "lamp.level.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["lighting.level", "light.level", "lamp.level"] },
-      "write": { "template": { "lighting": { "level": "@int" } } }
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["lighting.level.mode"], "attribute": { "resource": "lighting", "property": "level", "clampFromProfile": true } },
+        { "profileWriteableAny": ["light.level.mode"],    "attribute": { "resource": "light",    "property": "level", "clampFromProfile": true } },
+        { "profileWriteableAny": ["lamp.level.mode"],     "attribute": { "resource": "lamp",     "property": "level", "clampFromProfile": true } }
+      ] }
     },
 
     {
@@ -153,7 +157,7 @@
       "create": { "when": "profileHasAny", "keys": ["childLock", "childLock.enabled", "lock.child"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["childLock.mode", "childLock.enabled.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["childLock", "childLock.enabled", "lock.child"] },
-      "write": { "template": { "childLock": { "enabled": "@bool" } } }
+      "write": { "attribute": { "resource": "childLock", "property": "enabled", "valueTemplate": "@bool" } }
     }
   ]
 }

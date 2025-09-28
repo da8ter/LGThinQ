@@ -41,8 +41,12 @@
       },
       "create": { "when": "profileHasAny", "keys": ["humidity.target", "relativeHumidity.target", "targetHumidity", "humiditySetting"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["humidity.target.mode", "relativeHumidity.target.mode", "targetHumidity.mode", "humiditySetting.mode"], "reassertOn": ["setup", "status"] },
-      "read": { "sources": ["humidity.target", "relativeHumidity.target", "targetHumidity", "humiditySetting"] },
-      "write": { "template": { "humidity": { "target": "@int" } } }
+      "read": { "sources": ["humidity.target", "relativeHumidity.target", "humidity.targetHumidity", "targetHumidity", "humiditySetting"] },
+      "write": { "firstOf": [
+        { "profileHasAny": ["humidity.target"],            "attribute": { "resource": "humidity",           "property": "target",          "clampFromProfile": true } },
+        { "profileHasAny": ["humidity.targetHumidity"],    "attribute": { "resource": "humidity",           "property": "targetHumidity",  "clampFromProfile": true } },
+        { "profileHasAny": ["relativeHumidity.target"],    "attribute": { "resource": "relativeHumidity",   "property": "target",          "clampFromProfile": true } }
+      ] }
     },
 
     {
@@ -148,7 +152,7 @@
       "create": { "when": "profileHasAny", "keys": ["childLock", "childLock.enabled", "lock.child"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["childLock.mode", "childLock.enabled.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["childLock", "childLock.enabled", "lock.child"] },
-      "write": { "template": { "childLock": { "enabled": "@bool" } } }
+      "write": { "attribute": { "resource": "childLock", "property": "enabled", "valueTemplate": "@bool" } }
     }
   ]
 }

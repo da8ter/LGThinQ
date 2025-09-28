@@ -19,7 +19,7 @@
       "create": { "when": "profileHasAny", "keys": ["display.light", "light"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["display.light.mode", "light.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["display.light", "light"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
-      "write": { "template": { "display": { "light": "@onoff" } } }
+      "write": { "attribute": { "resource": "display", "property": "light", "valueTemplate": "@onoff" } }
     },
 
     {
@@ -56,7 +56,13 @@
       "create": { "when": "profileHasAny", "keys": ["zones.0.temperature.target", "kimchi.temperature.0.target", "temperature.zone1.target", "upperTemperature.target"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["zones.0.temperature.target.mode", "kimchi.temperature.0.target.mode", "temperature.zone1.target.mode", "upperTemperature.target.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["zones.0.temperature.target", "kimchi.temperature.0.target", "temperature.zone1.target", "upperTemperature.target"] },
-      "write": { "template": { "zones": { "0": { "temperature": { "target": "@float", "unit": "C" } } } } }
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["temperature.targetTemperature.mode"], "attribute": { "resource": "temperature", "property": "targetTemperature", "extras": { "locationName": "TOP" }, "clampFromProfile": true } },
+        { "profileWriteableAny": ["temperature.zone1.target.mode"],       "template":  { "temperature": { "zone1": { "target": "@float", "unit": "C" } } } },
+        { "profileWriteableAny": ["upperTemperature.target.mode"],        "template":  { "upperTemperature": { "target": "@float", "unit": "C" } } },
+        { "profileWriteableAny": ["kimchi.temperature.0.target.mode"],    "template":  { "kimchi": { "temperature": { "0": { "target": "@float", "unit": "C" } } } } },
+        { "profileWriteableAny": ["zones.0.temperature.target.mode"],     "template":  { "zones": { "0": { "temperature": { "target": "@float", "unit": "C" } } } } }
+      ] }
     },
     {
       "ident": "ZONE1_CUR_TEMP",
@@ -102,7 +108,13 @@
       "create": { "when": "profileHasAny", "keys": ["zones.1.temperature.target", "kimchi.temperature.1.target", "temperature.zone2.target", "lowerTemperature.target"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["zones.1.temperature.target.mode", "kimchi.temperature.1.target.mode", "temperature.zone2.target.mode", "lowerTemperature.target.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["zones.1.temperature.target", "kimchi.temperature.1.target", "temperature.zone2.target", "lowerTemperature.target"] },
-      "write": { "template": { "zones": { "1": { "temperature": { "target": "@float", "unit": "C" } } } } }
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["temperature.targetTemperature.mode"], "attribute": { "resource": "temperature", "property": "targetTemperature", "extras": { "locationName": "BOTTOM" }, "clampFromProfile": true } },
+        { "profileWriteableAny": ["temperature.zone2.target.mode"],       "template":  { "temperature": { "zone2": { "target": "@float", "unit": "C" } } } },
+        { "profileWriteableAny": ["lowerTemperature.target.mode"],        "template":  { "lowerTemperature": { "target": "@float", "unit": "C" } } },
+        { "profileWriteableAny": ["kimchi.temperature.1.target.mode"],    "template":  { "kimchi": { "temperature": { "1": { "target": "@float", "unit": "C" } } } } },
+        { "profileWriteableAny": ["zones.1.temperature.target.mode"],     "template":  { "zones": { "1": { "temperature": { "target": "@float", "unit": "C" } } } } }
+      ] }
     },
     {
       "ident": "ZONE2_CUR_TEMP",

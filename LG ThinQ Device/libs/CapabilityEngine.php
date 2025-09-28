@@ -38,7 +38,7 @@ class CapabilityEngine
     {
         $w = $cap['write'] ?? null;
         if (!is_array($w)) return false;
-        foreach (['enumMap','template','composite','arrayTemplate'] as $k) {
+        foreach (['enumMap','template','composite','arrayTemplate','attribute','multiAttribute','firstOf'] as $k) {
             if (isset($w[$k]) && is_array($w[$k])) return true;
         }
         return false;
@@ -175,6 +175,10 @@ class CapabilityEngine
             if (!isset($rule['files']) || !is_array($rule['files'])) {
                 $rule['files'] = [];
             }
+        }
+        // Guarantee presence of fallback array even if catalog.json omits it
+        if (!isset($data['fallback']) || !is_array($data['fallback'])) {
+            $data['fallback'] = [];
         }
         self::$catalog = $data;
         return self::$catalog;
@@ -586,6 +590,16 @@ class CapabilityEngine
                     $p = $container . '.' . $idx . '.' . ($path !== '' ? ($path . '.') : '') . (string)$k;
                     $this->setByPath($out, $p, $tplVal);
                 }
+                // Normalize container to a sequential array if numeric indices are present
+                if (isset($out[$container]) && is_array($out[$container])) {
+                    $allNumeric = true;
+                    foreach (array_keys($out[$container]) as $k2) {
+                        if (!is_int($k2)) { $allNumeric = false; break; }
+                    }
+                    if ($allNumeric) {
+                        $out[$container] = array_values($out[$container]);
+                    }
+                }
                 return $out;
             }
         }
@@ -595,6 +609,87 @@ class CapabilityEngine
             $converted = $this->convertValueForType($cap, $value);
             $out = $this->replaceTemplatePlaceholders($tpl, $converted);
             return $out;
+        }
+
+        // attribute: generic builder inspired by SDK
+        // {
+        //   "write": {
+        //     "attribute": {
+        //       "resource": "temperatureInUnits",
+        //       "property": "targetTemperatureC",
+        //       "extras": { "locationName": "FRIDGE" },
+        //       "clampFromProfile": true
+        //     }
+        //   }
+        // }
+        if (isset($cap['write']['attribute']) && is_array($cap['write']['attribute'])) {
+            $cfg = $cap['write']['attribute'];
+            $resource = (string)($cfg['resource'] ?? '');
+            $property = (string)($cfg['property'] ?? '');
+            $extras = is_array($cfg['extras'] ?? null) ? $cfg['extras'] : [];
+            if ($resource !== '' && $property !== '') {
+                // Optional clamp from profile writable range
+                if (!empty($cfg['clampFromProfile'])) {
+                    $rng = $this->findRangeFromProfile($resource, $property);
+                    if (is_array($rng)) {
+                        $v = $value;
+                        if (isset($rng['min']) && is_numeric($rng['min'])) { $v = max((float)$rng['min'], (float)$v); }
+                        if (isset($rng['max']) && is_numeric($rng['max'])) { $v = min((float)$rng['max'], (float)$v); }
+                        $value = $v;
+                    }
+                }
+                // Optional valueTemplate (e.g. @onoff, @startstop)
+                if (isset($cfg['valueTemplate'])) {
+                    $node = $cfg['valueTemplate'];
+                    $this->walkReplace($node, $value);
+                    $converted = $node;
+                } else {
+                    $converted = $this->convertValueForType($cap, $value);
+                }
+                $payload = [$resource => $extras + [$property => $converted]];
+                return $payload;
+            }
+        }
+
+        // multiAttribute: build a combined payload of multiple attribute entries
+        if (isset($cap['write']['multiAttribute']) && is_array($cap['write']['multiAttribute'])) {
+            $cfg = $cap['write']['multiAttribute'];
+            $items = is_array($cfg['items'] ?? null) ? $cfg['items'] : [];
+            if (!empty($items)) {
+                $payload = [];
+                foreach ($items as $item) {
+                    if (!is_array($item)) continue;
+                    $resource = (string)($item['resource'] ?? '');
+                    $property = (string)($item['property'] ?? '');
+                    if ($resource === '' || $property === '') continue;
+                    $extras = is_array($item['extras'] ?? null) ? $item['extras'] : [];
+                    $useVal = array_key_exists('valueConst', $item) ? $item['valueConst'] : $value;
+                    // Optional clamp
+                    if (!empty($item['clampFromProfile'])) {
+                        $rng = $this->findRangeFromProfile($resource, $property);
+                        if (is_array($rng) && is_numeric($useVal)) {
+                            $v = $useVal;
+                            if (isset($rng['min']) && is_numeric($rng['min'])) { $v = max((float)$rng['min'], (float)$v); }
+                            if (isset($rng['max']) && is_numeric($rng['max'])) { $v = min((float)$rng['max'], (float)$v); }
+                            $useVal = $v;
+                        }
+                    }
+                    // Optional valueTemplate per item
+                    if (isset($item['valueTemplate'])) {
+                        $node = $item['valueTemplate'];
+                        $this->walkReplace($node, $useVal);
+                        $converted = $node;
+                    } else {
+                        $converted = $this->convertValueForType($cap, $useVal);
+                    }
+                    if (!isset($payload[$resource]) || !is_array($payload[$resource])) {
+                        $payload[$resource] = [];
+                    }
+                    $payload[$resource] = $extras + $payload[$resource];
+                    $payload[$resource][$property] = $converted;
+                }
+                if (!empty($payload)) return $payload;
+            }
         }
 
         // firstOf: pick the first matching write option based on profile keys
@@ -615,6 +710,34 @@ class CapabilityEngine
                     $keys = is_array($keys) ? $keys : [];
                     if (!empty($keys) && !$this->flatProfileHasAny($keys)) {
                         continue;
+                    }
+                }
+                // Support attribute within firstOf
+                if (isset($opt['attribute']) && is_array($opt['attribute'])) {
+                    $cfg = $opt['attribute'];
+                    $resource = (string)($cfg['resource'] ?? '');
+                    $property = (string)($cfg['property'] ?? '');
+                    $extras = is_array($cfg['extras'] ?? null) ? $cfg['extras'] : [];
+                    if ($resource !== '' && $property !== '') {
+                        $useVal = $value;
+                        if (!empty($cfg['clampFromProfile'])) {
+                            $rng = $this->findRangeFromProfile($resource, $property);
+                            if (is_array($rng) && is_numeric($useVal)) {
+                                $v = $useVal;
+                                if (isset($rng['min']) && is_numeric($rng['min'])) { $v = max((float)$rng['min'], (float)$v); }
+                                if (isset($rng['max']) && is_numeric($rng['max'])) { $v = min((float)$rng['max'], (float)$v); }
+                                $useVal = $v;
+                            }
+                        }
+                        if (isset($cfg['valueTemplate'])) {
+                            $node = $cfg['valueTemplate'];
+                            $this->walkReplace($node, $useVal);
+                            $converted = $node;
+                        } else {
+                            $converted = $this->convertValueForType($cap, $useVal);
+                        }
+                        $payload = [$resource => $extras + [$property => $converted]];
+                        return $payload;
                     }
                 }
                 // Support template within firstOf
@@ -653,6 +776,44 @@ class CapabilityEngine
                         if ($t1 !== '') $this->setByPath($out, $t1, $m);
                         //@IPS_LogMessage('CapabilityEngine', sprintf('firstOf: using composite(minutes_to_hm) for ident=%s targets=%s,%s', (string)($cap['ident'] ?? ''), $t0, $t1));
                         return $out;
+                    }
+                }
+                // Support multiAttribute within firstOf
+                if (isset($opt['multiAttribute']) && is_array($opt['multiAttribute'])) {
+                    $cfg = $opt['multiAttribute'];
+                    $items = is_array($cfg['items'] ?? null) ? $cfg['items'] : [];
+                    if (!empty($items)) {
+                        $payload = [];
+                        foreach ($items as $item) {
+                            if (!is_array($item)) continue;
+                            $resource = (string)($item['resource'] ?? '');
+                            $property = (string)($item['property'] ?? '');
+                            if ($resource === '' || $property === '') continue;
+                            $extras = is_array($item['extras'] ?? null) ? $item['extras'] : [];
+                            $useVal = array_key_exists('valueConst', $item) ? $item['valueConst'] : $value;
+                            if (!empty($item['clampFromProfile'])) {
+                                $rng = $this->findRangeFromProfile($resource, $property);
+                                if (is_array($rng) && is_numeric($useVal)) {
+                                    $v = $useVal;
+                                    if (isset($rng['min']) && is_numeric($rng['min'])) { $v = max((float)$rng['min'], (float)$v); }
+                                    if (isset($rng['max']) && is_numeric($rng['max'])) { $v = min((float)$rng['max'], (float)$v); }
+                                    $useVal = $v;
+                                }
+                            }
+                            if (isset($item['valueTemplate'])) {
+                                $node = $item['valueTemplate'];
+                                $this->walkReplace($node, $useVal);
+                                $converted = $node;
+                            } else {
+                                $converted = $this->convertValueForType($cap, $useVal);
+                            }
+                            if (!isset($payload[$resource]) || !is_array($payload[$resource])) {
+                                $payload[$resource] = [];
+                            }
+                            $payload[$resource] = $extras + $payload[$resource];
+                            $payload[$resource][$property] = $converted;
+                        }
+                        if (!empty($payload)) return $payload;
                     }
                 }
             }
@@ -1070,12 +1231,54 @@ class CapabilityEngine
         $parts = explode('.', $path);
         $ref = &$arr;
         foreach ($parts as $p) {
-            if (!isset($ref[$p]) || !is_array($ref[$p])) {
-                $ref[$p] = [];
+            // Use integer array indices for numeric-looking parts to ensure JSON arrays are emitted
+            $key = ctype_digit($p) ? (int)$p : $p;
+            if (!isset($ref[$key]) || !is_array($ref[$key])) {
+                $ref[$key] = [];
             }
-            $ref = &$ref[$p];
+            $ref = &$ref[$key];
         }
         $ref = $value;
+    }
+
+    /**
+     * Find min/max/step for a resource.property from the flattened profile.
+     * Looks for keys like:
+     *   property.<resource>.<index?>.<property>.value.w.{min|max|step}
+     * and returns the first values found.
+     * @return array{min?:float,max?:float,step?:float}|null
+     */
+    private function findRangeFromProfile(string $resource, string $property): ?array
+    {
+        $min = null; $max = null; $step = null;
+        $suffixes = [
+            'min' => '.' . $property . '.value.w.min',
+            'max' => '.' . $property . '.value.w.max',
+            'step' => '.' . $property . '.value.w.step'
+        ];
+        foreach ($this->flatProfile as $k => $v) {
+            if (strpos($k, $resource) === false) continue;
+            // prefer keys under property.* when present
+            if (strpos($k, 'property.') === false) continue;
+            foreach ($suffixes as $kind => $suf) {
+                $lenS = strlen($suf);
+                $lenK = strlen($k);
+                if ($lenK >= $lenS && substr($k, -$lenS) === $suf) {
+                    if ($kind === 'min' && is_numeric($v)) { $min = (float)$v; }
+                    if ($kind === 'max' && is_numeric($v)) { $max = (float)$v; }
+                    if ($kind === 'step' && is_numeric($v)) { $step = (float)$v; }
+                }
+            }
+            if ($min !== null && $max !== null && $step !== null) {
+                break;
+            }
+        }
+        if ($min === null && $max === null && $step === null) return null;
+        $out = [];
+        if ($min !== null) $out['min'] = $min;
+        if ($max !== null) $out['max'] = $max;
+        if ($step !== null) $out['step'] = $step;
+        return $out;
     }
 
     /**

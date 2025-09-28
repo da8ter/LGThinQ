@@ -72,6 +72,21 @@
     },
 
     {
+      "ident": "DRUM_LIGHT",
+      "name": "Trommelleuchte",
+      "type": "boolean",
+      "presentation": { "kind": "switch", "captionOn": "An", "captionOff": "Aus" },
+      "create": { "when": "profileHasAny", "keys": ["drumLight", "drum.light", "light.drum", "tub.light"] },
+      "action": { "enableWhen": "always", "reassertOn": ["status"] },
+      "read": { "sources": ["drum.light", "light.drum", "tub.light"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["drum.light.mode"], "enumMap": { "1": { "drum.light": "ON" },  "0": { "drum.light": "OFF" } } },
+        { "profileWriteableAny": ["light.drum.mode"], "enumMap": { "1": { "light.drum": "ON" },  "0": { "light.drum": "OFF" } } },
+        { "profileWriteableAny": ["tub.light.mode"],  "enumMap": { "1": { "tub.light":  "ON" },  "0": { "tub.light":  "OFF" } } }
+      ] }
+    },
+
+    {
       "ident": "CHILD_LOCK",
       "name": "Kindersicherung",
       "type": "boolean",
@@ -79,7 +94,7 @@
       "create": { "when": "profileHasAny", "keys": ["childLock", "childLock.enabled", "lock.child"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["childLock.mode", "childLock.enabled.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["childLock", "childLock.enabled", "lock.child"] },
-      "write": { "template": { "childLock": { "enabled": "@bool" } } }
+      "write": { "attribute": { "resource": "childLock", "property": "enabled", "valueTemplate": "@bool" } }
     },
 
     {

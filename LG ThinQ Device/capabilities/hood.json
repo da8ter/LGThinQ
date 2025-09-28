@@ -41,7 +41,10 @@
       "create": { "when": "profileHasAny", "keys": ["display.light", "light"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["display.light.mode", "light.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["display.light", "light"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
-      "write": { "template": { "display": { "light": "@onoff" } } }
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["display.light.mode"], "attribute": { "resource": "display", "property": "light", "valueTemplate": "@onoff" } },
+        { "profileWriteableAny": ["light.mode"],         "template":  { "light": "@onoff" } }
+      ] }
     },
 
     {

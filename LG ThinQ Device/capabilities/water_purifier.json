@@ -57,7 +57,10 @@
       "create": { "when": "profileHasAny", "keys": ["dispense.volume", "water.dispense.volume", "volume", "amount"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["dispense.volume.mode", "water.dispense.volume.mode", "volume.mode", "amount.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["dispense.volume", "water.dispense.volume", "volume", "amount"] },
-      "write": { "template": { "dispense": { "volume": "@int", "unit": "ML" } } }
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["dispense.volume.mode"],         "attribute": { "resource": "dispense", "property": "volume", "extras": { "unit": "ML" }, "clampFromProfile": true } },
+        { "profileWriteableAny": ["water.dispense.volume.mode"],   "template": { "water": { "dispense": { "volume": "@int", "unit": "ML" } } } }
+      ] }
     },
 
     {
@@ -85,7 +88,10 @@
       "create": { "when": "profileHasAny", "keys": ["childLock", "childLock.enabled", "lock.child", "hotWaterLock.enabled"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["childLock.mode", "childLock.enabled.mode", "hotWaterLock.enabled.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["childLock", "childLock.enabled", "lock.child", "hotWaterLock.enabled"] },
-      "write": { "template": { "childLock": { "enabled": "@bool" } } }
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["childLock.enabled.mode"],   "attribute": { "resource": "childLock",   "property": "enabled", "valueTemplate": "@bool" } },
+        { "profileWriteableAny": ["hotWaterLock.enabled.mode"], "attribute": { "resource": "hotWaterLock", "property": "enabled", "valueTemplate": "@bool" } }
+      ] }
     },
 
     {

@@ -112,7 +112,10 @@
         "heating.target.mode", "room.targetTemperature.mode", "targetTemperature.mode"
       ], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["heating.target", "room.targetTemperature", "targetTemperature"] },
-      "write": { "template": { "heating": { "target": "@float", "unit": "C" } } }
+      "write": { "firstOf": [
+        { "profileHasAny": ["heating.target"],           "attribute": { "resource": "heating",         "property": "target",            "extras": { "unit": "C" }, "clampFromProfile": true } },
+        { "profileHasAny": ["room.targetTemperature"],   "attribute": { "resource": "room",            "property": "targetTemperature",                "clampFromProfile": true } }
+      ] }
     },
 
     {
@@ -146,7 +149,11 @@
       "create": { "when": "profileHasAny", "keys": ["water.target", "hotWater.target", "dhw.target"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["water.target.mode", "hotWater.target.mode", "dhw.target.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["water.target", "hotWater.target", "dhw.target"] },
-      "write": { "template": { "water": { "target": "@float", "unit": "C" } } }
+      "write": { "firstOf": [
+        { "profileHasAny": ["water.target"],     "attribute": { "resource": "water",     "property": "target", "extras": { "unit": "C" }, "clampFromProfile": true } },
+        { "profileHasAny": ["hotWater.target"],  "attribute": { "resource": "hotWater",  "property": "target", "extras": { "unit": "C" }, "clampFromProfile": true } },
+        { "profileHasAny": ["dhw.target"],       "attribute": { "resource": "dhw",       "property": "target", "extras": { "unit": "C" }, "clampFromProfile": true } }
+      ] }
     },
 
     {
@@ -181,7 +188,10 @@
       "create": { "when": "profileHasAny", "keys": ["pump.operation", "circulationPump.operation", "pump"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["pump.operation.mode", "circulationPump.operation.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["pump.operation", "circulationPump.operation", "pump"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
-      "write": { "template": { "pump": { "operation": "@onoff" } } }
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["pump.operation.mode"],            "attribute": { "resource": "pump",             "property": "operation",          "valueTemplate": "@onoff" } },
+        { "profileWriteableAny": ["circulationPump.operation.mode"], "attribute": { "resource": "circulationPump",  "property": "operation",          "valueTemplate": "@onoff" } }
+      ] }
     },
 
     {

@@ -129,10 +129,10 @@
       "Kühlschrank Temp": "Fridge Temp",
       "Gefrierschrank Temp": "Freezer Temp",
       "Kühlschrank Soll": "Fridge Set Temp",
-      "Gefrier Soll": "Freezer Set Temp",
+      "Gefrierschrank Soll": "Freezer Set Temp",
       "Schnellgefrieren": "Ice Plus",
       "Tür Kühlschrank": "Door Fridge",
-      "Tür Gefrier": "Door Freezer",
+      "Tür Gefrierschrank": "Door Freezer",
       "Mikrowellenbetrieb": "Microwave Operation",
       "Leistungsstufe": "Power Level",
       "Garzeit": "Cook Time (min)",
@@ -231,11 +231,11 @@
       "Fridge Temp": "Kühlschrank Temp",
       "Freezer Temp": "Gefrierschrank Temp",
       "Fridge Set Temp": "Kühlschrank Soll",
-      "Freezer Set Temp": "Gefrier Soll",
+      "Freezer Set Temp": "Gefrierschrank Soll",
       "Ice Plus": "Schnellgefrieren",
       "Eco": "Eco",
       "Door Fridge": "Tür Kühlschrank",
-      "Door Freezer": "Tür Gefrier",
+      "Door Freezer": "Tür Gefrierschrank",
       "Light": "Licht",
       "Microwave Operation": "Mikrowellenbetrieb",
       "Mode": "Modus",
@@ -307,7 +307,11 @@
       "Water Filter State": "Wasserfilter Zustand",
       "Water Filter Usage Time": "Wasserfilter Nutzungszeit",
       "FRIDGE": "Kühlschrank",
-      "FREEZER": "Gefrierschrank"
+      "FREEZER": "Gefrierschrank",
+      "Replace": "Ersetzen",
+      "Good": "Gut",
+      "Bad": "Schlecht",
+      "Medium": "Mittel"
     }
   }
 }

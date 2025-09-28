@@ -78,7 +78,11 @@
       "create": { "when": "profileHasAny", "keys": ["temperature.targetTemperature", "cookTemperature", "oven.temperature.target"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["temperature.targetTemperature.mode", "cookTemperature.mode", "oven.temperature.target.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["temperature.targetTemperature", "cookTemperature", "oven.temperature.target"] },
-      "write": { "template": { "temperature": { "targetTemperature": "@float", "unit": "C" } } }
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["temperature.targetTemperature.mode"], "attribute": { "resource": "temperature", "property": "targetTemperature", "extras": { "unit": "C" }, "clampFromProfile": true } },
+        { "profileWriteableAny": ["oven.temperature.target.mode"],       "template":  { "oven": { "temperature": { "target": "@float", "unit": "C" } } } },
+        { "profileWriteableAny": ["cookTemperature.mode"],               "template":  { "cookTemperature": "@float" } }
+      ] }
     },
 
     {
@@ -112,7 +116,11 @@
       "create": { "when": "profileHasAny", "keys": ["light", "display.light"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["light.mode", "display.light.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["light", "display.light"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
-      "write": { "template": { "light": "@onoff" } }
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["display.light.mode"], "attribute": { "resource": "display", "property": "light", "valueTemplate": "@onoff" } },
+        { "profileHasAny": ["display.light"], "attribute": { "resource": "display", "property": "light", "valueTemplate": "@onoff" } },
+        { "template": { "light": "@onoff" } }
+      ] }
     },
 
     {

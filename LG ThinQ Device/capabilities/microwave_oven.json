@@ -62,7 +62,11 @@
       "create": { "when": "profileHasAny", "keys": ["microwave.powerLevel", "powerLevel", "power.level"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["microwave.powerLevel.mode", "powerLevel.mode", "power.level.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["microwave.powerLevel", "powerLevel", "power.level"] },
-      "write": { "template": { "microwave": { "powerLevel": "@int" } } }
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["microwave.powerLevel.mode"], "attribute": { "resource": "microwave", "property": "powerLevel" } },
+        { "profileWriteableAny": ["power.level.mode"],          "attribute": { "resource": "power",     "property": "level" } },
+        { "profileWriteableAny": ["powerLevel.mode"],           "template":  { "powerLevel": "@int" } }
+      ] }
     },
 
     {
@@ -125,7 +129,11 @@
       "create": { "when": "profileHasAny", "keys": ["display.light", "light", "cavity.light"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["display.light.mode", "light.mode", "cavity.light.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["display.light", "light", "cavity.light"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
-      "write": { "template": { "display": { "light": "@onoff" } } }
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["display.light.mode"], "attribute": { "resource": "display", "property": "light", "valueTemplate": "@onoff" } },
+        { "profileHasAny": ["display.light"], "attribute": { "resource": "display", "property": "light", "valueTemplate": "@onoff" } },
+        { "template": { "display": { "light": "@onoff" } } }
+      ] }
     },
 
     {
@@ -136,7 +144,7 @@
       "create": { "when": "profileHasAny", "keys": ["childLock", "childLock.enabled", "lock.child"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["childLock.mode", "childLock.enabled.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["childLock", "childLock.enabled", "lock.child"] },
-      "write": { "template": { "childLock": { "enabled": "@bool" } } }
+      "write": { "attribute": { "resource": "childLock", "property": "enabled", "valueTemplate": "@bool" } }
     },
 
     {
@@ -168,7 +176,7 @@
       "create": { "when": "profileHasAny", "keys": ["sound.beep", "beep", "sound"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["sound.beep.mode", "beep.mode", "sound.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["sound.beep", "beep", "sound"], "string_true": ["ON", "TRUE", "1"], "string_false": ["OFF", "FALSE", "0"] },
-      "write": { "template": { "sound": { "beep": "@onoff" } } }
+      "write": { "attribute": { "resource": "sound", "property": "beep", "valueTemplate": "@onoff" } }
     }
   ]
 }

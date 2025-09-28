@@ -17,11 +17,13 @@
       "presentation": { "kind": "slider", "usageType": 0, "gradientType": 1, "range": { "min": 1, "max": 7, "step": 1, "digits": 0, "suffix": " °C" } },
       "create": { "when": "always" },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
-      "read": { "array": { "container": "temperature", "where": { "locationName": "FRIDGE" }, "path": "targetTemperature" } },
-      "write": {
-        "clamp": { "min": 1, "max": 7 },
-        "arrayTemplate": { "container": "temperature", "where": { "locationName": "FRIDGE" }, "set": { "locationName": "FRIDGE", "targetTemperature": "@int", "unit": "C" } }
-      }
+      "read": { "array": { "container": "temperatureInUnits", "where": { "locationName": "FRIDGE" }, "path": "targetTemperatureC" } },
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["temperatureInUnits.0.targetTemperatureC.mode", "temperatureInUnits.1.targetTemperatureC.mode"],
+          "attribute": { "resource": "temperatureInUnits", "property": "targetTemperatureC", "extras": { "locationName": "FRIDGE" }, "clampFromProfile": true } },
+        { "profileWriteableAny": ["temperature.0.targetTemperature.mode", "temperature.1.targetTemperature.mode"],
+          "attribute": { "resource": "temperature", "property": "targetTemperature", "extras": { "locationName": "FRIDGE" }, "clampFromProfile": true } }
+      ] }
     },
     {
       "ident": "FREEZER_SET_TEMP",
@@ -30,11 +32,13 @@
       "presentation": { "kind": "slider", "usageType": 0, "gradientType": 1, "range": { "min": -24, "max": -14, "step": 1, "digits": 0, "suffix": " °C" } },
       "create": { "when": "always" },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
-      "read": { "array": { "container": "temperature", "where": { "locationName": "FREEZER" }, "path": "targetTemperature" } },
-      "write": {
-        "clamp": { "min": -24, "max": -14 },
-        "arrayTemplate": { "container": "temperature", "where": { "locationName": "FREEZER" }, "set": { "locationName": "FREEZER", "targetTemperature": "@int", "unit": "C" } }
-      }
+      "read": { "array": { "container": "temperatureInUnits", "where": { "locationName": "FREEZER" }, "path": "targetTemperatureC" } },
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["temperatureInUnits.0.targetTemperatureC.mode", "temperatureInUnits.1.targetTemperatureC.mode"],
+          "attribute": { "resource": "temperatureInUnits", "property": "targetTemperatureC", "extras": { "locationName": "FREEZER" }, "clampFromProfile": true } },
+        { "profileWriteableAny": ["temperature.0.targetTemperature.mode", "temperature.1.targetTemperature.mode"],
+          "attribute": { "resource": "temperature", "property": "targetTemperature", "extras": { "locationName": "FREEZER" }, "clampFromProfile": true } }
+      ] }
     },
     {
       "ident": "ICE_PLUS",

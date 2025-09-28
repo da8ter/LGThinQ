@@ -8,7 +8,7 @@
       "create": { "when": "profileHasAny", "keys": ["operation.airConOperationMode"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["operation.airConOperationMode.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["operation.airConOperationMode"], "map": { "POWER_ON": true, "POWER_OFF": false } },
-      "write": { "template": { "operation": { "airConOperationMode": "@power_on_off" } } }
+      "write": { "attribute": { "resource": "operation", "property": "airConOperationMode", "valueTemplate": "@power_on_off" } }
     },
     {
       "ident": "HVAC_MODE",
@@ -62,6 +62,20 @@
           "12": { "airFlow.windStrength": "MID" },
           "13": { "airFlow.windStrength": "HIGH" },
           "14": { "airFlow.windStrength": "POWER" }
+        } },
+        { "profileWriteableAny": ["airFlow.targetWindStrength"], "enumMap": {
+          "10": { "airFlow.targetWindStrength": "AUTO" },
+          "11": { "airFlow.targetWindStrength": "LOW" },
+          "12": { "airFlow.targetWindStrength": "MID" },
+          "13": { "airFlow.targetWindStrength": "HIGH" },
+          "14": { "airFlow.targetWindStrength": "POWER" }
+        } },
+        { "profileWriteableAny": ["airState.windStrength"], "enumMap": {
+          "10": { "airState.windStrength": "AUTO" },
+          "11": { "airState.windStrength": "LOW" },
+          "12": { "airState.windStrength": "MID" },
+          "13": { "airState.windStrength": "HIGH" },
+          "14": { "airState.windStrength": "POWER" }
         } }
       ] }
     },
@@ -73,7 +87,10 @@
       "create": { "when": "profileHasAny", "keys": ["windDirection.rotateUpDown", "windDirection.rotateLeftRight"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["windDirection.rotateUpDown.mode", "windDirection.rotateLeftRight.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["windDirection.rotateUpDown"] },
-      "write": { "template": { "windDirection": { "rotateUpDown": "@bool", "rotateLeftRight": "@bool" } } }
+      "write": { "multiAttribute": { "items": [
+        { "resource": "windDirection", "property": "rotateUpDown", "valueTemplate": "@bool" },
+        { "resource": "windDirection", "property": "rotateLeftRight", "valueTemplate": "@bool" }
+      ] } }
     },
     {
       "ident": "SET_TEMP",
@@ -131,12 +148,12 @@
       "read": { "sources": ["temperature.targetTemperature", "temperature.coolTargetTemperature", "temperature.heatTargetTemperature", "temperature.autoTargetTemperature"] },
       "write": {
         "firstOf": [
-          { "profileHasAny": ["temperature.targetTemperature"], "template": { "temperature": { "targetTemperature": "@float" } } },
-          { "profileHasAny": ["temperature.coolTargetTemperature"], "template": { "temperature": { "coolTargetTemperature": "@float" } } },
-          { "profileHasAny": ["temperature.heatTargetTemperature"], "template": { "temperature": { "heatTargetTemperature": "@float" } } },
-          { "profileHasAny": ["temperature.autoTargetTemperature"], "template": { "temperature": { "autoTargetTemperature": "@float" } } },
-          { "profileHasAny": ["twoSetTemperature.coolTargetTemperature"], "template": { "twoSetTemperature": { "coolTargetTemperature": "@float" } } },
-          { "profileHasAny": ["twoSetTemperature.heatTargetTemperature"], "template": { "twoSetTemperature": { "heatTargetTemperature": "@float" } } }
+          { "profileHasAny": ["temperature.targetTemperature"], "attribute": { "resource": "temperature", "property": "targetTemperature", "clampFromProfile": true } },
+          { "profileHasAny": ["temperature.coolTargetTemperature"], "attribute": { "resource": "temperature", "property": "coolTargetTemperature", "clampFromProfile": true } },
+          { "profileHasAny": ["temperature.heatTargetTemperature"], "attribute": { "resource": "temperature", "property": "heatTargetTemperature", "clampFromProfile": true } },
+          { "profileHasAny": ["temperature.autoTargetTemperature"], "attribute": { "resource": "temperature", "property": "autoTargetTemperature", "clampFromProfile": true } },
+          { "profileHasAny": ["twoSetTemperature.coolTargetTemperature"], "attribute": { "resource": "twoSetTemperature", "property": "coolTargetTemperature", "clampFromProfile": true } },
+          { "profileHasAny": ["twoSetTemperature.heatTargetTemperature"], "attribute": { "resource": "twoSetTemperature", "property": "heatTargetTemperature", "clampFromProfile": true } }
         ]
       },
       "visibility": { "hidden": false }
@@ -173,8 +190,8 @@
       "create": { "when": "profileHasAny", "keys": ["powerSave.powerSaveEnabled"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["powerSave.powerSaveEnabled.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["powerSave.powerSaveEnabled"] },
-      "write": { "template": { "powerSave": { "powerSaveEnabled": "@bool" } } },
-      "visibility": { "hidden": true}
+      "write": { "attribute": { "resource": "powerSave", "property": "powerSaveEnabled", "valueTemplate": "@bool" } },
+      "visibility": { "hidden": false}
     },
     {
       "ident": "DISPLAY_LIGHT",
@@ -184,7 +201,7 @@
       "create": { "when": "profileHasAny", "keys": ["display.light"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["display.light.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["display.light"], "string_true": ["ON"], "string_false": ["OFF"] },
-      "write": { "template": { "display": { "light": "@onoff" } } }
+      "write": { "attribute": { "resource": "display", "property": "light", "valueTemplate": "@onoff" } }
     },
     {
       "ident": "AIR_CLEAN",
@@ -194,7 +211,7 @@
       "create": { "when": "profileHasAny", "keys": ["operation.airCleanOperationMode"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["operation.airCleanOperationMode.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["operation.airCleanOperationMode"], "string_true": ["START", "ON"], "string_false": ["STOP", "OFF"] },
-      "write": { "template": { "operation": { "airCleanOperationMode": "@startstop" } } }
+      "write": { "attribute": { "resource": "operation", "property": "airCleanOperationMode", "valueTemplate": "@startstop" } }
     },
     {
       "ident": "TIMER_START_REL_TIME",
@@ -230,7 +247,7 @@
       "ident": "TIMER_START_REL_HOUR",
       "name": "Timer Start Stunde",
       "type": "integer",
-      "presentation": { "kind": "value", "suffix": " h" },
+      "presentation": { "kind": "slider", "range": { "min": 1, "max": 720, "step": 1, "digits": 0, "suffix": " h" } },
       "visibility": { "hidden": true },
       "create": { "when": "profileHasAny", "keys": ["timer.relativeHourToStart"] },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
@@ -241,7 +258,7 @@
       "ident": "TIMER_START_REL_MIN",
       "name": "Timer Start Minute",
       "type": "integer",
-      "presentation": { "kind": "value", "suffix": " min" },
+      "presentation": { "kind": "slider", "range": { "min": 1, "max": 720, "step": 1, "digits": 0, "suffix": " h" } },
       "visibility": { "hidden": true },
       "create": { "when": "profileHasAny", "keys": ["timer.relativeMinuteToStart"] },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
@@ -252,7 +269,7 @@
       "ident": "TIMER_STOP_REL_HOUR",
       "name": "Timer Stop Stunde",
       "type": "integer",
-      "presentation": { "kind": "value", "suffix": " h" },
+      "presentation": { "kind": "slider", "range": { "min": 1, "max": 720, "step": 1, "digits": 0, "suffix": " h" } },
       "visibility": { "hidden": true },
       "create": { "when": "profileHasAny", "keys": ["timer.relativeHourToStop"] },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
@@ -263,7 +280,7 @@
       "ident": "TIMER_STOP_REL_MIN",
       "name": "Timer Stop Minute",
       "type": "integer",
-      "presentation": { "kind": "value", "suffix": " min" },
+      "presentation": { "kind": "slider", "range": { "min": 1, "max": 720, "step": 1, "digits": 0, "suffix": " h" } },
       "visibility": { "hidden": true },
       "create": { "when": "profileHasAny", "keys": ["timer.relativeMinuteToStop"] },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
@@ -274,7 +291,7 @@
       "ident": "TIMER_START_ABS_HOUR",
       "name": "Timer Start Stunde (abs.)",
       "type": "integer",
-      "presentation": { "kind": "value", "suffix": " h" },
+      "presentation": { "kind": "slider", "range": { "min": 1, "max": 720, "step": 1, "digits": 0, "suffix": " h" } },
       "visibility": { "hidden": true },
       "create": { "when": "profileHasAny", "keys": ["timer.absoluteHourToStart"] },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
@@ -285,7 +302,7 @@
       "ident": "TIMER_START_ABS_MIN",
       "name": "Timer Start Minute (abs.)",
       "type": "integer",
-      "presentation": { "kind": "value", "suffix": " min" },
+      "presentation": { "kind": "slider", "range": { "min": 1, "max": 720, "step": 1, "digits": 0, "suffix": " h" } },
       "visibility": { "hidden": true },
       "create": { "when": "profileHasAny", "keys": ["timer.absoluteMinuteToStart"] },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
@@ -296,7 +313,7 @@
       "ident": "TIMER_STOP_ABS_HOUR",
       "name": "Timer Stop Stunde (abs.)",
       "type": "integer",
-      "presentation": { "kind": "value", "suffix": " h" },
+      "presentation": { "kind": "slider", "range": { "min": 1, "max": 720, "step": 1, "digits": 0, "suffix": " h" } },
       "visibility": { "hidden": true },
       "create": { "when": "profileHasAny", "keys": ["timer.absoluteHourToStop"] },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
@@ -307,7 +324,7 @@
       "ident": "TIMER_STOP_ABS_MIN",
       "name": "Timer Stop Minute (abs.)",
       "type": "integer",
-      "presentation": { "kind": "value", "suffix": " min" },
+      "presentation": { "kind": "slider", "range": { "min": 1, "max": 720, "step": 1, "digits": 0, "suffix": " h" } },
       "visibility": { "hidden": true },
       "create": { "when": "profileHasAny", "keys": ["timer.absoluteMinuteToStop"] },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
@@ -318,7 +335,7 @@
       "ident": "SLEEP_STOP_REL_HOUR",
       "name": "Sleep Stop Stunde",
       "type": "integer",
-      "presentation": { "kind": "value", "suffix": " h" },
+      "presentation": { "kind": "slider", "range": { "min": 1, "max": 720, "step": 1, "digits": 0, "suffix": " h" } },
       "visibility": { "hidden": true },
       "create": { "when": "profileHasAny", "keys": ["sleepTimer.relativeHourToStop"] },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },
@@ -358,7 +375,7 @@
       "ident": "SLEEP_STOP_REL_MIN",
       "name": "Sleep Stop Minute",
       "type": "integer",
-      "presentation": { "kind": "value", "suffix": " min" },
+      "presentation": { "kind": "slider", "range": { "min": 1, "max": 720, "step": 1, "digits": 0, "suffix": " min" } },
       "visibility": { "hidden": true },
       "create": { "when": "profileHasAny", "keys": ["sleepTimer.relativeMinuteToStop"] },
       "action": { "enableWhen": "always", "reassertOn": ["setup", "status"] },

@@ -37,7 +37,10 @@
       "create": { "when": "profileHasAny", "keys": ["timer.relativeHourToStart", "delayStartHour"] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["timer.relativeHourToStart.mode", "delayStartHour.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["timer.relativeHourToStart", "delayStartHour"] },
-      "write": { "template": { "timer": { "relativeHourToStart": "@int" } } }
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["timer.relativeHourToStart.mode"], "template": { "timer": { "relativeHourToStart": "@int" } } },
+        { "profileWriteableAny": ["delayStartHour.mode"],            "template": { "delayStartHour": "@int" } }
+      ] }
     },
 
     {
@@ -137,7 +140,11 @@
       "create": { "when": "profileHasAny", "keys": ["course", "program", "cycle", "state.course" ] },
       "action": { "enableWhen": "profileWriteableAny", "writeableKeys": ["course.mode", "program.mode", "cycle.mode"], "reassertOn": ["setup", "status"] },
       "read": { "sources": ["course", "program", "cycle", "state.course"] },
-      "write": { "template": { "course": "@string" } }
+      "write": { "firstOf": [
+        { "profileWriteableAny": ["course.mode"],  "template": { "course": "@string" } },
+        { "profileWriteableAny": ["program.mode"], "template": { "program": "@string" } },
+        { "profileWriteableAny": ["cycle.mode"],   "template": { "cycle": "@string" } }
+      ] }
     }
   ]
 }
