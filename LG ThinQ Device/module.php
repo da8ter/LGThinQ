@@ -96,6 +96,9 @@ class LGThinQDevice extends IPSModule
                 }
                 if (method_exists($this, 'RegisterOnceTimer')) {
                     @$this->RegisterOnceTimer('AutoSubscribe', 'LGTQD_AutoSubscribe($_IPS["TARGET"]);');
+                    if (method_exists($this, 'SetTimerInterval')) {
+                        @$this->SetTimerInterval('AutoSubscribe', 60000);
+                    }
                 }
             }
         } catch (\Throwable $e) {
@@ -110,6 +113,9 @@ class LGThinQDevice extends IPSModule
             } elseif (method_exists($this, 'RegisterOnceTimer')) {
                 // Defer initial fetch until the parent becomes active
                 @$this->RegisterOnceTimer('InitialUpdateStatus', 'LGTQD_UpdateStatus($_IPS["TARGET"]);');
+                if (method_exists($this, 'SetTimerInterval')) {
+                    @$this->SetTimerInterval('InitialUpdateStatus', 60000);
+                }
             }
         } catch (\Throwable $e) {
             $this->logThrowable('InitialUpdateStatus', $e);
@@ -119,6 +125,9 @@ class LGThinQDevice extends IPSModule
         try {
             if (method_exists($this, 'RegisterOnceTimer')) {
                 @$this->RegisterOnceTimer('FinalizeSetup', 'LGTQD_FinalizeSetup($_IPS["TARGET"]);');
+                if (method_exists($this, 'SetTimerInterval')) {
+                    @$this->SetTimerInterval('FinalizeSetup', 60000);
+                }
             }
         } catch (\Throwable $e) {
             $this->logThrowable('FinalizeSetup schedule', $e);
@@ -145,6 +154,12 @@ class LGThinQDevice extends IPSModule
         if ($deviceId === '') {
             $this->LogMessage($this->t('UpdateStatus: DeviceID is missing'), KL_WARNING);
             return;
+        }
+
+        // Ensure one-shot timers do not turn into periodic ones
+        if (method_exists($this, 'SetTimerInterval')) {
+            // These timers should only fire once; disable after running UpdateStatus
+            @$this->SetTimerInterval('InitialUpdateStatus', 0);
         }
 
         try {
@@ -188,8 +203,15 @@ class LGThinQDevice extends IPSModule
             if (method_exists($this, 'RegisterOnceTimer')) {
                 // Retry later until the gateway becomes active
                 @$this->RegisterOnceTimer('FinalizeSetup', 'LGTQD_FinalizeSetup($_IPS["TARGET"]);');
+                if (method_exists($this, 'SetTimerInterval')) {
+                    @$this->SetTimerInterval('FinalizeSetup', 60000);
+                }
             }
             return;
+        }
+        // Parent is active: prevent periodic execution of this once-timer
+        if (method_exists($this, 'SetTimerInterval')) {
+            @$this->SetTimerInterval('FinalizeSetup', 0);
         }
         try {
             $this->SetupDeviceVariables();
@@ -239,9 +261,6 @@ class LGThinQDevice extends IPSModule
         $ok = $this->ControlDevice(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         if ($ok) {
             $this->setValueByVarType((string)$ident, $value);
-            if (method_exists($this, 'RegisterOnceTimer')) {
-                @$this->RegisterOnceTimer('RefreshAfterControl', 'LGTQD_UpdateStatus($_IPS["TARGET"]);');
-            }
         }
     }
 
@@ -484,40 +503,66 @@ class LGThinQDevice extends IPSModule
     private function resolveDeviceType(string $deviceId, array $profile): string
     {
         // Prefer fresh information from the device list each time
+        $did = trim($deviceId);
+        $this->SendDebug('ResolveDeviceType', 'Begin: deviceId=' . $did, 0);
         try {
             $listRaw = $this->sendAction('GetDevices');
             $list = json_decode((string)$listRaw, true);
-            if (is_array($list)) {
-                foreach ($list as $entry) {
+            if (!is_array($list)) {
+                $this->SendDebug('ResolveDeviceType', 'GetDevices returned non-array payload', 0);
+            } else {
+                $this->SendDebug('ResolveDeviceType', 'Devices count=' . count($list), 0);
+                foreach ($list as $idx => $entry) {
                     if (!is_array($entry)) {
+                        $this->SendDebug('ResolveDeviceType', 'Entry #' . $idx . ' not an object', 0);
                         continue;
                     }
-                    $id = (string)($entry['deviceId'] ?? ($entry['id'] ?? ''));
-                    if ($id !== '' && strcasecmp($id, $deviceId) === 0) {
-                        $type = (string)($entry['deviceType'] ?? '');
-                        if ($type !== '') {
-                            return $type;
-                        }
+                    $keys = implode(',', array_keys($entry));
+                    // Accept multiple id field variants
+                    $candId = (string)($entry['deviceId'] ?? ($entry['device_id'] ?? ($entry['id'] ?? '')));
+                    if ($candId === '') {
+                        $this->SendDebug('ResolveDeviceType', 'Entry #' . $idx . ' missing id fields; keys=' . $keys, 0);
+                        continue;
                     }
+                    $match = (strcasecmp($candId, $did) === 0);
+                    if (!$match) {
+                        // Also allow substring match when IDs include prefixes/suffixes (rare)
+                        $match = (strpos($candId, $did) !== false) || (strpos($did, $candId) !== false);
+                    }
+                    if (!$match) {
+                        continue;
+                    }
+
+                    // Found matching device entry: try different type fields
+                    $typeDirect = (string)($entry['deviceType'] ?? '');
+                    $typeInfo   = '';
+                    if (isset($entry['deviceInfo']) && is_array($entry['deviceInfo'])) {
+                        $typeInfo = (string)($entry['deviceInfo']['deviceType'] ?? '');
+                    }
+                    $type = $typeDirect !== '' ? $typeDirect : $typeInfo;
+                    $this->SendDebug('ResolveDeviceType', sprintf('Match at #%d: id=%s typeDirect=%s typeInfo=%s', $idx, substr($candId, 0, 8) . '…', $typeDirect, $typeInfo), 0);
+                    if ($type !== '') {
+                        return $type;
+                    }
+                    $this->SendDebug('ResolveDeviceType', 'Matching entry has no deviceType fields; keys=' . $keys, 0);
                 }
             }
         } catch (Throwable $e) {
             $this->logThrowable('ResolveDeviceType', $e);
         }
 
-        // Fallback: explicit deviceType in profile, if provided
-        if (isset($profile['deviceType']) && is_string($profile['deviceType'])) {
-            return (string)$profile['deviceType'];
-        }
-
-        // Next fallback: previously detected type (cached)
+        /*
+        // Fallback: previously detected type (cached) — keep for stability but log it
         $cached = trim((string)$this->ReadAttributeString('DeviceType'));
         if ($cached !== '') {
+            $this->SendDebug('ResolveDeviceType', 'Using cached DeviceType=' . $cached, 0);
             return $cached;
         }
+        */
 
-        // Final fallback
-        return 'ac';
+        // No fallback to profile or AC by request — return empty to surface the issue upstream
+        $this->SendDebug('ResolveDeviceType', 'FAILED to resolve device type from device list; returning empty', 0);
+        return '';
     }
 
     /**
@@ -717,6 +762,10 @@ class LGThinQDevice extends IPSModule
         if (isset($data['devices']) && is_array($data['devices'])) {
             return array_values(array_filter($data['devices'], 'is_array'));
         }
+        // If wrapper { response: [...] }
+        if (isset($data['response']) && is_array($data['response'])) {
+            return array_values(array_filter($data['response'], 'is_array'));
+        }
         // If already a list (0-indexed array of entries)
         $isList = array_keys($data) === range(0, count($data) - 1);
         if ($isList) {
@@ -750,7 +799,7 @@ class LGThinQDevice extends IPSModule
         $deviceId = trim($deviceId);
         if ($deviceId !== '') {
             foreach ($devices as $entry) {
-                $id = (string)($entry['deviceId'] ?? ($entry['id'] ?? ''));
+                $id = (string)($entry['deviceId'] ?? ($entry['device_id'] ?? ($entry['id'] ?? '')));
                 if ($id === '' || strcasecmp($id, $deviceId) !== 0) continue;
                 $type = (string)($entry['deviceType'] ?? '');
                 if ($type !== '') return $type;
@@ -762,11 +811,8 @@ class LGThinQDevice extends IPSModule
                 }
             }
         }
-        // Fallback: explicit in profile
-        if (isset($profile['deviceType']) && is_string($profile['deviceType'])) {
-            return (string)$profile['deviceType'];
-        }
-        return 'unknown';
+        // Align with runtime: do not invent a type; return empty when unresolved
+        return '';
     }
 
     private function applyPresentation(int $vid, string $ident, array $presentation, array $flatProfile, string $type): void
@@ -995,6 +1041,10 @@ class LGThinQDevice extends IPSModule
             if ($hadOptionsArray) {
                 $payloadEncoded['OPTIONS'] = json_encode($payload['OPTIONS'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             }
+            $hadIntervalsArray = isset($payload['INTERVALS']) && is_array($payload['INTERVALS']);
+            if ($hadIntervalsArray) {
+                $payloadEncoded['INTERVALS'] = json_encode($payload['INTERVALS'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
             @IPS_SetVariableCustomPresentation($vid, $payloadEncoded);
             // Debug: verify if custom presentation has been applied
             $varInfo = @IPS_GetVariable($vid);
@@ -1002,8 +1052,8 @@ class LGThinQDevice extends IPSModule
             $this->SendDebug('Presentation', 'Applied ident=' . $ident . ' post=' . (is_string($post) ? $post : json_encode($post)), 0);
             // If not applied and we encoded OPTIONS, retry once with OPTIONS as array (compat mode)
             $notApplied = ($post === null || $post === '' || $post === false);
-            if ($notApplied && $hadOptionsArray) {
-                $this->SendDebug('Presentation', 'Retry ident=' . $ident . ' with OPTIONS as array (compatibility attempt)', 0);
+            if ($notApplied && ($hadOptionsArray || $hadIntervalsArray)) {
+                $this->SendDebug('Presentation', 'Retry ident=' . $ident . ' with array fields (OPTIONS/INTERVALS) unencoded (compatibility attempt)', 0);
                 @IPS_SetVariableCustomPresentation($vid, $payload);
             }
         } else {
@@ -1031,6 +1081,15 @@ class LGThinQDevice extends IPSModule
                 }
             }
             unset($option);
+        }
+        // Translate ConstantValue inside INTERVALS when present
+        if (isset($payload['INTERVALS']) && is_array($payload['INTERVALS'])) {
+            foreach ($payload['INTERVALS'] as &$interval) {
+                if (isset($interval['ConstantValue'])) {
+                    $interval['ConstantValue'] = $this->t((string)$interval['ConstantValue']);
+                }
+            }
+            unset($interval);
         }
         return $payload;
     }
@@ -1105,11 +1164,18 @@ class LGThinQDevice extends IPSModule
             if (method_exists($this, 'RegisterOnceTimer')) {
                 // Retry later if the gateway is not yet active
                 @$this->RegisterOnceTimer('AutoSubscribe', 'LGTQD_AutoSubscribe($_IPS["TARGET"]);');
+                if (method_exists($this, 'SetTimerInterval')) {
+                    @$this->SetTimerInterval('AutoSubscribe', 60000);
+                }
             }
             return;
         }
         try {
             $this->doAutoSubscribe($deviceID);
+            // Success: disable periodic execution for this once-timer
+            if (method_exists($this, 'SetTimerInterval')) {
+                @$this->SetTimerInterval('AutoSubscribe', 0);
+            }
         } catch (\Throwable $e) {
             // Suppress noisy log while the gateway is not yet connected; just retry later
             if (stripos($e->getMessage(), 'No active LG ThinQ bridge connected') === false) {
@@ -1117,6 +1183,9 @@ class LGThinQDevice extends IPSModule
             }
             if (method_exists($this, 'RegisterOnceTimer')) {
                 @$this->RegisterOnceTimer('AutoSubscribe', 'LGTQD_AutoSubscribe($_IPS["TARGET"]);');
+                if (method_exists($this, 'SetTimerInterval')) {
+                    @$this->SetTimerInterval('AutoSubscribe', 60000);
+                }
             }
         }
     }

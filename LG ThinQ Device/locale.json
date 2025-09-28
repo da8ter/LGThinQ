@@ -119,6 +119,8 @@
       "Aus": "Off",
       "Offen": "Open",
       "Zu": "Closed",
+      "Gut": "Good",
+      "Ersetzen": "Replace",
       "Startverzögerung (h)": "Delay Start (h)",
       "Washtower Waschbetrieb": "Washtower Washer Operation",
       "Washtower Trocknerbetrieb": "Washtower Dryer Operation",
@@ -179,7 +181,12 @@
       "Ventilator": "Fan",
       "Niedrig": "Low",
       "Mittel": "Mid",
-      "Hoch": "High"
+      "Hoch": "High",
+      "Tür (Main)": "Door (Main)",
+      "Wasserfilter Zustand": "Water Filter State",
+      "Wasserfilter Nutzungszeit": "Water Filter Usage Time",
+      "FRIDGE": "Fridge",
+      "FREEZER": "Freezer"
     },
     "de": {
       "LG ThinQ Device Instance": "LG ThinQ Geräteinstanz",
@@ -294,7 +301,13 @@
       ,
       "Info": "Info",
       "Status": "Status",
-      "Error creating support package": "Fehler beim Erstellen des Support-Pakets"
+      "Error creating support package": "Fehler beim Erstellen des Support-Pakets",
+      "Express Mode Name": "Expressmodus-Name",
+      "Door (Main)": "Tür (Main)",
+      "Water Filter State": "Wasserfilter Zustand",
+      "Water Filter Usage Time": "Wasserfilter Nutzungszeit",
+      "FRIDGE": "Kühlschrank",
+      "FREEZER": "Gefrierschrank"
     }
   }
 }

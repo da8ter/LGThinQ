@@ -1,15 +1,14 @@
 {
-  "fallback": ["ac.json"],
   "rules": [
     {
-      "description": "Air Conditioner",
+      "description": "Air Conditioner (strict)",
       "files": ["ac.json"],
-      "match": {"any": ["air", "condition", "hvac", "ac"]}
+      "match": { "regex": ["^(device_|lge_|lg_)?air[_ ]?conditioner$", "^deviceairconditioner$"] }
     },
     {
-      "description": "Refrigerator",
+      "description": "Refrigerator (strict)",
       "files": ["fridge.json"],
-      "match": {"any": ["fridge", "refrigerator", "freezer"]}
+      "match": { "regex": ["^(device_|lge_|lg_)?refrigerator$", "^devicerefrigerator$"] }
     },
     {
       "description": "Washer",

@@ -88,17 +88,32 @@ class CapabilityEngine
     private function resolveCapabilityFiles(string $deviceType, array $profile): array
     {
         $catalog = $this->loadCatalog();
-        $type = strtolower((string)$deviceType);
+        $typeLower = strtolower((string)$deviceType);
         $profileText = strtolower(json_encode($profile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '');
+
+        // Build deviceType candidates (normalized variants)
+        $candidates = [];
+        $candidates[] = $typeLower;
+        $stripped1 = (string)preg_replace('/^(device_|lge_|lg_)/', '', $typeLower);
+        if ($stripped1 !== '' && $stripped1 !== $typeLower) { $candidates[] = $stripped1; }
+        $spaced   = str_replace('_', ' ', $typeLower);
+        if ($spaced !== '' && $spaced !== $typeLower) { $candidates[] = $spaced; }
+        $noscore  = str_replace('_', '', $typeLower);
+        if ($noscore !== '' && $noscore !== $typeLower) { $candidates[] = $noscore; }
+        $candidates = array_values(array_unique(array_filter($candidates, function($v){ return is_string($v) && $v !== ''; })));
+        @IPS_LogMessage('CapabilityEngine', sprintf('Type candidates for matching: %s', implode(', ', $candidates)));
 
         $files = [];
 
-        // 1) Strict deviceType-only matching: if any rules match the deviceType string alone, use ONLY those files
+        // 1) Strict deviceType-only matching: if any rules match any candidate, use ONLY those files
         $strictFiles = [];
         foreach ($catalog['rules'] as $rule) {
-            if ($this->catalogRuleMatchesDeviceOnly($rule, $type)) {
-                foreach ($rule['files'] as $file) {
-                    $strictFiles[] = $this->baseDir . '/capabilities/' . $file;
+            foreach ($candidates as $cand) {
+                if ($this->catalogRuleMatchesDeviceOnly($rule, $cand)) {
+                    foreach ($rule['files'] as $file) {
+                        $strictFiles[] = $this->baseDir . '/capabilities/' . $file;
+                    }
+                    break; // rule matched one candidate; no need to test other candidates for this rule
                 }
             }
         }
@@ -106,17 +121,24 @@ class CapabilityEngine
             return array_values(array_unique($strictFiles));
         }
 
-        // 2) Fallback: broader match using deviceType + profile text
+        // 2) Fallback: broader match using deviceType candidates + profile text
         foreach ($catalog['rules'] as $rule) {
-            if ($this->catalogRuleMatches($rule, $type, $profileText)) {
-                foreach ($rule['files'] as $file) {
-                    $files[] = $this->baseDir . '/capabilities/' . $file;
+            foreach ($candidates as $cand) {
+                if ($this->catalogRuleMatches($rule, $cand, $profileText)) {
+                    foreach ($rule['files'] as $file) {
+                        $files[] = $this->baseDir . '/capabilities/' . $file;
+                    }
+                    break; // rule matched one candidate; skip testing other candidates for the same rule
                 }
             }
         }
         if (empty($files)) {
+            // No rule matched. Use catalog fallback only (which may be empty to avoid implicit AC fallback)
             foreach ($catalog['fallback'] as $fallback) {
                 $files[] = $this->baseDir . '/capabilities/' . $fallback;
+            }
+            if (empty($files)) {
+                @IPS_LogMessage('CapabilityEngine', sprintf('No capability files matched for deviceType="%s" (no fallback).', $typeLower));
             }
         }
 
@@ -133,7 +155,8 @@ class CapabilityEngine
             return self::$catalog;
         }
         $file = $this->baseDir . '/capabilities/catalog.json';
-        $default = ['rules' => [], 'fallback' => ['ac.json']];
+        // Remove implicit fallback to ac.json; empty fallback by default
+        $default = ['rules' => [], 'fallback' => []];
         if (!@is_file($file)) {
             self::$catalog = $default;
             return self::$catalog;
@@ -877,7 +900,31 @@ class CapabilityEngine
                 $idx = $this->findArrayIndex($flatSrc, $container, $where);
                 if ($idx !== null) {
                     $v = $this->getFromFlat($flatSrc, $container . '.' . $idx . '.' . $path);
-                    if ($v !== null) return $v;
+                    if ($v !== null) {
+                        // Optional enum mapping for array-based read
+                        $map = $read['map'] ?? null;
+                        if (is_array($map)) {
+                            $key = (string)$v;
+                            $ci  = (bool)($read['mapCaseInsensitive'] ?? true);
+                            if ($ci) {
+                                $umap = [];
+                                foreach ($map as $mk => $mv) { $umap[strtoupper((string)$mk)] = $mv; }
+                                $u = strtoupper($key);
+                                if (array_key_exists($u, $umap)) return $umap[$u];
+                            } else {
+                                if (array_key_exists($key, $map)) return $map[$key];
+                            }
+                        }
+                        // Optional string true/false conversion
+                        $trueVals = $read['string_true'] ?? [];
+                        $falseVals = $read['string_false'] ?? [];
+                        if (!empty($trueVals) || !empty($falseVals)) {
+                            $s = strtoupper((string)$v);
+                            if (in_array($s, array_map('strtoupper', $trueVals), true)) return true;
+                            if (in_array($s, array_map('strtoupper', $falseVals), true)) return false;
+                        }
+                        return $v;
+                    }
                 }
             }
         }

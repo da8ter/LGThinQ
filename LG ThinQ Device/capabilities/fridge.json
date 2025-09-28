@@ -49,11 +49,14 @@
     {
       "ident": "EXPRESS_MODE_NAME",
       "name": "Express Mode Name",
-      "type": "string",
-      "presentation": { "kind": "value" },
+      "type": "integer",
+      "presentation": { "kind": "value", "digits": 0, "suffix": "", "usageType": 0, "intervalsActive": true, "intervals": [
+        { "IntervalMinValue": 1, "IntervalMaxValue": 1, "ConstantActive": true, "ConstantValue": "FRIDGE", "ConversionFactor": 1, "PrefixActive": false, "PrefixValue": "", "SuffixActive": false, "SuffixValue": "", "DigitsActive": false, "DigitsValue": 0, "IconActive": false, "IconValue": "", "ColorActive": false, "ColorValue": -1, "ColorDisplay": -1 },
+        { "IntervalMinValue": 2, "IntervalMaxValue": 2, "ConstantActive": true, "ConstantValue": "FREEZER", "ConversionFactor": 1, "PrefixActive": false, "PrefixValue": "", "SuffixActive": false, "SuffixValue": "", "DigitsActive": false, "DigitsValue": 0, "IconActive": false, "IconValue": "", "ColorActive": false, "ColorValue": -1, "ColorDisplay": -1 }
+      ] },
       "create": { "when": "profileHasAny", "keys": ["refrigeration.expressModeName"] },
       "action": { "enableWhen": "never" },
-      "read": { "sources": ["refrigeration.expressModeName"] }
+      "read": { "sources": ["refrigeration.expressModeName"], "map": { "FRIDGE": 1, "FREEZER": 2 } }
     },
     {
       "ident": "FRESH_AIR_FILTER",
@@ -107,20 +110,35 @@
     {
       "ident": "DOOR_MAIN",
       "name": "Tür (Main)",
-      "type": "boolean",
-      "presentation": { "kind": "value", "captionOn": "Offen", "captionOff": "Zu" },
+      "type": "integer",
+      "presentation": { "kind": "value", "digits": 0, "suffix": "", "usageType": 0, "intervalsActive": true, "intervals": [
+        { "IntervalMinValue": 0, "IntervalMaxValue": 0, "ConstantActive": true, "ConstantValue": "Closed", "ConversionFactor": 1, "PrefixActive": false, "PrefixValue": "", "SuffixActive": false, "SuffixValue": "", "DigitsActive": false, "DigitsValue": 0, "IconActive": false, "IconValue": "", "ColorActive": false, "ColorValue": -1, "ColorDisplay": -1 },
+        { "IntervalMinValue": 1, "IntervalMaxValue": 1, "ConstantActive": true, "ConstantValue": "Open", "ConversionFactor": 1, "PrefixActive": false, "PrefixValue": "", "SuffixActive": false, "SuffixValue": "", "DigitsActive": false, "DigitsValue": 0, "IconActive": false, "IconValue": "", "ColorActive": false, "ColorValue": -1, "ColorDisplay": -1 }
+      ] },
       "create": { "when": "profileHasAny", "keys": ["doorStatus"] },
       "action": { "enableWhen": "never" },
-      "read": { "array": { "container": "doorStatus", "where": { "locationName": "MAIN" }, "path": "doorState" }, "string_true": ["OPEN"], "string_false": ["CLOSE"] }
+      "read": { "array": { "container": "doorStatus", "where": { "locationName": "MAIN" }, "path": "doorState" }, "map": { "CLOSE": 0, "OPEN": 1 } }
     },
     {
       "ident": "WATER_FILTER_STATE",
       "name": "Wasserfilter Zustand",
-      "type": "string",
-      "presentation": { "kind": "value" },
+      "type": "integer",
+      "presentation": { "kind": "value", "digits": 0, "suffix": "", "usageType": 0, "intervalsActive": true, "intervals": [
+        { "IntervalMinValue": 0, "IntervalMaxValue": 0, "ConstantActive": true, "ConstantValue": "Good", "ConversionFactor": 1, "PrefixActive": false, "PrefixValue": "", "SuffixActive": false, "SuffixValue": "", "DigitsActive": false, "DigitsValue": 0, "IconActive": false, "IconValue": "", "ColorActive": false, "ColorValue": -1, "ColorDisplay": -1 },
+        { "IntervalMinValue": 1, "IntervalMaxValue": 1, "ConstantActive": true, "ConstantValue": "Replace", "ConversionFactor": 1, "PrefixActive": false, "PrefixValue": "", "SuffixActive": false, "SuffixValue": "", "DigitsActive": false, "DigitsValue": 0, "IconActive": false, "IconValue": "", "ColorActive": false, "ColorValue": -1, "ColorDisplay": -1 }
+      ] },
       "create": { "when": "profileHasAny", "keys": ["waterFilterInfo.waterFilterState"] },
       "action": { "enableWhen": "never" },
-      "read": { "sources": ["waterFilterInfo.waterFilterState"] }
+      "read": { "sources": ["waterFilterInfo.waterFilterState"], "map": { "GOOD": 0, "REPLACE": 1 } }
+    },
+    {
+      "ident": "WATER_FILTER_USED_TIME",
+      "name": "Wasserfilter Nutzungszeit",
+      "type": "integer",
+      "presentation": { "kind": "value", "suffix": " min" },
+      "create": { "when": "profileHasAny", "keys": ["waterFilterInfo.usedTime"] },
+      "action": { "enableWhen": "never" },
+      "read": { "sources": ["waterFilterInfo.usedTime"] }
     }
   ]
 }
