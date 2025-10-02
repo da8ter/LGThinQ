@@ -1,0 +1,623 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * ThinQGenericProperties
+ * 
+ * Translations for generic property names used across multiple LG ThinQ devices.
+ * Auto-Discovery handles type mapping and presentation inference automatically.
+ * This class only provides human-readable translations for property names.
+ */
+class ThinQGenericProperties
+{
+    /**
+     * Get translations for a specific language
+     * 
+     * @param string $lang Language code ('de' or 'en')
+     * @return array<string, string>
+     */
+    public static function getTranslations(string $lang): array
+    {
+        $translations = [
+            'de' => [
+        return [
+            // Remote Control & Operations
+            'remote_control_enabled' => [
+                'type' => VARIABLETYPE_BOOLEAN,
+                'presentation' => ['kind' => 'switch'],
+                'icon' => 'Remote'
+            ],
+            
+            // Run State & Status
+            'current_state' => [
+                'type' => VARIABLETYPE_STRING,
+                'presentation' => ['kind' => 'value'],
+                'icon' => 'Information'
+            ],
+            
+            // Timer Properties (Remain)
+            'remain_hour' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value', 'suffix' => ' h']
+            ],
+            'remain_minute' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value', 'suffix' => ' min']
+            ],
+            'remain_second' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value', 'suffix' => ' s']
+            ],
+            
+            // Timer Properties (Total)
+            'total_hour' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value', 'suffix' => ' h']
+            ],
+            'total_minute' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value', 'suffix' => ' min']
+            ],
+            
+            // Timer Properties (Relative Start)
+            'relative_hour_to_start' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'slider', 'suffix' => ' h']
+            ],
+            'relative_minute_to_start' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'slider', 'suffix' => ' min']
+            ],
+            
+            // Timer Properties (Relative Stop)
+            'relative_hour_to_stop' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'slider', 'suffix' => ' h']
+            ],
+            'relative_minute_to_stop' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'slider', 'suffix' => ' min']
+            ],
+            
+            // Timer Properties (Absolute)
+            'absolute_hour_to_start' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'slider', 'range' => ['min' => 0, 'max' => 23, 'step' => 1]]
+            ],
+            'absolute_minute_to_start' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'slider', 'range' => ['min' => 0, 'max' => 59, 'step' => 1]]
+            ],
+            'absolute_hour_to_stop' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'slider', 'range' => ['min' => 0, 'max' => 23, 'step' => 1]]
+            ],
+            'absolute_minute_to_stop' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'slider', 'range' => ['min' => 0, 'max' => 59, 'step' => 1]]
+            ],
+            
+            // Temperature (Celsius)
+            'target_temperature_c' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'slider', 'suffix' => ' °C']
+            ],
+            'current_temperature_c' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value', 'suffix' => ' °C']
+            ],
+            'min_target_temperature_c' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value', 'suffix' => ' °C']
+            ],
+            'max_target_temperature_c' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value', 'suffix' => ' °C']
+            ],
+            
+            // Temperature (Fahrenheit)
+            'target_temperature_f' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'slider', 'suffix' => ' °F']
+            ],
+            'current_temperature_f' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value', 'suffix' => ' °F']
+            ],
+            
+            // Temperature Unit
+            'temperature_unit' => [
+                'type' => VARIABLETYPE_STRING,
+                'presentation' => ['kind' => 'value']
+            ],
+            
+            // Humidity
+            'current_humidity' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value', 'suffix' => ' %']
+            ],
+            'target_humidity' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'slider', 'suffix' => ' %']
+            ],
+            
+            // Air Quality Sensors
+            'pm1' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value', 'suffix' => ' µg/m³']
+            ],
+            'pm2' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value', 'suffix' => ' µg/m³']
+            ],
+            'pm10' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value', 'suffix' => ' µg/m³']
+            ],
+            'odor' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value']
+            ],
+            'odor_level' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value']
+            ],
+            'total_pollution' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value']
+            ],
+            'total_pollution_level' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value']
+            ],
+            'monitoring_enabled' => [
+                'type' => VARIABLETYPE_BOOLEAN,
+                'presentation' => ['kind' => 'switch']
+            ],
+            
+            // Air Flow
+            'wind_strength' => [
+                'type' => VARIABLETYPE_STRING
+                // Note: presentation will be inferred by ThinQProfileParser based on writeable status
+                // (buttons if writeable, value if read-only)
+            ],
+            
+            // Battery
+            'battery_level' => [
+                'type' => VARIABLETYPE_STRING,
+                'presentation' => ['kind' => 'value']
+            ],
+            'battery_percent' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value', 'suffix' => ' %']
+            ],
+            
+            // Door Status
+            'door_state' => [
+                'type' => VARIABLETYPE_STRING,
+                'presentation' => ['kind' => 'value']
+            ],
+            
+            // Display
+            'display_light' => [
+                'type' => VARIABLETYPE_BOOLEAN,
+                'presentation' => ['kind' => 'switch']
+            ],
+            
+            // Power & Energy
+            'power_save_enabled' => [
+                'type' => VARIABLETYPE_BOOLEAN,
+                'presentation' => ['kind' => 'switch']
+            ],
+            
+            // Filter Info
+            'filter_remain_percent' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value', 'suffix' => ' %']
+            ],
+            'used_time' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value']
+            ],
+            
+            // Cycle Count
+            'cycle_count' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value']
+            ],
+            
+            // AC Job Modes
+            'current_job_mode' => [
+                'type' => VARIABLETYPE_STRING,
+                'presentation' => ['kind' => 'buttons']
+            ],
+            
+            // AC Temperature (generic)
+            'target_temperature' => [
+                'type' => VARIABLETYPE_FLOAT,
+                'presentation' => ['kind' => 'slider', 'suffix' => ' °C']
+            ],
+            'current_temperature' => [
+                'type' => VARIABLETYPE_FLOAT,
+                'presentation' => ['kind' => 'value', 'suffix' => ' °C']
+            ],
+            'cool_target_temperature' => [
+                'type' => VARIABLETYPE_FLOAT,
+                'presentation' => ['kind' => 'slider', 'suffix' => ' °C']
+            ],
+            'heat_target_temperature' => [
+                'type' => VARIABLETYPE_FLOAT,
+                'presentation' => ['kind' => 'slider', 'suffix' => ' °C']
+            ],
+            
+            // AC Wind Direction (all boolean switches)
+            'air_guide_wind' => [
+                'type' => VARIABLETYPE_BOOLEAN,
+                'presentation' => ['kind' => 'switch']
+            ],
+            'swirl_wind' => [
+                'type' => VARIABLETYPE_BOOLEAN,
+                'presentation' => ['kind' => 'switch']
+            ],
+            'high_ceiling_wind' => [
+                'type' => VARIABLETYPE_BOOLEAN,
+                'presentation' => ['kind' => 'switch']
+            ],
+            'concentration_wind' => [
+                'type' => VARIABLETYPE_BOOLEAN,
+                'presentation' => ['kind' => 'switch']
+            ],
+            'auto_fit_wind' => [
+                'type' => VARIABLETYPE_BOOLEAN,
+                'presentation' => ['kind' => 'switch']
+            ],
+            'forest_wind' => [
+                'type' => VARIABLETYPE_BOOLEAN,
+                'presentation' => ['kind' => 'switch']
+            ],
+            'rotate_up_down' => [
+                'type' => VARIABLETYPE_BOOLEAN,
+                'presentation' => ['kind' => 'switch']
+            ],
+            'rotate_left_right' => [
+                'type' => VARIABLETYPE_BOOLEAN,
+                'presentation' => ['kind' => 'switch']
+            ],
+            
+            // AC Sleep Timer
+            'sleep_timer' => [
+                'type' => VARIABLETYPE_STRING,
+                'presentation' => ['kind' => 'value']
+            ],
+            'relative_stop_timer' => [
+                'type' => VARIABLETYPE_STRING,
+                'presentation' => ['kind' => 'value']
+            ],
+            'relative_start_timer' => [
+                'type' => VARIABLETYPE_STRING,
+                'presentation' => ['kind' => 'value']
+            ],
+            
+            // AC Two-Set Temperature
+            'two_set_enabled' => [
+                'type' => VARIABLETYPE_BOOLEAN,
+                'presentation' => ['kind' => 'switch']
+            ],
+            
+            // Filter Info (extended)
+            'filter_lifetime' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'value', 'suffix' => ' h']
+            ],
+            
+            // Light
+            'light_intensity' => [
+                'type' => VARIABLETYPE_INTEGER,
+                'presentation' => ['kind' => 'slider', 'suffix' => ' %', 'range' => ['min' => 0, 'max' => 100, 'step' => 1]]
+            ],
+            
+            // Location
+            'location_name' => [
+                'type' => VARIABLETYPE_STRING,
+                'presentation' => ['kind' => 'value']
+            ],
+            
+            // Detergent
+            'detergent_setting' => [
+                'type' => VARIABLETYPE_STRING,
+                'presentation' => ['kind' => 'value']
+            ]
+        ];
+    }
+    
+    /**
+     * Get definition for a specific property
+     * 
+     * @param string $property Property name
+     * @return array<string, mixed>|null
+     */
+    public static function getDefinition(string $property): ?array
+    {
+        $all = self::getDefinitions();
+        return $all[$property] ?? null;
+    }
+    
+    /**
+     * Get English name for a property (for use with Symcon Translate())
+     * 
+     * @param string $property Property key (e.g., 'remote_control_enabled')
+     * @return string|null English name or null if not found
+     */
+    public static function getEnglishName(string $property): ?string
+    {
+        $translations = self::getTranslations('en');
+        return $translations[$property] ?? null;
+    }
+    
+    /**
+     * Get translations for all properties
+     * 
+     * @param string $lang Language code ('de' or 'en')
+     * @return array<string, string>
+     */
+    public static function getTranslations(string $lang = 'de'): array
+    {
+        $translations = [
+            'de' => [
+                // Remote & Operations
+                'remote_control_enabled' => 'Fernsteuerung',
+                
+                // State
+                'current_state' => 'Status',
+                'run_state' => 'Betriebszustand',
+                
+                // Timer - Remain
+                'remain_hour' => 'Verbleibende Stunden',
+                'remain_minute' => 'Verbleibende Minuten',
+                'remain_second' => 'Verbleibende Sekunden',
+                
+                // Timer - Total
+                'total_hour' => 'Gesamtdauer (Stunden)',
+                'total_minute' => 'Gesamtdauer (Minuten)',
+                
+                // Timer - Relative Start
+                'relative_hour_to_start' => 'Startzeit (Stunden)',
+                'relative_minute_to_start' => 'Startzeit (Minuten)',
+                
+                // Timer - Relative Stop
+                'relative_hour_to_stop' => 'Stoppzeit (Stunden)',
+                'relative_minute_to_stop' => 'Stoppzeit (Minuten)',
+                
+                // Timer - Absolute
+                'absolute_hour_to_start' => 'Startzeit (Uhrzeit - Stunde)',
+                'absolute_minute_to_start' => 'Startzeit (Uhrzeit - Minute)',
+                'absolute_hour_to_stop' => 'Stoppzeit (Uhrzeit - Stunde)',
+                'absolute_minute_to_stop' => 'Stoppzeit (Uhrzeit - Minute)',
+                
+                // Temperature
+                'target_temperature_c' => 'Zieltemperatur',
+                'target_temperature_f' => 'Zieltemperatur',
+                'current_temperature_c' => 'Aktuelle Temperatur',
+                'current_temperature_f' => 'Aktuelle Temperatur',
+                'min_target_temperature_c' => 'Min. Temperatur',
+                'max_target_temperature_c' => 'Max. Temperatur',
+                'temperature_unit' => 'Temperatur-Einheit',
+                
+                // Humidity
+                'current_humidity' => 'Aktuelle Luftfeuchtigkeit',
+                'target_humidity' => 'Ziel-Luftfeuchtigkeit',
+                
+                // Air Quality
+                'pm1' => 'Feinstaub PM1',
+                'pm2' => 'Feinstaub PM2.5',
+                'pm10' => 'Feinstaub PM10',
+                'odor' => 'Geruch',
+                'odor_level' => 'Geruchsstufe',
+                'total_pollution' => 'Gesamtverschmutzung',
+                'total_pollution_level' => 'Verschmutzungsstufe',
+                'monitoring_enabled' => 'Überwachung aktiv',
+                
+                // Air Flow
+                'wind_strength' => 'Windstärke',
+                
+                // Battery
+                'battery_level' => 'Akkustand',
+                'battery_percent' => 'Akku',
+                
+                // Door
+                'door_state' => 'Türstatus',
+                
+                // Display
+                'display_light' => 'Display-Beleuchtung',
+                
+                // Power
+                'power_save_enabled' => 'Energiesparmodus',
+                
+                // Filter
+                'filter_remain_percent' => 'Filter-Restlaufzeit',
+                'used_time' => 'Nutzungszeit',
+                
+                // Operation (Resource name for AC)
+                'operation' => 'Power',
+                
+                // Operation Modes (generic)
+                'washer_operation_mode' => 'Betriebsmodus',
+                'dryer_operation_mode' => 'Betriebsmodus',
+                'operation_mode' => 'Betriebsmodus',
+                'air_con_operation_mode' => 'Power',
+                
+                // Cycle
+                'cycle_count' => 'Waschzyklen',
+                
+                // AC Job Modes
+                'current_job_mode' => 'Betriebsmodus',
+                
+                // AC Temperature
+                'target_temperature' => 'Zieltemperatur',
+                'current_temperature' => 'Ist-Temperatur',
+                'cool_target_temperature' => 'Kühl-Zieltemperatur',
+                'heat_target_temperature' => 'Heiz-Zieltemperatur',
+                
+                // AC Wind Direction
+                'air_guide_wind' => 'Luftführung',
+                'swirl_wind' => 'Wirbelwind',
+                'high_ceiling_wind' => 'Hohe Decken',
+                'concentration_wind' => 'Konzentrierter Wind',
+                'auto_fit_wind' => 'Automatische Anpassung',
+                'forest_wind' => 'Waldwind',
+                'rotate_up_down' => 'Vertikale Schwenkung',
+                'rotate_left_right' => 'Horizontale Schwenkung',
+                
+                // AC Sleep Timer
+                'sleep_timer' => 'Schlaf-Timer',
+                'relative_stop_timer' => 'Timer-Status',
+                'relative_start_timer' => 'Timer-Status',
+                
+                // AC Two-Set Temperature
+                'two_set_enabled' => 'Dual-Temperatur aktiv',
+                
+                // Filter Info
+                'filter_lifetime' => 'Filter-Lebensdauer',
+                'filter_remain_percent' => 'Filter-Restlaufzeit',
+                
+                // Light
+                'light_intensity' => 'Helligkeit',
+                
+                // Location
+                'location_name' => 'Standort',
+                
+                // Detergent
+                'detergent_setting' => 'Waschmittel'
+            ],
+            'en' => [
+                // Remote & Operations
+                'remote_control_enabled' => 'Remote Control',
+                
+                // State
+                'current_state' => 'Current State',
+                'run_state' => 'Run State',
+                
+                // Timer - Remain
+                'remain_hour' => 'Remaining Hours',
+                'remain_minute' => 'Remaining Minutes',
+                'remain_second' => 'Remaining Seconds',
+                
+                // Timer - Total
+                'total_hour' => 'Total Hours',
+                'total_minute' => 'Total Minutes',
+                
+                // Timer - Relative Start
+                'relative_hour_to_start' => 'Start Delay (Hours)',
+                'relative_minute_to_start' => 'Start Delay (Minutes)',
+                
+                // Timer - Relative Stop
+                'relative_hour_to_stop' => 'Stop Delay (Hours)',
+                'relative_minute_to_stop' => 'Stop Delay (Minutes)',
+                
+                // Timer - Absolute
+                'absolute_hour_to_start' => 'Start Time (Hour)',
+                'absolute_minute_to_start' => 'Start Time (Minute)',
+                'absolute_hour_to_stop' => 'Stop Time (Hour)',
+                'absolute_minute_to_stop' => 'Stop Time (Minute)',
+                
+                // Temperature
+                'target_temperature_c' => 'Target Temperature',
+                'target_temperature_f' => 'Target Temperature',
+                'current_temperature_c' => 'Current Temperature',
+                'current_temperature_f' => 'Current Temperature',
+                'min_target_temperature_c' => 'Min. Temperature',
+                'max_target_temperature_c' => 'Max. Temperature',
+                'temperature_unit' => 'Temperature Unit',
+                
+                // Humidity
+                'current_humidity' => 'Current Humidity',
+                'target_humidity' => 'Target Humidity',
+                
+                // Air Quality
+                'pm1' => 'PM1',
+                'pm2' => 'PM2.5',
+                'pm10' => 'PM10',
+                'odor' => 'Odor',
+                'odor_level' => 'Odor Level',
+                'total_pollution' => 'Total Pollution',
+                'total_pollution_level' => 'Pollution Level',
+                'monitoring_enabled' => 'Monitoring',
+                
+                // Air Flow
+                'wind_strength' => 'Fan Speed',
+                
+                // Battery
+                'battery_level' => 'Battery Level',
+                'battery_percent' => 'Battery',
+                
+                // Door
+                'door_state' => 'Door State',
+                
+                // Display
+                'display_light' => 'Display Light',
+                
+                // Power
+                'power_save_enabled' => 'Power Save',
+                
+                // Filter
+                'filter_remain_percent' => 'Filter Remaining',
+                'used_time' => 'Used Time',
+                
+                // Operation (Resource name for AC)
+                'operation' => 'Power',
+                
+                // Operation Modes (generic)
+                'washer_operation_mode' => 'Operation Mode',
+                'dryer_operation_mode' => 'Operation Mode',
+                'operation_mode' => 'Operation Mode',
+                'air_con_operation_mode' => 'Power',
+                
+                // Cycle
+                'cycle_count' => 'Cycle Count',
+                
+                // AC Job Modes
+                'current_job_mode' => 'Operation Mode',
+                
+                // AC Temperature
+                'target_temperature' => 'Target Temperature',
+                'current_temperature' => 'Current Temperature',
+                'cool_target_temperature' => 'Cool Target Temperature',
+                'heat_target_temperature' => 'Heat Target Temperature',
+                
+                // AC Wind Direction
+                'air_guide_wind' => 'Air Guide',
+                'swirl_wind' => 'Swirl Wind',
+                'high_ceiling_wind' => 'High Ceiling',
+                'concentration_wind' => 'Concentration Wind',
+                'auto_fit_wind' => 'Auto Fit',
+                'forest_wind' => 'Forest Wind',
+                'rotate_up_down' => 'Vertical Swing',
+                'rotate_left_right' => 'Horizontal Swing',
+                
+                // AC Sleep Timer
+                'sleep_timer' => 'Sleep Timer',
+                'relative_stop_timer' => 'Timer Status',
+                'relative_start_timer' => 'Timer Status',
+                
+                // AC Two-Set Temperature
+                'two_set_enabled' => 'Dual Temperature',
+                
+                // Filter Info
+                'filter_lifetime' => 'Filter Lifetime',
+                'filter_remain_percent' => 'Filter Remaining',
+                
+                // Light
+                'light_intensity' => 'Brightness',
+                
+                // Location
+                'location_name' => 'Location',
+                
+                // Detergent
+                'detergent_setting' => 'Detergent'
+            ]
+        ];
+        
+        return $translations[$lang] ?? $translations['en'];
+    }
+}
