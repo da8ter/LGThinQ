@@ -497,23 +497,29 @@ class LGThinQDevice extends IPSModule
     {
         $engine = $this->getCapabilityEngine();
         $plan = $engine->buildPlan($type, $profile, $status);
+        // Track which variables exist before creation to apply presentations/actions only once
+        $preExisting = [];
+        foreach ($plan as $ident => $_) {
+            $preExisting[(string)$ident] = ((int)@IPS_GetObjectIDByIdent((string)$ident, $this->InstanceID)) > 0;
+        }
         $engine->ensureVariables($profile, $status, $type);
         
-        // Apply presentations and enable actions for all variables in plan
+        // Apply presentations and enable actions only for newly created variables
         $flatProfile = $this->flatten($profile);
         foreach ($plan as $ident => $entry) {
             $vid = $this->getVarId((string)$ident);
             if ($vid <= 0) {
                 continue;
             }
-            
-            // Apply presentation if defined
-            if (isset($entry['presentation']) && is_array($entry['presentation'])) {
+            $justCreated = !($preExisting[(string)$ident] ?? false);
+
+            // Apply presentation only on creation
+            if ($justCreated && isset($entry['presentation']) && is_array($entry['presentation'])) {
                 $this->applyPresentation($vid, (string)$ident, $entry['presentation'], $flatProfile, (string)($entry['type'] ?? 'STRING'));
             }
-            
-            // Enable action if defined
-            if (($entry['enableAction'] ?? false) && method_exists($this, 'EnableAction')) {
+
+            // Enable action only on creation if defined
+            if ($justCreated && ($entry['enableAction'] ?? false) && method_exists($this, 'EnableAction')) {
                 try {
                     $this->EnableAction((string)$ident);
                 } catch (\Throwable $e) {
