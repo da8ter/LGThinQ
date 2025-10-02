@@ -24,6 +24,7 @@ class LGThinQDevice extends IPSModule
 
         $this->RegisterPropertyString('DeviceID', '');
         $this->RegisterPropertyString('Alias', '');
+        $this->RegisterPropertyBoolean('Debug', false);
         // Dry-Run simulation inputs (Option A)
         $this->RegisterPropertyString('SimulatedDeviceID', '');
         $this->RegisterPropertyString('SimulatedDevicesJson', '');
@@ -34,6 +35,40 @@ class LGThinQDevice extends IPSModule
         $this->RegisterAttributeString('DeviceType', '');
         $this->RegisterAttributeString('LastProfile', '');
         $this->RegisterAttributeString('LastPlan', '[]');
+    }
+
+    /**
+     * Reapply current capability presentations to existing variables.
+     * Useful after changing capability JSON or presentation schema.
+     */
+    public function ReapplyPresentations(): void
+    {
+        try {
+            $profile = $this->readStoredProfile();
+            $type = trim((string)$this->ReadAttributeString('DeviceType'));
+            if ($type === '') {
+                return;
+            }
+
+            $engine = $this->getCapabilityEngine();
+            // Use latest status to allow presentation derived from profile while keeping values
+            $status = $this->readLastStatus();
+            $plan = $engine->buildPlan($type, $profile, $status);
+            $flatProfile = $this->flatten($profile);
+
+            foreach ($plan as $ident => $entry) {
+                $vid = (int)@IPS_GetObjectIDByIdent((string)$ident, $this->InstanceID);
+                if ($vid <= 0) {
+                    continue;
+                }
+                $presentation = $entry['presentation'] ?? null;
+                if (is_array($presentation) && !empty($presentation)) {
+                    $this->applyPresentation($vid, (string)$ident, $presentation, $flatProfile, (string)($entry['type'] ?? 'STRING'));
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->logThrowable('ReapplyPresentations', $e);
+        }
     }
 
     public function Destroy()
@@ -86,19 +121,13 @@ class LGThinQDevice extends IPSModule
             $this->logThrowable('SetupDeviceVariables', $e);
         }
 
-        // Immediately subscribe device to LG push/events if possible; also schedule a one-time retry
+        // Subscribe device to LG push/events once if possible; no automatic retries
         try {
             $deviceID = trim((string)$this->ReadPropertyString('DeviceID'));
             if ($deviceID !== '') {
                 $hasParent = !method_exists($this, 'HasActiveParent') || $this->HasActiveParent();
                 if ($hasParent) {
                     $this->doAutoSubscribe($deviceID);
-                }
-                if (method_exists($this, 'RegisterOnceTimer')) {
-                    @$this->RegisterOnceTimer('AutoSubscribe', 'LGTQD_AutoSubscribe($_IPS["TARGET"]);');
-                    if (method_exists($this, 'SetTimerInterval')) {
-                        @$this->SetTimerInterval('AutoSubscribe', 60000);
-                    }
                 }
             }
         } catch (\Throwable $e) {
@@ -169,6 +198,16 @@ class LGThinQDevice extends IPSModule
                 throw new Exception($this->t('Invalid status response'));
             }
 
+            // Normalize shapes: { state: {...} } and [ { ... } ] -> { ... }
+            if (isset($status['state']) && is_array($status['state'])) {
+                $status = $status['state'];
+            } else {
+                $isNumericList = array_keys($status) === range(0, count($status) - 1);
+                if ($isNumericList && count($status) === 1 && is_array($status[0])) {
+                    $status = $status[0];
+                }
+            }
+
             $encoded = json_encode($status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             $this->WriteAttributeString('LastStatus', $encoded);
 
@@ -180,10 +219,13 @@ class LGThinQDevice extends IPSModule
             // Dedizierte Variablen aktualisieren
             $this->updateFromStatus($status);
             // CapabilityEngine: Werte anwenden
-            try {
-                $this->getCapabilityEngine()->applyStatus($status);
-            } catch (\Throwable $e) {
-                $this->logThrowable('UpdateStatus applyStatus', $e);
+            $engine = $this->prepareEngine();
+            if ($engine !== null) {
+                try {
+                    $engine->applyStatus($status);
+                } catch (\Throwable $e) {
+                    $this->logThrowable('UpdateStatus applyStatus', $e);
+                }
             }
         } catch (\Throwable $e) {
 
@@ -223,6 +265,12 @@ class LGThinQDevice extends IPSModule
         } catch (\Throwable $e) {
             $this->logThrowable('FinalizeSetup UpdateStatus', $e);
         }
+        // One-shot push/event subscribe once parent is active
+        try {
+            $this->doAutoSubscribe($deviceID);
+        } catch (\Throwable $e) {
+            $this->logThrowable('FinalizeSetup AutoSubscribe', $e);
+        }
     }
 
     public function ControlDevice(string $JSONPayload): bool
@@ -253,12 +301,17 @@ class LGThinQDevice extends IPSModule
             throw new Exception($this->t('Unknown action'));
         }
 
+        $this->SendDebug('RequestAction', sprintf('Calling buildControlPayload for ident=%s, value=%s', $ident, json_encode($value)), 0);
         $payload = $engine->buildControlPayload((string)$ident, $value);
+        $this->SendDebug('RequestAction', sprintf('buildControlPayload returned: %s', $payload === null ? 'NULL' : 'array'), 0);
         if (!is_array($payload)) {
             throw new Exception($this->t('Unknown action') . ': ' . $ident);
         }
 
-        $ok = $this->ControlDevice(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        $payloadJson = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->SendDebug('RequestAction', sprintf('Ident=%s, Value=%s, Payload=%s', $ident, json_encode($value), $payloadJson), 0);
+        
+        $ok = $this->ControlDevice($payloadJson);
         if ($ok) {
             $this->setValueByVarType((string)$ident, $value);
         }
@@ -266,8 +319,11 @@ class LGThinQDevice extends IPSModule
 
     public function ReceiveData($JSONString)
     {
+        $this->SendDebug('ReceiveData', 'Called', 0);
+        
         $outer = json_decode((string)$JSONString, true);
         if (!is_array($outer)) {
+            $this->SendDebug('ReceiveData', 'Outer not array', 0);
             return '';
         }
         $buf = $outer['Buffer'] ?? null;
@@ -275,20 +331,47 @@ class LGThinQDevice extends IPSModule
             $buf = json_decode((string)$buf, true);
         }
         if (!is_array($buf)) {
+            $this->SendDebug('ReceiveData', 'Buffer not array', 0);
             return '';
         }
-        if ((string)($buf['Action'] ?? '') !== 'Event') {
+        
+        $action = (string)($buf['Action'] ?? '');
+        $this->SendDebug('ReceiveData', 'Action: ' . $action, 0);
+        
+        if ($action !== 'Event') {
             return '';
         }
 
         $deviceId = trim((string)$this->ReadPropertyString('DeviceID'));
-        if ($deviceId === '' || strcasecmp($deviceId, (string)($buf['DeviceID'] ?? '')) !== 0) {
+        $incomingDeviceId = (string)($buf['DeviceID'] ?? '');
+        $this->SendDebug('ReceiveData', sprintf('My DeviceID: %s, Incoming: %s', $deviceId, $incomingDeviceId), 0);
+        
+        if ($deviceId === '' || strcasecmp($deviceId, $incomingDeviceId) !== 0) {
+            $this->SendDebug('ReceiveData', 'DeviceID mismatch - ignoring', 0);
             return '';
         }
 
         $event = $buf['Event'] ?? null;
         if (!is_array($event)) {
             return '';
+        }
+        
+        // Extract profile if included in push event (simulation mode)
+        $pushProfile = $buf['Profile'] ?? null;
+        if (is_array($pushProfile) && !empty($pushProfile)) {
+            $this->SendDebug('ReceiveData', 'Profile included in push event, storing...', 0);
+            $profileEncoded = json_encode($pushProfile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $this->WriteAttributeString('LastProfile', $profileEncoded);
+        }
+
+        // Normalize shapes similar to Bridge simParseStatus: { state: {...} } and [ { ... } ]
+        if (isset($event['state']) && is_array($event['state'])) {
+            $event = $event['state'];
+        } else {
+            $isNumericList = array_keys($event) === range(0, count($event) - 1);
+            if ($isNumericList && count($event) === 1 && is_array($event[0])) {
+                $event = $event[0];
+            }
         }
 
         $current = $this->readLastStatus();
@@ -298,9 +381,23 @@ class LGThinQDevice extends IPSModule
         @SetValueString($this->getVarId('STATUS'), $encoded);
         @SetValueInteger($this->getVarId('LASTUPDATE'), time());
 
-        $engine = $this->prepareEngine();
-        if ($engine !== null) {
-            $engine->applyStatus($merged);
+        // Rebuild engine with updated status to include new properties (e.g. timer properties)
+        $profile = $this->readStoredProfile();
+        $type = trim((string)$this->ReadAttributeString('DeviceType'));
+        
+        // Check if status has new properties not in profile → refresh profile from API
+        if (!empty($profile) && $this->statusHasNewProperties($merged, $profile)) {
+            $this->SendDebug('ReceiveData', 'Status has new properties not in cached profile, refreshing from API...', 0);
+            $freshProfile = $this->fetchProfileFromAPI();
+            if (!empty($freshProfile)) {
+                $profile = $freshProfile;
+                $this->WriteAttributeString('LastProfile', json_encode($profile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
+        }
+        
+        if ($type !== '' && !empty($profile)) {
+            // Use central method for consistency
+            $this->ensureDeviceVariablesWithPresentations($profile, $merged, $type);
         }
 
         return '';
@@ -320,7 +417,8 @@ class LGThinQDevice extends IPSModule
             $this->EnsureConnected();
         }
         if (method_exists($this, 'HasActiveParent') && !$this->HasActiveParent()) {
-            throw new Exception('No active LG ThinQ bridge connected.');
+            // Allow requests even if parent is inactive - bridge might be in simulation mode
+            $this->SendDebug('sendAction', sprintf('Parent inactive but trying %s anyway (might be simulation)', $action), 0);
         }
 
         $buffer = array_merge(['Action' => $action], $params);
@@ -328,7 +426,9 @@ class LGThinQDevice extends IPSModule
             'DataID' => self::DATA_FLOW_GUID,
             'Buffer' => json_encode($buffer, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
         ];
-        $result = $this->SendDataToParent(json_encode($packet));
+        
+        // Suppress warning if parent has no active interface (simulation mode without MQTT)
+        $result = @$this->SendDataToParent(json_encode($packet));
         if (!is_string($result)) {
             return '';
         }
@@ -388,83 +488,55 @@ class LGThinQDevice extends IPSModule
         $this->WriteAttributeString('LastProfile', json_encode($profile));
         $this->WriteAttributeString('DeviceType', $type);
 
-        $engine = $this->getCapabilityEngine();
-        $plan = $engine->buildPlan($type, $profile, $status);
-        $flatProfile = $this->flatten($profile);
-        // Track current plan idents to support pruning of obsolete variables later
-        $currentPlanIdents = [];
-
-        foreach ($plan as $ident => $entry) {
-            // Determine keep flag directly from plan decision
-            $keep = (bool)($entry['shouldCreate'] ?? false);
-
-            $ipsType = match (strtoupper((string)($entry['type'] ?? 'STRING'))) {
-                'BOOLEAN' => VARIABLETYPE_BOOLEAN,
-                'INTEGER' => VARIABLETYPE_INTEGER,
-                'FLOAT' => VARIABLETYPE_FLOAT,
-                default => VARIABLETYPE_STRING
-            };
-
-            // Detect if variable already exists before MaintainVariable possibly creates it
-            $preExistingVid = (int)@IPS_GetObjectIDByIdent((string)$ident, $this->InstanceID);
-
-            // Only create/update variables when keep=true. Do not delete when keep=false.
-            $vid = $preExistingVid;
-            $wasCreatedNow = false;
-            if ($keep) {
-                // Create/Update variable via Symcon helper (no deletion when keep=false)
-                $this->MaintainVariable(
-                    (string)$ident,
-                    (string)($entry['name'] ?? $ident),
-                    $ipsType,
-                    '',
-                    0,
-                    true
-                );
-                // Fetch VID after MaintainVariable
-                $vid = $this->getVarId((string)$ident);
-                $wasCreatedNow = ($preExistingVid <= 0 && $vid > 0);
-            } else {
-                // Not part of current plan: keep existing variable as-is (no auto-deletion requested)
-                continue;
-            }
-
-            // Track idents we intend to keep this run
-            $currentPlanIdents[] = (string)$ident;
-
-            if (($entry['hidden'] ?? false) && $vid > 0) {
-                @IPS_SetHidden($vid, true);
-            }
-
-            // Important: Apply presentation ONLY on first creation to avoid overwriting user customization
-            if ($wasCreatedNow && isset($entry['presentation']) && is_array($entry['presentation'])) {
-                $this->applyPresentation($vid, (string)$ident, $entry['presentation'], $flatProfile, (string)($entry['type'] ?? 'STRING'));
-            }
-
-            if (($entry['enableAction'] ?? false) && method_exists($this, 'EnableAction')) {
-                try {
-                    $this->EnableAction((string)$ident);
-                } catch (Throwable $e) {
-                    $this->logThrowable('EnableAction ' . $ident, $e);
-                }
-            }
-
-            if (array_key_exists('initialValue', $entry)) {
-                $this->setValueByVarType((string)$ident, $entry['initialValue']);
-            }
-        }
-
-        // Store current plan idents for future reference (no automatic pruning)
-        $this->WriteAttributeString('LastPlan', json_encode($currentPlanIdents, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-
-        if (!empty($status)) {
-            $engine->applyStatus($status);
-        }
+        // Use central method for consistency
+        $this->ensureDeviceVariablesWithPresentations($profile, $status, $type);
     }
 
     private function SetupDeviceVariables(): void
     {
         $this->setupDevice();
+    }
+    
+    /**
+     * Central method to ensure variables with presentations and actions
+     * Used by both setupDevice() and ReceiveData()
+     * 
+     * @param array $profile
+     * @param array $status
+     * @param string $type
+     * @return void
+     */
+    private function ensureDeviceVariablesWithPresentations(array $profile, array $status, string $type): void
+    {
+        $engine = $this->getCapabilityEngine();
+        $plan = $engine->buildPlan($type, $profile, $status);
+        $engine->ensureVariables($profile, $status, $type);
+        
+        // Apply presentations and enable actions for all variables in plan
+        $flatProfile = $this->flatten($profile);
+        foreach ($plan as $ident => $entry) {
+            $vid = $this->getVarId((string)$ident);
+            if ($vid <= 0) {
+                continue;
+            }
+            
+            // Apply presentation if defined
+            if (isset($entry['presentation']) && is_array($entry['presentation'])) {
+                $this->applyPresentation($vid, (string)$ident, $entry['presentation'], $flatProfile, (string)($entry['type'] ?? 'STRING'));
+            }
+            
+            // Enable action if defined
+            if (($entry['enableAction'] ?? false) && method_exists($this, 'EnableAction')) {
+                try {
+                    $this->EnableAction((string)$ident);
+                } catch (\Throwable $e) {
+                    // Silent fail
+                }
+            }
+        }
+        
+        // Apply status values
+        $engine->applyStatus($status);
     }
 
     private function prepareEngine(): ?CapabilityEngine
@@ -475,7 +547,9 @@ class LGThinQDevice extends IPSModule
             return null;
         }
         $engine = $this->getCapabilityEngine();
-        $engine->loadCapabilities($type, $profile);
+        // Build plan to load capabilities including auto-discovery
+        $status = $this->readLastStatus();
+        $engine->buildPlan($type, $profile, $status);
         return $engine;
     }
 
@@ -621,7 +695,9 @@ class LGThinQDevice extends IPSModule
 
         $json = json_encode($summary, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $this->SendDebug('DryRun', 'Summary=' . (string)$json, 0);
-        @IPS_LogMessage('LGThinQDevice DryRun', 'deviceType=' . $type . ' capabilities=' . count($descriptors));
+        if ((bool)$this->ReadPropertyBoolean('Debug')) {
+            @IPS_LogMessage('LGThinQDevice DryRun', 'deviceType=' . $type . ' capabilities=' . count($descriptors));
+        }
         return (string)$json;
     }
 
@@ -910,8 +986,15 @@ class LGThinQDevice extends IPSModule
                     if (!array_key_exists('value', $op) || !array_key_exists('caption', $op)) {
                         continue;
                     }
+                    // Keep value as-is (can be string or integer)
+                    $value = $op['value'];
+                    if ($type === 'STRING' && !is_string($value)) {
+                        $value = (string)$value;
+                    } elseif ($type !== 'STRING' && !is_int($value)) {
+                        $value = (int)$value;
+                    }
                     $options[] = [
-                        'Value' => (int)$op['value'],
+                        'Value' => $value,
                         'Caption' => $this->t((string)$op['caption']),
                         'IconActive' => false,
                         'IconValue' => '',
@@ -967,6 +1050,35 @@ class LGThinQDevice extends IPSModule
             if (array_key_exists('intervals', $presentation) && is_array($presentation['intervals'])) {
                 $payload['INTERVALS'] = $presentation['intervals'];
             }
+            // Add OPTIONS for enum values with captions
+            if (isset($presentation['options']) && is_array($presentation['options']) && !isset($payload['OPTIONS'])) {
+                $options = [];
+                foreach ($presentation['options'] as $op) {
+                    if (!is_array($op) || !array_key_exists('value', $op) || !array_key_exists('caption', $op)) {
+                        continue;
+                    }
+                    // Keep value as-is (can be string or integer)
+                    $value = $op['value'];
+                    if ($type === 'STRING' && !is_string($value)) {
+                        $value = (string)$value;
+                    } elseif ($type !== 'STRING' && !is_int($value)) {
+                        $value = (int)$value;
+                    }
+                    $options[] = [
+                        'Value' => $value,
+                        'Caption' => $this->t((string)$op['caption']),
+                        'IconActive' => false,
+                        'IconValue' => '',
+                        'ColorActive' => false,
+                        'ColorValue' => -1,
+                        'Color' => -1,
+                        'ColorDisplay' => -1
+                    ];
+                }
+                if (!empty($options)) {
+                    $payload['OPTIONS'] = $options;
+                }
+            }
             // If BOOLEAN with value-presentation and captionOn/captionOff provided, map them to OPTIONS
             if (strtoupper((string)$type) === 'BOOLEAN' && (isset($presentation['captionOn']) || isset($presentation['captionOff'])) && !isset($payload['OPTIONS'])) {
                 $onCaption = $this->t((string)($presentation['captionOn'] ?? $this->t('On')));
@@ -1020,6 +1132,46 @@ class LGThinQDevice extends IPSModule
                 if (!empty($options)) {
                     $payload['OPTIONS'] = $options;
                 }
+            }
+            // Ensure all expected keys exist for value presentation (even if empty) to satisfy UI schema
+            $defaults = [
+                'DIGITS' => 2,
+                'SUFFIX' => '',
+                'INTERVALS_ACTIVE' => false,
+                'INTERVALS' => [],
+                'ICON' => '',
+                'DECIMAL_SEPARATOR' => 'Client',
+                'COLOR' => -1,
+                'MULTILINE' => false,
+                'MAX' => 100,
+                'THOUSANDS_SEPARATOR' => '',
+                'MIN' => 0,
+                'PERCENTAGE' => false,
+                'PREFIX' => '',
+                'USAGE_TYPE' => 0
+            ];
+            foreach ($defaults as $k => $v) {
+                if (!array_key_exists($k, $payload)) {
+                    $payload[$k] = $v;
+                }
+            }
+            if (!isset($payload['OPTIONS']) || !is_array($payload['OPTIONS'])) {
+                $payload['OPTIONS'] = [];
+            }
+            // Ensure each option object has all presentation keys with defaults
+            if (isset($payload['OPTIONS']) && is_array($payload['OPTIONS'])) {
+                foreach ($payload['OPTIONS'] as &$op) {
+                    if (!is_array($op)) { $op = []; }
+                    if (!array_key_exists('Value', $op)) { $op['Value'] = ''; }
+                    if (!array_key_exists('Caption', $op)) { $op['Caption'] = ''; }
+                    if (!array_key_exists('IconActive', $op)) { $op['IconActive'] = false; }
+                    if (!array_key_exists('IconValue', $op)) { $op['IconValue'] = ''; }
+                    if (!array_key_exists('ColorActive', $op)) { $op['ColorActive'] = false; }
+                    if (!array_key_exists('ColorValue', $op)) { $op['ColorValue'] = -1; }
+                    if (!array_key_exists('Color', $op)) { $op['Color'] = -1; }
+                    if (!array_key_exists('ColorDisplay', $op)) { $op['ColorDisplay'] = -1; }
+                }
+                unset($op);
             }
         }
 
@@ -1154,64 +1306,25 @@ class LGThinQDevice extends IPSModule
 
     public function AutoSubscribe(): void
     {
-        // Safe property read: avoid noisy warnings if instance interface is not yet available
         $deviceID = (string)@($this->ReadPropertyString('DeviceID'));
         if ($deviceID === '') {
             return;
         }
         if (method_exists($this, 'HasActiveParent') && !$this->HasActiveParent()) {
-            $this->EnsureConnected();
-            if (method_exists($this, 'RegisterOnceTimer')) {
-                // Retry later if the gateway is not yet active
-                @$this->RegisterOnceTimer('AutoSubscribe', 'LGTQD_AutoSubscribe($_IPS["TARGET"]);');
-                if (method_exists($this, 'SetTimerInterval')) {
-                    @$this->SetTimerInterval('AutoSubscribe', 60000);
-                }
-            }
+            // Parent not active; skip automatic retries
             return;
         }
         try {
             $this->doAutoSubscribe($deviceID);
-            // Success: disable periodic execution for this once-timer
-            if (method_exists($this, 'SetTimerInterval')) {
-                @$this->SetTimerInterval('AutoSubscribe', 0);
-            }
         } catch (\Throwable $e) {
-            // Suppress noisy log while the gateway is not yet connected; just retry later
-            if (stripos($e->getMessage(), 'No active LG ThinQ bridge connected') === false) {
-                $this->logThrowable('AutoSubscribe', $e);
-            }
-            if (method_exists($this, 'RegisterOnceTimer')) {
-                @$this->RegisterOnceTimer('AutoSubscribe', 'LGTQD_AutoSubscribe($_IPS["TARGET"]);');
-                if (method_exists($this, 'SetTimerInterval')) {
-                    @$this->SetTimerInterval('AutoSubscribe', 60000);
-                }
-            }
+            $this->logThrowable('AutoSubscribe', $e);
         }
     }
 
     private function ensureVariable(int $parentId, string $ident, string $name, int $type, string $profile = ''): int
     {
-        $vid = @IPS_GetObjectIDByIdent($ident, $parentId);
-        if ($vid && IPS_ObjectExists($vid)) {
-            $translatedName = $this->t($name);
-            if (IPS_GetName($vid) !== $translatedName) {
-                IPS_SetName($vid, $translatedName);
-            }
-            if ($profile !== '') {
-                @IPS_SetVariableCustomProfile($vid, $profile);
-            }
-            $this->applyDefaultHiddenFlags($vid, $ident);
-            return $vid;
-        }
-
-        $vid = IPS_CreateVariable($type);
-        IPS_SetParent($vid, $parentId);
-        IPS_SetIdent($vid, $ident);
-        IPS_SetName($vid, $this->t($name));
-        if ($profile !== '') {
-            @IPS_SetVariableCustomProfile($vid, $profile);
-        }
+        // Use MaintainVariable for automatic creation/update
+        $vid = $this->MaintainVariable($ident, $this->t($name), $type, $profile, 0, true);
         $this->applyDefaultHiddenFlags($vid, $ident);
         return $vid;
     }
@@ -1239,7 +1352,14 @@ class LGThinQDevice extends IPSModule
 
     private function getCapabilityEngine(): CapabilityEngine
     {
-        return new CapabilityEngine($this->InstanceID, __DIR__);
+        $engine = new CapabilityEngine($this->InstanceID, __DIR__);
+        
+        // Set translation callback so CapabilityEngine can use Symcon's Translate()
+        $engine->setTranslateCallback(function($text) {
+            return $this->Translate($text);
+        });
+        
+        return $engine;
     }
 
     private function readStoredProfile(): array
@@ -1247,6 +1367,119 @@ class LGThinQDevice extends IPSModule
         $raw = (string)$this->ReadAttributeString('LastProfile');
         $profile = json_decode($raw, true);
         return is_array($profile) ? $profile : [];
+    }
+    
+    /**
+     * Check if status contains properties that are not in the cached profile
+     * 
+     * @param array<string, mixed> $status
+     * @param array<string, mixed> $profile
+     * @return bool
+     */
+    private function statusHasNewProperties(array $status, array $profile): bool
+    {
+        // Flatten both to compare full paths
+        $statusFlat = $this->flatten($status);
+        $profileFlat = $this->flatten($profile['property'] ?? $profile); // Profile has 'property' wrapper
+        
+        // Check for status properties that are not in profile
+        foreach ($statusFlat as $statusKey => $statusValue) {
+            // Skip null values
+            if ($statusValue === null) {
+                continue;
+            }
+            
+            // Check if this key exists in profile
+            // Profile structure: property.{resource}.{property}.type or .mode or .value
+            // Status structure: {resource}.{property} = value
+            
+            // Look for corresponding profile entry
+            $found = false;
+            foreach ($profileFlat as $profileKey => $_) {
+                // Match: status "timer.relativeHourToStart" with profile "property.timer.relativeHourToStart.type"
+                if (strpos($profileKey, $statusKey) !== false || strpos($statusKey, str_replace('property.', '', explode('.type', $profileKey)[0])) !== false) {
+                    $found = true;
+                    break;
+                }
+            }
+            
+            if (!$found) {
+                $this->SendDebug('statusHasNewProperties', sprintf('New property found in status: %s', $statusKey), 0);
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Extract all top-level keys from nested array
+     * 
+     * @param array<string, mixed> $arr
+     * @return array<string>
+     */
+    private function flattenKeys(array $arr): array
+    {
+        $keys = [];
+        foreach ($arr as $key => $value) {
+            if (is_array($value)) {
+                foreach ($this->flattenKeysRecursive($key, $value) as $subKey) {
+                    $keys[] = $subKey;
+                }
+            } else {
+                $keys[] = $key;
+            }
+        }
+        return array_unique($keys);
+    }
+    
+    /**
+     * Recursively extract keys
+     * 
+     * @param string $prefix
+     * @param array<string, mixed> $arr
+     * @return array<string>
+     */
+    private function flattenKeysRecursive(string $prefix, array $arr): array
+    {
+        $keys = [$prefix];
+        foreach ($arr as $key => $value) {
+            if (is_array($value)) {
+                $keys = array_merge($keys, $this->flattenKeysRecursive($prefix . '.' . $key, $value));
+            } else {
+                $keys[] = $prefix . '.' . $key;
+            }
+        }
+        return $keys;
+    }
+    
+    /**
+     * Fetch fresh profile from API
+     * 
+     * @return array<string, mixed>
+     */
+    private function fetchProfileFromAPI(): array
+    {
+        try {
+            $deviceId = trim((string)$this->ReadPropertyString('DeviceID'));
+            if ($deviceId === '') {
+                return [];
+            }
+            
+            // Send request to bridge using existing sendAction method
+            $response = $this->sendAction('GetProfile', ['DeviceID' => $deviceId]);
+            $data = json_decode($response, true);
+            
+            if (isset($data['profile']) && is_array($data['profile'])) {
+                $this->SendDebug('fetchProfileFromAPI', 'Profile successfully fetched from API', 0);
+                return $data['profile'];
+            }
+            
+            return [];
+        } catch (\Throwable $e) {
+            $this->SendDebug('fetchProfileFromAPI', 'Failed: ' . $e->getMessage(), 0);
+            return [];
+        }
     }
 
     private function readLastStatus(): array
@@ -1343,6 +1576,20 @@ class LGThinQDevice extends IPSModule
     private function t(string $text): string
     {
         return method_exists($this, 'Translate') ? $this->Translate($text) : $text;
+    }
+
+    // Gate all debug output via the module's Debug property
+    protected function SendDebug($Message, $Data, $Format)
+    {
+        try {
+            if (!(bool)$this->ReadPropertyBoolean('Debug')) {
+                return;
+            }
+        } catch (\Throwable $e) {
+            // If property is not available for any reason, default to suppressed debug
+            return;
+        }
+        parent::SendDebug($Message, $Data, $Format);
     }
 
     private function maskText(string $s): string

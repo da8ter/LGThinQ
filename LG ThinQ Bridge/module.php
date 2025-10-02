@@ -36,6 +36,20 @@ class LGThinQBridge extends IPSModule
         return function_exists('IPS_GetKernelRunlevel') ? (IPS_GetKernelRunlevel() === KR_READY) : true;
     }
 
+    // Gate all debug output via the module's Debug property
+    protected function SendDebug($Message, $Data, $Format)
+    {
+        try {
+            if (!(bool)$this->ReadPropertyBoolean('Debug')) {
+                return;
+            }
+        } catch (\Throwable $e) {
+            // If property is not available for any reason, default to suppressed debug
+            return;
+        }
+        parent::SendDebug($Message, $Data, $Format);
+    }
+
     public function Create()
     {
         parent::Create();
@@ -50,11 +64,28 @@ class LGThinQBridge extends IPSModule
         $this->RegisterPropertyBoolean('IgnoreRetained', true);
         $this->RegisterPropertyInteger('EventTTLHrs', 24);
         $this->RegisterPropertyInteger('EventRenewLeadMin', 5);
+        // Reduce push subscribe requests: cooldown in minutes
+        $this->RegisterPropertyInteger('PushCooldownMin', 30);
+
+        // Simulation (Support ZIP) properties
+        $this->RegisterPropertyBoolean('SimulationEnabled', false);
+        $this->RegisterPropertyString('SimDeviceIDs', ''); // Comma-separated list or single ID
+        // Use safe property names while UI captions show exact filenames
+        $this->RegisterPropertyString('Sim_10_device_info', '');
+        $this->RegisterPropertyString('Sim_20_profile_response', '');
+        $this->RegisterPropertyString('Sim_21_profile_extracted', '');
+        $this->RegisterPropertyString('Sim_30_status', '');
+        
+        // Simulation state (for Control action mutations)
+        $this->RegisterAttributeString('SimStatusOverride', '{}');
 
         $this->RegisterAttributeString('ClientID', '');
         $this->RegisterAttributeString('AccessTokenBackup', '');
         $this->RegisterAttributeString('Devices', '[]');
         $this->RegisterAttributeString('EventSubscriptions', '{}');
+        // Push subscribe throttling metadata
+        $this->RegisterAttributeInteger('PushRegisteredAt', 0);
+        $this->RegisterAttributeString('PushDeviceSubs', '{}');
         $this->RegisterTimer('EventRenewTimer', 0, 'LGTQ_RenewEvents($_IPS[\'TARGET\']);');
         // Initialize default ClientID on first installation so it appears in the form
         $propCID = trim((string)$this->ReadPropertyString('ClientID'));
@@ -201,6 +232,48 @@ class LGThinQBridge extends IPSModule
 
         $action = (string)($buffer['Action'] ?? '');
         try {
+            // Intercept selected actions when simulation is enabled
+            if ((bool)$this->ReadPropertyBoolean('SimulationEnabled')) {
+                $requestedDeviceId = (string)($buffer['DeviceID'] ?? '');
+                $this->SendDebug('Sim', 'Intercepting action=' . $action . ' deviceId=' . $requestedDeviceId, 0);
+                switch ($action) {
+                    case 'GetDevices': {
+                        $list = $this->simParseDevices((string)$this->ReadPropertyString('Sim_10_device_info'));
+                        return json_encode(['success' => true, 'devices' => $list], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    }
+                    case 'GetProfile': {
+                        $profile = $this->simParseProfile(
+                            (string)$this->ReadPropertyString('Sim_21_profile_extracted'),
+                            (string)$this->ReadPropertyString('Sim_20_profile_response')
+                        );
+                        return json_encode(['success' => true, 'profile' => $profile], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    }
+                    case 'GetStatus': {
+                        // Check for override first (from Control actions), then fallback to Sim_30_status
+                        $override = $this->simGetStatusOverride($requestedDeviceId);
+                        $status = is_array($override) && !empty($override) 
+                            ? $override 
+                            : $this->simParseStatus((string)$this->ReadPropertyString('Sim_30_status'));
+                        return json_encode(['success' => true, 'status' => $status], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    }
+                    case 'Control': {
+                        // Simulate control by merging payload into status override
+                        $payload = $buffer['Payload'] ?? null;
+                        if (is_array($payload)) {
+                            $this->simApplyControlPayload($requestedDeviceId, $payload);
+                            $this->SendDebug('Sim', 'Control applied to status override', 0);
+                        }
+                        return json_encode(['success' => true], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    }
+                    case 'SubscribeDevice':
+                    case 'UnsubscribeDevice':
+                    case 'RenewEventForDevice':
+                        return json_encode(['success' => true], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    default:
+                        // Fall through to default handling for unknown actions
+                        break;
+                }
+            }
             switch ($action) {
                 case 'GetDevices':
                     $devices = $this->fetchDevices();
@@ -268,6 +341,10 @@ class LGThinQBridge extends IPSModule
     public function ReceiveData($JSONString)
     {
         $this->ensureBooted();
+        // When simulation is enabled, ignore real MQTT to avoid mixing streams
+        if ((bool)$this->ReadPropertyBoolean('SimulationEnabled')) {
+            return;
+        }
         $this->mqttRouter->handle((string)$JSONString);
     }
 
@@ -286,6 +363,214 @@ class LGThinQBridge extends IPSModule
             $this->NotifyUser($this->t('Verbindung fehlgeschlagen') . ': ' . $e->getMessage());
             echo $this->t('Verbindung fehlgeschlagen') . ': ' . $e->getMessage();
         }
+    }
+
+    // --- Simulation helpers ---
+    /** @return array<string,mixed>|null */
+    private function simParseJson(string $raw): ?array
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            $this->SendDebug('Sim', 'simParseJson: empty input', 0);
+            return null;
+        }
+        $data = json_decode($raw, true);
+        if (!is_array($data)) {
+            $this->SendDebug('Sim', 'simParseJson: invalid JSON or non-array result', 0);
+            return null;
+        }
+        return $data;
+    }
+
+    /** @return array<int, array<string,mixed>> */
+    private function simParseDevices(string $raw): array
+    {
+        $data = $this->simParseJson($raw);
+        if (!is_array($data)) {
+            $this->SendDebug('Sim', 'simParseDevices: invalid JSON or empty', 0);
+            return [];
+        }
+        if (isset($data['devices']) && is_array($data['devices'])) {
+            return $data['devices'];
+        }
+        // If already an array of devices
+        if (isset($data[0]) && is_array($data[0])) {
+            return $data;
+        }
+        $this->SendDebug('Sim', 'simParseDevices: unexpected structure (no devices array, not list)', 0);
+        return [];
+    }
+
+    /** @return array<string,mixed> */
+    private function simParseProfile(string $extractedRaw, string $responseRaw): array
+    {
+        // Prefer extracted (21) which should contain direct property content
+        $ex = $this->simParseJson($extractedRaw);
+        if (is_array($ex) && !empty($ex)) {
+            // Ensure the outer shape is { property: {...} } as expected by child fetchDeviceProfile
+            if (isset($ex['property']) && is_array($ex['property'])) {
+                return $ex; // already wrapped
+            }
+            return ['property' => $ex];
+        }
+        // Fallback to 20 (raw profile response)
+        $resp = $this->simParseJson($responseRaw);
+        return is_array($resp) ? $resp : [];
+    }
+
+    /** @return array<string,mixed> */
+    private function simParseStatus(string $raw): array
+    {
+        $data = $this->simParseJson($raw);
+        if (!is_array($data)) return [];
+        // Support shape: { "state": { ... } }
+        if (isset($data['state']) && is_array($data['state'])) {
+            return $data['state'];
+        }
+        // Support shape: [ { ... } ] (array-of-one)
+        $isNumericList = array_keys($data) === range(0, count($data) - 1);
+        if ($isNumericList && count($data) === 1 && is_array($data[0])) {
+            return $data[0];
+        }
+        return $data;
+    }
+
+    public function UIStartSim(): void
+    {
+        // Validate before enabling
+        if (!$this->simValidate()) {
+            $this->NotifyUser($this->t('Simulation: Validierung fehlgeschlagen. Prüfe SimDeviceIDs und JSON-Felder.'));
+            return;
+        }
+        @IPS_SetProperty($this->InstanceID, 'SimulationEnabled', true);
+        @$this->ApplyChanges();
+        $this->NotifyUser($this->t('Simulation aktiviert'));
+    }
+
+    public function UIStopSim(): void
+    {
+        @IPS_SetProperty($this->InstanceID, 'SimulationEnabled', false);
+        @$this->ApplyChanges();
+        $this->NotifyUser($this->t('Simulation deaktiviert'));
+    }
+
+    public function UIClearSim(): void
+    {
+        @IPS_SetProperty($this->InstanceID, 'SimDeviceIDs', '');
+        @IPS_SetProperty($this->InstanceID, 'Sim_10_device_info', '');
+        @IPS_SetProperty($this->InstanceID, 'Sim_20_profile_response', '');
+        @IPS_SetProperty($this->InstanceID, 'Sim_21_profile_extracted', '');
+        @IPS_SetProperty($this->InstanceID, 'Sim_30_status', '');
+        $this->WriteAttributeString('SimStatusOverride', '{}');
+        @$this->ApplyChanges();
+        $this->NotifyUser($this->t('Simulation zurückgesetzt'));
+    }
+
+    public function UIPushSimEvent(): void
+    {
+        $deviceIds = $this->simGetDeviceIDs();
+        if (empty($deviceIds)) {
+            $this->NotifyUser($this->t('Fehler: SimDeviceIDs fehlt'));
+            $this->SendDebug('Sim', 'UIPushSimEvent: SimDeviceIDs missing', 0);
+            return;
+        }
+        $event = $this->simParseStatus((string)$this->ReadPropertyString('Sim_30_status'));
+        if (!is_array($event) || empty($event)) {
+            $this->NotifyUser($this->t('Fehler: 30_status.json ungültig oder leer'));
+            $this->SendDebug('Sim', 'UIPushSimEvent: 30_status.json invalid', 0);
+            return;
+        }
+        
+        // Load profile for simulation (optional - devices can work without it)
+        $profile = $this->simParseProfile(
+            (string)$this->ReadPropertyString('Sim_21_profile_extracted'),
+            ''
+        );
+        
+        // Send event for all configured device IDs
+        foreach ($deviceIds as $deviceId) {
+            $payload = [
+                'DataID' => self::CHILD_INTERFACE_GUID,
+                'Buffer' => json_encode([
+                    'Action' => 'Event',
+                    'DeviceID' => $deviceId,
+                    'Event' => $event,
+                    'Profile' => $profile  // Include profile in push event
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            ];
+            $this->SendDataToChildren(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $this->SendDebug('Sim', 'UIPushSimEvent: dispatched for ' . $deviceId . ' (with profile: ' . (empty($profile) ? 'no' : 'yes') . ')', 0);
+        }
+        $count = count($deviceIds);
+        $this->NotifyUser(sprintf($this->t('Event gesendet für %d Gerät(e)'), $count));
+    }
+
+    /** @return array<int, string> */
+    private function simGetDeviceIDs(): array
+    {
+        $raw = trim((string)$this->ReadPropertyString('SimDeviceIDs'));
+        if ($raw === '') return [];
+        // Support comma-separated list or single ID
+        $parts = array_map('trim', explode(',', $raw));
+        return array_filter($parts, fn($id) => $id !== '');
+    }
+
+    private function simValidate(): bool
+    {
+        $deviceIds = $this->simGetDeviceIDs();
+        if (empty($deviceIds)) {
+            $this->SendDebug('Sim', 'Validation failed: SimDeviceIDs empty', 0);
+            return false;
+        }
+        $devices = $this->simParseDevices((string)$this->ReadPropertyString('Sim_10_device_info'));
+        if (empty($devices)) {
+            $this->SendDebug('Sim', 'Validation warning: 10_device_info.json empty', 0);
+            // Don't fail - user might only use profile/status
+        }
+        // Validate that at least one SimDeviceID exists in device_info
+        $foundAny = false;
+        foreach ($deviceIds as $simId) {
+            foreach ($devices as $dev) {
+                $id = (string)($dev['deviceId'] ?? ($dev['device_id'] ?? ''));
+                if (strcasecmp($id, $simId) === 0) {
+                    $foundAny = true;
+                    break 2;
+                }
+            }
+        }
+        if (!$foundAny && !empty($devices)) {
+            $this->SendDebug('Sim', 'Validation warning: SimDeviceIDs not found in 10_device_info.json', 0);
+        }
+        return true; // Lenient validation
+    }
+
+    /** @return array<string,mixed> */
+    private function simGetStatusOverride(string $deviceId): array
+    {
+        $raw = (string)$this->ReadAttributeString('SimStatusOverride');
+        $all = json_decode($raw, true);
+        if (!is_array($all)) return [];
+        return is_array($all[$deviceId] ?? null) ? $all[$deviceId] : [];
+    }
+
+    /** @param array<string,mixed> $payload */
+    private function simApplyControlPayload(string $deviceId, array $payload): void
+    {
+        $raw = (string)$this->ReadAttributeString('SimStatusOverride');
+        $all = json_decode($raw, true);
+        if (!is_array($all)) $all = [];
+        // Merge payload into existing override or base status
+        $existing = $all[$deviceId] ?? $this->simParseStatus((string)$this->ReadPropertyString('Sim_30_status'));
+        if (!is_array($existing)) $existing = [];
+        $all[$deviceId] = array_replace_recursive($existing, $payload);
+        $this->WriteAttributeString('SimStatusOverride', json_encode($all, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+
+    public function UIImportSupportZip(): void
+    {
+        // This method can be triggered via a button that lets user select a ZIP file
+        // For now, provide a placeholder that notifies the user to manually extract and paste
+        $this->NotifyUser($this->t('Bitte Support-ZIP manuell entpacken und JSON-Inhalte in die Felder einfügen.'));
     }
 
     public function SyncDevices(): void

@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+// Load auto-discovery classes
+require_once __DIR__ . '/ThinQGenericProperties.php';
+require_once __DIR__ . '/ThinQEnumTranslator.php';
+require_once __DIR__ . '/ThinQProfileParser.php';
+
 /**
  * CapabilityEngine
  *
@@ -27,10 +32,73 @@ class CapabilityEngine
     /** @var array<string, mixed>|null */
     private static ?array $catalog = null;
 
+    /** @var ThinQProfileParser|null */
+    private ?ThinQProfileParser $parser = null;
+
+    /** @var bool */
+    private bool $autoDiscoveryEnabled = true;
+    
+    /** @var callable|null */
+    private $translateCallback = null;
+    
+    /** @var callable|null */
+    private $maintainVariableCallback = null;
+
     public function __construct(int $instanceId, string $baseDir)
     {
         $this->instanceId = $instanceId;
         $this->baseDir = rtrim($baseDir, '/');
+    }
+    
+    /**
+     * Set callback for maintaining variables (create/update/delete)
+     * Signature: function(string $ident, string $name, int $type, string $profile, int $position, bool $keep): int
+     */
+    public function setMaintainVariableCallback(callable $callback): void
+    {
+        $this->maintainVariableCallback = $callback;
+    }
+    
+    /**
+     * Set translation callback for translating variable names
+     * 
+     * @param callable $callback Function that takes a string and returns translated string
+     */
+    public function setTranslateCallback(callable $callback): void
+    {
+        $this->translateCallback = $callback;
+    }
+    
+    /**
+     * Translate a string using the callback or return as-is
+     * 
+     * @param string $text Text to translate
+     * @return string Translated text or original if no callback set
+     */
+    private function translate(string $text): string
+    {
+        if ($this->translateCallback !== null) {
+            return ($this->translateCallback)($text);
+        }
+        return $text;
+    }
+
+    private function debugEnabled(): bool
+    {
+        // Read the parent module's Debug property to decide whether to emit debug logs
+        try {
+            $v = @IPS_GetProperty($this->instanceId, 'Debug');
+            return is_bool($v) ? $v : false;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    private function dbg(string $message): void
+    {
+        if ($this->debugEnabled()) {
+            @IPS_LogMessage('CapabilityEngine', $message);
+        }
     }
 
     /** @param array<string, mixed> $cap */
@@ -54,7 +122,7 @@ class CapabilityEngine
     {
         $files = $this->resolveCapabilityFiles($deviceType, $profile);
         $this->caps = [];
-        @IPS_LogMessage('CapabilityEngine', sprintf('Loading %d capability files: %s', count($files), implode(', ', $files)));
+        $this->dbg(sprintf('Loading %d capability files: %s', count($files), implode(', ', $files)));
         foreach ($files as $f) {
             if (@is_file($f)) {
                 $json = @file_get_contents($f);
@@ -62,20 +130,20 @@ class CapabilityEngine
                     $dec = @json_decode($json, true);
                     if (is_array($dec) && isset($dec['capabilities']) && is_array($dec['capabilities'])) {
                         $capCount = count($dec['capabilities']);
-                        @IPS_LogMessage('CapabilityEngine', sprintf('Loaded %d capabilities from %s', $capCount, basename($f)));
+                        $this->dbg(sprintf('Loaded %d capabilities from %s', $capCount, basename($f)));
                         foreach ($dec['capabilities'] as $cap) {
                             if (is_array($cap) && isset($cap['ident'])) {
                                 $this->caps[$cap['ident']] = $cap;
                             }
                         }
                     } else {
-                        @IPS_LogMessage('CapabilityEngine', sprintf('Invalid capability file format: %s', basename($f)));
+                        $this->dbg(sprintf('Invalid capability file format: %s', basename($f)));
                     }
                 } else {
-                    @IPS_LogMessage('CapabilityEngine', sprintf('Could not read capability file: %s', basename($f)));
+                    $this->dbg(sprintf('Could not read capability file: %s', basename($f)));
                 }
             } else {
-                @IPS_LogMessage('CapabilityEngine', sprintf('Capability file not found: %s', $f));
+                $this->dbg(sprintf('Capability file not found: %s', $f));
             }
         }
         $this->flatProfile = $this->flatten($profile);
@@ -101,7 +169,7 @@ class CapabilityEngine
         $noscore  = str_replace('_', '', $typeLower);
         if ($noscore !== '' && $noscore !== $typeLower) { $candidates[] = $noscore; }
         $candidates = array_values(array_unique(array_filter($candidates, function($v){ return is_string($v) && $v !== ''; })));
-        @IPS_LogMessage('CapabilityEngine', sprintf('Type candidates for matching: %s', implode(', ', $candidates)));
+        $this->dbg(sprintf('Type candidates for matching: %s', implode(', ', $candidates)));
 
         $files = [];
 
@@ -138,7 +206,7 @@ class CapabilityEngine
                 $files[] = $this->baseDir . '/capabilities/' . $fallback;
             }
             if (empty($files)) {
-                @IPS_LogMessage('CapabilityEngine', sprintf('No capability files matched for deviceType="%s" (no fallback).', $typeLower));
+                $this->dbg(sprintf('No capability files matched for deviceType="%s" (no fallback).', $typeLower));
             }
         }
 
@@ -298,6 +366,21 @@ class CapabilityEngine
     {
         return array_values($this->caps);
     }
+    
+    /**
+     * Get presentation map for all capabilities
+     * @return array<string, array<string, mixed>> Map of ident => presentation
+     */
+    public function getPresentationMap(): array
+    {
+        $map = [];
+        foreach ($this->caps as $ident => $cap) {
+            if (isset($cap['presentation']) && is_array($cap['presentation'])) {
+                $map[$ident] = $cap['presentation'];
+            }
+        }
+        return $map;
+    }
 
     /**
      * Ensure variables exist and attach actions according to descriptors.
@@ -308,10 +391,8 @@ class CapabilityEngine
      */
     public function ensureVariables(array $profile, ?array $status, string $deviceType): void
     {
-        //@IPS_LogMessage('CapabilityEngine', sprintf('ensureVariables called with deviceType: %s', $deviceType));
-        //@IPS_LogMessage('CapabilityEngine', sprintf('DEBUG: instanceId=%d, profile keys=%s', $this->instanceId, implode(',', array_keys($profile))));
-        $this->loadCapabilities($deviceType, $profile);
-        //@IPS_LogMessage('CapabilityEngine', sprintf('Loaded %d capabilities', count($this->caps)));
+        // Do NOT reload capabilities here - use the ones loaded by buildPlan()
+        // This preserves auto-discovered capabilities based on current status
         
         $flatStatus = is_array($status) ? $this->flatten($status) : [];
         $this->flatStatus = $flatStatus;
@@ -320,20 +401,15 @@ class CapabilityEngine
             $ident = (string)($cap['ident'] ?? '');
             if ($ident === '') continue;
             
-            //@IPS_LogMessage('CapabilityEngine', sprintf('Processing capability: %s', $ident));
-            
             $should = $this->shouldCreate($cap, $this->flatProfile, $flatStatus);
             $vid = $this->getVarId($ident);
             
-            //@IPS_LogMessage('CapabilityEngine', sprintf('Capability %s: should=%s, vid=%d', $ident, $should ? 'true' : 'false', $vid));
-            
-            // Create variable if required or if it already exists proceed to action enabling
-            if ($vid === 0 && !$should) {
-                // Nothing to do for variables that should not exist and do not exist
-                //@IPS_LogMessage('CapabilityEngine', sprintf('Skipping %s: should not exist and does not exist', $ident));
+            // Skip if variable should not be created (but never delete existing variables!)
+            if (!$should && $vid === 0) {
                 continue;
             }
-            // Ensure variable exists
+            
+            // Create variable if it doesn't exist
             if ($vid === 0) {
                 $type = strtoupper((string)($cap['type'] ?? 'string'));
                 $ipsType = match ($type) {
@@ -343,42 +419,44 @@ class CapabilityEngine
                     default   => VARIABLETYPE_STRING
                 };
                 $name = (string)($cap['name'] ?? $ident);
-                $vid = IPS_CreateVariable($ipsType);
-                IPS_SetParent($vid, $this->instanceId);
-                IPS_SetIdent($vid, $ident);
-                IPS_SetName($vid, $name);
-                //@IPS_LogMessage('CapabilityEngine', sprintf('Created variable %s with VID: %d', $ident, $vid));
+                
+                // Use MaintainVariable callback if available, otherwise fallback to manual creation
+                if ($this->maintainVariableCallback !== null) {
+                    $vid = call_user_func($this->maintainVariableCallback, $ident, $name, $ipsType, '', 0, true);
+                } else {
+                    // Fallback: manual creation (legacy)
+                    $vid = IPS_CreateVariable($ipsType);
+                    IPS_SetParent($vid, $this->instanceId);
+                    IPS_SetIdent($vid, $ident);
+                    IPS_SetName($vid, $name);
+                }
             }
+            
             // Hidden
             $hidden = (bool)($cap['visibility']['hidden'] ?? false);
-            if ($hidden) { @IPS_SetHidden($vid, true); }
+            if ($hidden) {
+                @IPS_SetHidden($vid, true);
+            }
             
             // EnableAction: always, profile writeable, or fallback when a write mapping exists
             $enableWhen = strtolower((string)($cap['action']['enableWhen'] ?? ''));
-            //@IPS_LogMessage('CapabilityEngine', sprintf('Capability %s: enableWhen=%s', $ident, $enableWhen));
             
             if ($enableWhen === 'always') {
-                //@IPS_LogMessage('CapabilityEngine', sprintf('Enabling action for %s (always)', $ident));
                 $this->enableAction($ident);
             } elseif ($enableWhen === 'profilewriteableany') {
                 $writeKeys = $cap['action']['writeableKeys'] ?? [];
                 $hasWrite = is_array($writeKeys) && $this->profileHasWriteAny($writeKeys);
-                //@IPS_LogMessage('CapabilityEngine', sprintf('Capability %s: hasWrite=%s, writeKeys=%s', $ident, $hasWrite ? 'true' : 'false', json_encode($writeKeys)));
                 
                 if ($hasWrite) {
-                    //@IPS_LogMessage('CapabilityEngine', sprintf('Enabling action for %s (profile writeable)', $ident));
                     $this->enableAction($ident);
                 } else {
                     // Fallback: if the capability defines a write mapping, still enable action
                     if ($this->capHasWriteDefinition($cap)) {
-                        //@IPS_LogMessage('CapabilityEngine', sprintf('Enabling action for %s (fallback - has write definition)', $ident));
                         $this->enableAction($ident);
-                    } else {
-                        //@IPS_LogMessage('CapabilityEngine', sprintf('NOT enabling action for %s (no write definition)', $ident));
                     }
                 }
             } else {
-                @IPS_LogMessage('CapabilityEngine', sprintf('NOT enabling action for %s (enableWhen=%s)', $ident, $enableWhen));
+                $this->dbg(sprintf('NOT enabling action for %s (enableWhen=%s)', $ident, $enableWhen));
             }
         }
     }
@@ -457,6 +535,7 @@ class CapabilityEngine
 
     /**
      * Build a configuration plan describing which variables should exist and how they should be presented.
+     * With auto-discovery support.
      *
      * @param string $deviceType
      * @param array<string, mixed> $profile
@@ -465,10 +544,37 @@ class CapabilityEngine
      */
     public function buildPlan(string $deviceType, array $profile, ?array $status): array
     {
+        // 1. Load manual capabilities (if exist)
         $this->loadCapabilities($deviceType, $profile);
         $this->flatProfile = $this->flatten($profile);
         $this->flatStatus = is_array($status) ? $this->flatten($status) : [];
 
+        // 2. Auto-discover from profile (if enabled)
+        if ($this->autoDiscoveryEnabled) {
+            try {
+                $autoPlan = $this->getParser()->parseProfile($profile);
+                $this->dbg(sprintf('Auto-discovery found %d properties', count($autoPlan)));
+                
+                // Merge: auto-discovered properties that aren't manually defined
+                foreach ($autoPlan as $ident => $autoEntry) {
+                    // Skip UNIT variables (e.g., TEMPERATURE_UNIT, TIME_UNIT)
+                    if (preg_match('/_UNIT$/i', $ident)) {
+                        $this->dbg(sprintf('Skipping UNIT variable: %s', $ident));
+                        continue;
+                    }
+                    
+                    if (!isset($this->caps[$ident])) {
+                        // Convert auto-plan to capability descriptor
+                        $this->caps[$ident] = $this->convertAutoPlanToCapability($autoEntry);
+                        $this->dbg(sprintf('Auto-added: %s (%s)', $ident, $autoEntry['name']));
+                    }
+                }
+            } catch (\Throwable $e) {
+                $this->dbg('Auto-discovery failed: ' . $e->getMessage());
+            }
+        }
+
+        // 3. Build final plan (existing logic)
         $plan = [];
         foreach ($this->caps as $cap) {
             $ident = (string)($cap['ident'] ?? '');
@@ -484,7 +590,8 @@ class CapabilityEngine
                 'hidden' => (bool)($cap['visibility']['hidden'] ?? false),
                 'shouldCreate' => $shouldCreate,
                 'presentation' => isset($cap['presentation']) && is_array($cap['presentation']) ? $cap['presentation'] : null,
-                'enableAction' => $shouldCreate && $this->shouldEnableAction($cap)
+                'enableAction' => $shouldCreate && $this->shouldEnableAction($cap),
+                'location' => $cap['location'] ?? null // NEW: Location support
             ];
 
             if ($shouldCreate) {
@@ -495,6 +602,14 @@ class CapabilityEngine
             }
 
             $plan[$ident] = $entry;
+        }
+        
+        // Translate all variable names from English to user's language
+        // This uses Symcon's locale.json for translations via callback
+        foreach ($plan as $ident => &$entry) {
+            if (isset($entry['name'])) {
+                $entry['name'] = $this->translate($entry['name']);
+            }
         }
 
         return $plan;
@@ -509,19 +624,26 @@ class CapabilityEngine
     {
         $flat = $this->flatten($status);
         $this->flatStatus = $flat;
+        $updated = 0;
+        $skipped = 0;
         foreach ($this->caps as $cap) {
             $ident = (string)($cap['ident'] ?? '');
             if ($ident === '') continue;
             $vid = $this->getVarId($ident);
-            if ($vid === 0) continue;
+            if ($vid === 0) {
+                $skipped++;
+                continue;
+            }
             // Read value
             $val = $this->readValue($cap, $flat);
             if ($val !== null) {
                 $this->setValueByType($vid, $cap, $val);
+                $updated++;
             }
             // NOTE: Do not re-enable actions on every status update to avoid noisy logs and redundant calls.
             // Action enabling is performed during variable creation in the main module (SetupDeviceVariables).
         }
+        $this->dbg(sprintf('applyStatus: %d capabilities, %d updated, %d skipped (no variable)', count($this->caps), $updated, $skipped));
     }
 
     /**
@@ -535,7 +657,11 @@ class CapabilityEngine
     public function buildControlPayload(string $ident, $value): ?array
     {
         $cap = $this->caps[$ident] ?? null;
-        if (!is_array($cap)) return null;
+        if (!is_array($cap)) {
+            $this->dbg(sprintf('buildControlPayload: Capability not found for ident=%s (available: %s)', $ident, implode(', ', array_keys($this->caps))));
+            return null;
+        }
+        $this->dbg(sprintf('buildControlPayload: Found capability for %s, write config: %s', $ident, json_encode($cap['write'] ?? null)));
         // Clamp
         if (isset($cap['write']['clamp']) && is_array($cap['write']['clamp'])) {
             $min = $cap['write']['clamp']['min'] ?? null;
@@ -563,7 +689,12 @@ class CapabilityEngine
         // Enum map (map incoming value to a set of target paths/values)
         if (isset($cap['write']['enumMap']) && is_array($cap['write']['enumMap'])) {
             $map = $cap['write']['enumMap'];
-            $key = (string)$value;
+            // Convert boolean to string properly: false -> "false", true -> "true"
+            if (is_bool($value)) {
+                $key = $value ? 'true' : 'false';
+            } else {
+                $key = (string)$value;
+            }
             if (array_key_exists($key, $map) && is_array($map[$key])) {
                 $out = [];
                 foreach ($map[$key] as $path => $v) {
@@ -628,6 +759,11 @@ class CapabilityEngine
             $property = (string)($cfg['property'] ?? '');
             $extras = is_array($cfg['extras'] ?? null) ? $cfg['extras'] : [];
             if ($resource !== '' && $property !== '') {
+                // Special handling for timer properties: always send BOTH hour and minute
+                $timerPair = $this->getTimerPairValue($ident, $property, $value);
+                if ($timerPair !== null) {
+                    return [$resource => $extras + $timerPair];
+                }
                 // Optional clamp from profile writable range
                 if (!empty($cfg['clampFromProfile'])) {
                     $rng = $this->findRangeFromProfile($resource, $property);
@@ -750,7 +886,6 @@ class CapabilityEngine
                 if (isset($opt['template']) && is_array($opt['template'])) {
                     $converted = $this->convertValueForType($cap, $value);
                     $out = $this->replaceTemplatePlaceholders($opt['template'], $converted);
-                    //@IPS_LogMessage('CapabilityEngine', sprintf('firstOf: using template for ident=%s with keys=%s', (string)($cap['ident'] ?? ''), implode(',', array_keys($opt['template']))));
                     return $out;
                 }
                 // Support enumMap within firstOf (optional)
@@ -762,7 +897,6 @@ class CapabilityEngine
                         foreach ($map[$key] as $path => $v) {
                             $this->setByPath($out, (string)$path, $v);
                         }
-                        //@IPS_LogMessage('CapabilityEngine', sprintf('firstOf: using enumMap for ident=%s on paths=%s', (string)($cap['ident'] ?? ''), implode(',', array_keys($map[$key]))));
                         return $out;
                     }
                 }
@@ -780,7 +914,6 @@ class CapabilityEngine
                         $out = [];
                         if ($t0 !== '') $this->setByPath($out, $t0, $h);
                         if ($t1 !== '') $this->setByPath($out, $t1, $m);
-                        //@IPS_LogMessage('CapabilityEngine', sprintf('firstOf: using composite(minutes_to_hm) for ident=%s targets=%s,%s', (string)($cap['ident'] ?? ''), $t0, $t1));
                         return $out;
                     }
                 }
@@ -880,7 +1013,7 @@ class CapabilityEngine
 
     private function enableAction(string $ident): void
     {
-        @IPS_LogMessage('CapabilityEngine', sprintf('enableAction called for ident: %s, instanceId: %d - SKIPPING (will be handled by main module)', $ident, $this->instanceId));
+        $this->dbg(sprintf('enableAction called for ident: %s, instanceId: %d - SKIPPING (will be handled by main module)', $ident, $this->instanceId));
 
         // NOTE: Action enabling is now handled directly in the main module's SetupDeviceVariables method
         // using $this->EnableAction() which is the correct Symcon approach
@@ -891,6 +1024,9 @@ class CapabilityEngine
     private function shouldEnableAction(array $cap): bool
     {
         $enableWhen = strtolower((string)($cap['action']['enableWhen'] ?? ''));
+        if ($enableWhen === 'never') {
+            return false;
+        }
         if ($enableWhen === 'always') {
             return true;
         }
@@ -1031,10 +1167,11 @@ class CapabilityEngine
     {
         $read = $cap['read'] ?? null;
         if (!is_array($read)) return null;
-        // direct mapped value
-        if (isset($read['sources']) && isset($read['map']) && is_array($read['map'])) {
+        // direct mapped value (support both 'map' and 'valueMap')
+        $mapField = $read['valueMap'] ?? $read['map'] ?? null;
+        if (isset($read['sources']) && is_array($mapField)) {
             $src = $read['sources'];
-            $map = $read['map'];
+            $map = $mapField;
             $ci  = (bool)($read['mapCaseInsensitive'] ?? true);
             if (is_array($src)) {
                 foreach ($src as $p) {
@@ -1139,14 +1276,33 @@ class CapabilityEngine
     private function setValueByType(int $vid, array $cap, $val): void
     {
         $type = strtoupper((string)($cap['type'] ?? 'string'));
+        
+        // Get current value and compare to avoid unnecessary updates
         if ($type === 'BOOLEAN') {
-            @SetValueBoolean($vid, (bool)$val);
+            $current = @GetValueBoolean($vid);
+            $new = (bool)$val;
+            if ($current !== $new) {
+                @SetValueBoolean($vid, $new);
+            }
         } elseif ($type === 'INTEGER') {
-            @SetValueInteger($vid, (int)$val);
+            $current = @GetValueInteger($vid);
+            $new = (int)$val;
+            if ($current !== $new) {
+                @SetValueInteger($vid, $new);
+            }
         } elseif ($type === 'FLOAT') {
-            @SetValueFloat($vid, (float)$val);
+            $current = @GetValueFloat($vid);
+            $new = (float)$val;
+            // Use epsilon comparison for floats
+            if (abs($current - $new) > 0.0001) {
+                @SetValueFloat($vid, $new);
+            }
         } else {
-            @SetValueString($vid, (string)$val);
+            $current = @GetValueString($vid);
+            $new = (string)$val;
+            if ($current !== $new) {
+                @SetValueString($vid, $new);
+            }
         }
     }
 
@@ -1323,5 +1479,243 @@ class CapabilityEngine
         $out = array_keys($set);
         sort($out);
         return $out;
+    }
+
+    // === Auto-Discovery Helper Methods ===
+
+    /**
+     * Get or create ProfileParser instance
+     */
+    private function getParser(): ThinQProfileParser
+    {
+        if ($this->parser === null) {
+            $this->parser = new ThinQProfileParser();
+            // TODO: Get language from module property
+            $this->parser->setLanguage('de');
+        }
+        return $this->parser;
+    }
+
+    /**
+     * Convert auto-discovered plan entry to capability descriptor
+     * 
+     * @param array<string, mixed> $autoEntry
+     * @return array<string, mixed>
+     */
+    private function convertAutoPlanToCapability(array $autoEntry): array
+    {
+        $ident = $autoEntry['ident'];
+        
+        // Special handling for Timer Control variables (*_STOP_TIMER, *_START_TIMER)
+        // According to official SDK: These are READ-ONLY status fields, not writable controls
+        // Timer control is done via Hour/Minute properties only
+        $isTimerControl = preg_match('/_(?:STOP|START)_TIMER$/i', $ident);
+        
+        if ($isTimerControl && ($autoEntry['meta']['type'] ?? '') === 'enum') {
+            // Override type to boolean for timer controls (READ-ONLY)
+            $capability = [
+                'ident' => $ident,
+                'name' => $autoEntry['name'],
+                'type' => 'boolean',
+                'location' => $autoEntry['location'] ?? null,
+                'read' => [
+                    'sources' => [$autoEntry['path']],
+                    'valueMap' => [
+                        'SET' => true,
+                        'UNSET' => false
+                    ]
+                ],
+                'create' => [
+                    'when' => 'statusHasAny',
+                    'keys' => [$autoEntry['path']]
+                ],
+                'action' => [
+                    // Always READ-ONLY - timer control via Hour/Minute properties
+                    'enableWhen' => 'never',
+                    'writeableKeys' => [],
+                    'reassertOn' => []
+                ]
+            ];
+            
+            return $capability;
+        }
+        
+        // Standard handling for non-timer-control variables
+        $capability = [
+            'ident' => $ident,
+            'name' => $autoEntry['name'],
+            'type' => $this->ipsTypeToCapType($autoEntry['type']),
+            'location' => $autoEntry['location'] ?? null,
+            'read' => [
+                'sources' => [$autoEntry['path']]
+            ],
+            'create' => [
+                // Only create variables for properties that exist in status
+                'when' => 'statusHasAny',
+                'keys' => [$autoEntry['path']]
+            ],
+            'action' => [
+                'enableWhen' => $autoEntry['writeable'] ? 'profileWriteableAny' : 'never',
+                'writeableKeys' => $autoEntry['writeable'] ? [$autoEntry['path'] . '.mode'] : [],
+                'reassertOn' => $autoEntry['writeable'] ? ['setup', 'status'] : []
+            ]
+        ];
+        
+        // Debug: Log action enablement decision for read-only properties
+        if (!$autoEntry['writeable']) {
+            $this->dbg(sprintf(
+                'Auto-plan %s: READ-ONLY (mode=%s) → enableWhen=never',
+                $autoEntry['ident'],
+                json_encode($autoEntry['meta']['mode'] ?? 'unknown')
+            ));
+        }
+        
+        // Add presentation if available
+        if (isset($autoEntry['presentation'])) {
+            $capability['presentation'] = $autoEntry['presentation'];
+        }
+        
+        // Add write configuration if writeable
+        if ($autoEntry['writeable']) {
+            $capability['write'] = $this->inferWriteConfig($autoEntry);
+        }
+        
+        return $capability;
+    }
+
+    /**
+     * Infer write configuration from auto-plan entry
+     * 
+     * @param array<string, mixed> $autoEntry
+     * @return array<string, mixed>
+     */
+    private function inferWriteConfig(array $autoEntry): array
+    {
+        $meta = $autoEntry['meta'];
+        $type = $meta['type'] ?? '';
+        
+        // For enum types, build enumMap (string-based)
+        if ($type === 'enum' && isset($autoEntry['enum'])) {
+            $enumMap = [];
+            $path = $autoEntry['path']; // e.g., "airConJobMode.currentJobMode"
+            
+            foreach ($autoEntry['enum'] as $val) {
+                // String value → API path mapping
+                $enumMap[(string)$val] = [
+                    $path => (string)$val
+                ];
+            }
+            
+            return ['enumMap' => $enumMap];
+        }
+        
+        // For range/number types, use attribute mode with clamping
+        if ($type === 'range' || $type === 'number') {
+            return [
+                'attribute' => [
+                    'resource' => $autoEntry['resource'],
+                    'property' => $autoEntry['property']
+                ],
+                'clampFromProfile' => true
+            ];
+        }
+        
+        // For boolean, use attribute mode with value conversion
+        if ($type === 'boolean') {
+            return [
+                'attribute' => [
+                    'resource' => $autoEntry['resource'],
+                    'property' => $autoEntry['property']
+                ]
+            ];
+        }
+        
+        // Default: generic attribute write
+        return [
+            'attribute' => [
+                'resource' => $autoEntry['resource'],
+                'property' => $autoEntry['property']
+            ]
+        ];
+    }
+
+    /**
+     * Get timer pair values (hour + minute) for timer properties
+     * Returns array with both values or null if not a timer property
+     * 
+     * @param string $ident Current variable ident
+     * @param string $property Property name (e.g., "relativeMinuteToStart")
+     * @param mixed $value Current value being set
+     * @return array<string, mixed>|null
+     */
+    private function getTimerPairValue(string $ident, string $property, $value): ?array
+    {
+        // Check if this is a timer hour or minute property
+        if (!preg_match('/(hour|minute).*(to|timer)/i', $property)) {
+            return null;
+        }
+        
+        $isHourProperty = (stripos($property, 'hour') !== false);
+        $isMinuteProperty = (stripos($property, 'minute') !== false);
+        
+        if (!$isHourProperty && !$isMinuteProperty) {
+            return null;
+        }
+        
+        // Find the partner property name
+        if ($isHourProperty) {
+            // Current is hour, find minute
+            $hourProperty = $property;
+            $minuteProperty = preg_replace('/hour/i', 'Minute', $property);
+            $hourValue = (int)$value;
+            
+            // Find minute ident by replacing HOUR with MINUTE in ident
+            $minuteIdent = preg_replace('/_HOUR_/i', '_MINUTE_', $ident);
+            $minuteValue = $this->getVariableValue($minuteIdent);
+        } else {
+            // Current is minute, find hour
+            $minuteProperty = $property;
+            $hourProperty = preg_replace('/minute/i', 'Hour', $property);
+            $minuteValue = (int)$value;
+            
+            // Find hour ident by replacing MINUTE with HOUR in ident
+            $hourIdent = preg_replace('/_MINUTE_/i', '_HOUR_/', $ident);
+            $hourValue = $this->getVariableValue($hourIdent);
+        }
+        
+        // Return both values
+        return [
+            $hourProperty => $hourValue,
+            $minuteProperty => $minuteValue
+        ];
+    }
+    
+    /**
+     * Get value of a variable by ident
+     * 
+     * @param string $ident
+     * @return int
+     */
+    private function getVariableValue(string $ident): int
+    {
+        // Find variable by ident in this instance
+        $varId = @IPS_GetObjectIDByIdent($ident, $this->instanceId);
+        if ($varId === false) {
+            return 0;
+        }
+        return (int)GetValue($varId);
+    }
+
+    /**
+     * Convert Symcon type constant to capability type string
+     */
+    private function ipsTypeToCapType(int $ipsType): string
+    {
+        return match($ipsType) {
+            VARIABLETYPE_BOOLEAN => 'boolean',
+            VARIABLETYPE_INTEGER => 'integer',
+            VARIABLETYPE_FLOAT => 'float',
+            default => 'string'
+        };
     }
 }
