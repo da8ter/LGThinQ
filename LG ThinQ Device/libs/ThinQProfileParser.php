@@ -101,24 +101,30 @@ class ThinQProfileParser
      */
     private function isMultiLocationArray(array $data): bool
     {
-        // If array has numeric keys and first element has properties with 'type'
-        if (!isset($data[0])) {
+        // Treat as multi-location only if:
+        // - it's a numeric array with object elements
+        // - at least one element provides a locationName
+        // - and elements look like property objects (fields with 'type')
+        if (!isset($data[0]) || !is_array($data[0])) {
             return false;
         }
-        
+        $hasLocation = false;
+        foreach ($data as $elem) {
+            if (is_array($elem) && array_key_exists('locationName', $elem)) {
+                $hasLocation = true;
+                break;
+            }
+        }
+        if (!$hasLocation) {
+            return false; // prevent LOC_* placeholder locations
+        }
         $firstElem = $data[0];
-        if (!is_array($firstElem)) {
-            return false;
-        }
-        
-        // Check if it looks like a property object (has attributes with 'type')
         foreach ($firstElem as $key => $val) {
             if ($key === 'locationName') continue;
             if (is_array($val) && isset($val['type'])) {
                 return true;
             }
         }
-        
         return false;
     }
     
