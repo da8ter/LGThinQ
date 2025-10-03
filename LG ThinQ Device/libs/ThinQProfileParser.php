@@ -29,7 +29,7 @@ class ThinQProfileParser
     {
         $plan = [];
         
-        // Profile can be empty (e.g., not yet loaded in simulation mode)
+        // Profile can be empty
         if (empty($profile)) {
             return [];
         }

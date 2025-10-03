@@ -55,15 +55,7 @@
             "Broker host could not be determined from API data.": "Broker host could not be determined from API data.",
             "Hostname '%s' could not be resolved.": "Hostname '%s' could not be resolved.",
             "Module 'MQTT Client' not found.": "Module 'MQTT Client' not found.",
-            "Module 'Client Socket' not found.": "Module 'Client Socket' not found.",
-            "Simulation: Validierung fehlgeschlagen. Prüfe SimDeviceIDs und JSON-Felder.": "Simulation: Validation failed. Check SimDeviceIDs and JSON fields.",
-            "Simulation aktiviert": "Simulation enabled",
-            "Simulation deaktiviert": "Simulation disabled",
-            "Simulation zurückgesetzt": "Simulation cleared",
-            "Fehler: SimDeviceIDs fehlt": "Error: SimDeviceIDs missing",
-            "Fehler: 30_status.json ungültig oder leer": "Error: 30_status.json invalid or empty",
-            "Event gesendet für %d Gerät(e)": "Event sent for %d device(s)",
-            "Bitte Support-ZIP manuell entpacken und JSON-Inhalte in die Felder einfügen.": "Please extract the support ZIP manually and paste JSON contents into the fields."
+            "Module 'Client Socket' not found.": "Module 'Client Socket' not found."
         },
         "de": {
             "LG ThinQ Cloud Connection (PAT-based)": "LG ThinQ Cloud Verbindung (PAT-basiert)",
@@ -120,15 +112,7 @@
             "Broker host could not be determined from API data.": "Broker-Host konnte nicht aus den API-Daten ermittelt werden.",
             "Hostname '%s' could not be resolved.": "Hostname '%s' konnte nicht aufgelöst werden.",
             "Module 'MQTT Client' not found.": "Modul 'MQTT Client' nicht gefunden.",
-            "Module 'Client Socket' not found.": "Modul 'Client Socket' nicht gefunden.",
-            "Simulation: Validierung fehlgeschlagen. Prüfe SimDeviceIDs und JSON-Felder.": "Simulation: Validierung fehlgeschlagen. Prüfe SimDeviceIDs und JSON-Felder.",
-            "Simulation aktiviert": "Simulation aktiviert",
-            "Simulation deaktiviert": "Simulation deaktiviert",
-            "Simulation zurückgesetzt": "Simulation zurückgesetzt",
-            "Fehler: SimDeviceIDs fehlt": "Fehler: SimDeviceIDs fehlt",
-            "Fehler: 30_status.json ungültig oder leer": "Fehler: 30_status.json ungültig oder leer",
-            "Event gesendet für %d Gerät(e)": "Event gesendet für %d Gerät(e)",
-            "Bitte Support-ZIP manuell entpacken und JSON-Inhalte in die Felder einfügen.": "Bitte Support-ZIP manuell entpacken und JSON-Inhalte in die Felder einfügen."
+            "Module 'Client Socket' not found.": "Modul 'Client Socket' nicht gefunden."
         }
     }
 }

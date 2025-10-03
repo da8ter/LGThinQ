@@ -1000,10 +1000,22 @@ class CapabilityEngine
             return false;
         }
         if ($when === 'statushasany') {
+            // 1) Direct key present
             foreach ($keys as $k) { if (array_key_exists($k, $flatStatus)) return true; }
+            // 2) Substring match (covers simple nesting)
             foreach ($keys as $k) {
                 foreach ($flatStatus as $fk => $_) {
                     if (strpos($fk, $k) !== false) return true;
+                }
+            }
+            // 3) Index-insensitive match: ignore numeric array indices in status paths
+            //    Example: status has 'temperature.0.targetTemperature' while key is 'temperature.targetTemperature'
+            foreach ($keys as $k) {
+                foreach ($flatStatus as $fk => $_) {
+                    $fkNorm = preg_replace('/\.\d+(?=\.|$)/', '', (string)$fk);
+                    if ($fkNorm === $k || strpos((string)$fkNorm, (string)$k) !== false) {
+                        return true;
+                    }
                 }
             }
             return false;
@@ -1541,18 +1553,38 @@ class CapabilityEngine
         }
         
         // Standard handling for non-timer-control variables
+        // Build read config: for location-based arrays use array selector with where={locationName}
+        $readCfg = null;
+        if (isset($autoEntry['location']) && $autoEntry['location'] !== null && $autoEntry['location'] !== '') {
+            $readCfg = [
+                'array' => [
+                    'container' => $autoEntry['resource'],
+                    'path' => $autoEntry['property'],
+                    'where' => ['locationName' => (string)$autoEntry['location']]
+                ]
+            ];
+        } else {
+            $readCfg = [ 'sources' => [$autoEntry['path']] ];
+        }
+
+        // Create condition: for array/location entries, match on the container presence to avoid index mismatch
+        $createKeys = null;
+        if (isset($autoEntry['location']) && $autoEntry['location'] !== null && $autoEntry['location'] !== '') {
+            $createKeys = [$autoEntry['resource']];
+        } else {
+            $createKeys = [$autoEntry['path']];
+        }
+
         $capability = [
             'ident' => $ident,
             'name' => $autoEntry['name'],
             'type' => $this->ipsTypeToCapType($autoEntry['type']),
             'location' => $autoEntry['location'] ?? null,
-            'read' => [
-                'sources' => [$autoEntry['path']]
-            ],
+            'read' => $readCfg,
             'create' => [
                 // Only create variables for properties that exist in status
                 'when' => 'statusHasAny',
-                'keys' => [$autoEntry['path']]
+                'keys' => $createKeys
             ],
             'action' => [
                 'enableWhen' => $autoEntry['writeable'] ? 'profileWriteableAny' : 'never',
@@ -1593,6 +1625,11 @@ class CapabilityEngine
     {
         $meta = $autoEntry['meta'];
         $type = $meta['type'] ?? '';
+        // Build extras (e.g., locationName for array resources)
+        $extras = [];
+        if (isset($autoEntry['location']) && $autoEntry['location'] !== null && $autoEntry['location'] !== '') {
+            $extras['locationName'] = (string)$autoEntry['location'];
+        }
         
         // For enum types, build enumMap (string-based)
         if ($type === 'enum' && isset($autoEntry['enum'])) {
@@ -1611,32 +1648,34 @@ class CapabilityEngine
         
         // For range/number types, use attribute mode with clamping
         if ($type === 'range' || $type === 'number') {
+            $attr = [
+                'resource' => $autoEntry['resource'],
+                'property' => $autoEntry['property']
+            ];
+            if (!empty($extras)) { $attr['extras'] = $extras; }
             return [
-                'attribute' => [
-                    'resource' => $autoEntry['resource'],
-                    'property' => $autoEntry['property']
-                ],
+                'attribute' => $attr,
                 'clampFromProfile' => true
             ];
         }
         
         // For boolean, use attribute mode with value conversion
         if ($type === 'boolean') {
-            return [
-                'attribute' => [
-                    'resource' => $autoEntry['resource'],
-                    'property' => $autoEntry['property']
-                ]
+            $attr = [
+                'resource' => $autoEntry['resource'],
+                'property' => $autoEntry['property']
             ];
+            if (!empty($extras)) { $attr['extras'] = $extras; }
+            return [ 'attribute' => $attr ];
         }
         
         // Default: generic attribute write
-        return [
-            'attribute' => [
-                'resource' => $autoEntry['resource'],
-                'property' => $autoEntry['property']
-            ]
+        $attr = [
+            'resource' => $autoEntry['resource'],
+            'property' => $autoEntry['property']
         ];
+        if (!empty($extras)) { $attr['extras'] = $extras; }
+        return [ 'attribute' => $attr ];
     }
 
     /**

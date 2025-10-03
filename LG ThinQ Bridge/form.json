@@ -17,29 +17,7 @@
         { "type": "NumberSpinner", "name": "EventRenewLeadMin", "caption": "Renew before expiry (minutes)", "minimum": 1, "maximum": 59, "suffix": "min", "visible": false },
 
         { "type": "Label", "label": "Diagnostics", "visible": false },
-        { "type": "CheckBox", "name": "Debug", "caption": "Debug logging", "visible": true },
-
-        { "type": "Label", "label": "Simulation (Support ZIP)" },
-        { "type": "Label", "label": "Tipp: Entpacke das Support-ZIP und kopiere die JSON-Inhalte in die folgenden Felder." },
-        { "type": "CheckBox", "name": "SimulationEnabled", "caption": "Simulation aktiviert" },
-        { "type": "ValidationTextBox", "name": "SimDeviceIDs", "caption": "Device ID(s) (komma-getrennt)", "width": "600px" },
-
-        { "type": "ExpansionPanel", "caption": "10_device_info.json", "items": [
-            { "type": "Label", "label": "JSON-Inhalt hier einfügen:" },
-            { "type": "ValidationTextBox", "name": "Sim_10_device_info", "width": "100%" }
-        ] },
-        { "type": "ExpansionPanel", "caption": "21_profile_extracted.json (bevorzugt)", "items": [
-            { "type": "Label", "label": "JSON-Inhalt hier einfügen:" },
-            { "type": "ValidationTextBox", "name": "Sim_21_profile_extracted", "width": "100%" }
-        ] },
-        { "type": "ExpansionPanel", "caption": "20_profile_response.json (Fallback)", "items": [
-            { "type": "Label", "label": "JSON-Inhalt hier einfügen:" },
-            { "type": "ValidationTextBox", "name": "Sim_20_profile_response", "width": "100%" }
-        ] },
-        { "type": "ExpansionPanel", "caption": "30_status.json", "items": [
-            { "type": "Label", "label": "JSON-Inhalt hier einfügen:" },
-            { "type": "ValidationTextBox", "name": "Sim_30_status", "width": "100%" }
-        ] }
+        { "type": "CheckBox", "name": "Debug", "caption": "Debug logging", "visible": true }
 
     ],
     "actions": [
@@ -49,13 +27,7 @@
         { "type": "Button", "label": "Update now", "onClick": "LGTQ_Update($id);" },
         { "type": "Button", "label": "Subscribe all known devices", "onClick": "LGTQ_SubscribeAll($id);" },
         { "type": "Button", "label": "Unsubscribe all known devices", "onClick": "LGTQ_UnsubscribeAll($id);" },
-        { "type": "Button", "label": "Renew all now", "onClick": "LGTQ_RenewAll($id);" },
-
-        { "type": "Label", "label": "Simulation" },
-        { "type": "Button", "caption": "✅ Simulation aktivieren", "onClick": "LGTQ_UIStartSim($id);" },
-        { "type": "Button", "caption": "⏸️ Simulation deaktivieren", "onClick": "LGTQ_UIStopSim($id);" },
-        { "type": "Button", "caption": "📤 Event pushen (30_status.json)", "onClick": "LGTQ_UIPushSimEvent($id);" },
-        { "type": "Button", "caption": "🗑️ Simulation zurücksetzen", "onClick": "LGTQ_UIClearSim($id);" }
+        { "type": "Button", "label": "Renew all now", "onClick": "LGTQ_RenewAll($id);" }
     ],
     "status": [
         { "code": 101, "icon": "inactive", "caption": "Creating" },
