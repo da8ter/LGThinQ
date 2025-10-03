@@ -1567,13 +1567,10 @@ class CapabilityEngine
             $readCfg = [ 'sources' => [$autoEntry['path']] ];
         }
 
-        // Create condition: for array/location entries, match on the container presence to avoid index mismatch
-        $createKeys = null;
-        if (isset($autoEntry['location']) && $autoEntry['location'] !== null && $autoEntry['location'] !== '') {
-            $createKeys = [$autoEntry['resource']];
-        } else {
-            $createKeys = [$autoEntry['path']];
-        }
+        // Create condition: always match on the specific property path.
+        // Index-insensitive matching in shouldCreate() will handle array indices
+        // e.g., status 'temperatureInUnits.0.targetTemperatureC' matches key 'temperatureInUnits.targetTemperatureC'.
+        $createKeys = [$autoEntry['path']];
 
         $capability = [
             'ident' => $ident,

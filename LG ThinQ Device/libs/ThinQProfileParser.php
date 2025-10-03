@@ -38,7 +38,59 @@ class ThinQProfileParser
         // Can be: property[0] = {...} OR property = [{...}] OR property = {...}
         $properties = $this->normalizePropertyStructure($profile);
         
+        // --- Special handling for Temperature resources ---
+        $temp = $properties['temperature'] ?? null;
+        $tiu  = $properties['temperatureInUnits'] ?? null;
+        $skip = [];
+        $hasLoc = function ($d): bool {
+            return is_array($d) && ($this->isMultiLocationArray($d) || (isset($d['locationName']) && is_string($d['locationName']) && $d['locationName'] !== ''));
+        };
+        // Prefer 'temperature' with location. If it has no location but 'temperatureInUnits' does, fallback to 'temperatureInUnits'.
+        if (is_array($temp) || is_array($tiu)) {
+            if (is_array($temp) && $hasLoc($temp)) {
+                if ($this->isMultiLocationArray($temp)) {
+                    foreach ($temp as $idx => $locData) {
+                        if (!is_array($locData)) continue;
+                        $location = (string)($locData['locationName'] ?? 'LOC_' . (string)$idx);
+                        $plan = array_merge($plan, $this->parseResourceAllowed('temperature', $locData, $location, ['targetTemperature', 'currentTemperature']));
+                    }
+                } else {
+                    $location = (string)($temp['locationName'] ?? 'MAIN');
+                    $plan = array_merge($plan, $this->parseResourceAllowed('temperature', $temp, $location, ['targetTemperature', 'currentTemperature']));
+                }
+                $skip['temperature'] = true;
+                $skip['temperatureInUnits'] = true; // prevent duplicates from parallel resource
+            } elseif (is_array($tiu) && $hasLoc($tiu)) {
+                // Fallback: Use temperatureInUnits with C-fields to retain location
+                if ($this->isMultiLocationArray($tiu)) {
+                    foreach ($tiu as $idx => $locData) {
+                        if (!is_array($locData)) continue;
+                        $location = (string)($locData['locationName'] ?? 'LOC_' . (string)$idx);
+                        $plan = array_merge($plan, $this->parseResourceAllowed('temperatureInUnits', $locData, $location, ['targetTemperatureC', 'currentTemperatureC']));
+                    }
+                } else {
+                    $location = (string)($tiu['locationName'] ?? 'MAIN');
+                    $plan = array_merge($plan, $this->parseResourceAllowed('temperatureInUnits', $tiu, $location, ['targetTemperatureC', 'currentTemperatureC']));
+                }
+                $skip['temperature'] = true;
+                $skip['temperatureInUnits'] = true;
+            } elseif (is_array($temp)) {
+                // No locations anywhere: keep only the two main fields from temperature
+                $plan = array_merge($plan, $this->parseResourceAllowed('temperature', $temp, null, ['targetTemperature', 'currentTemperature']));
+                $skip['temperature'] = true;
+                $skip['temperatureInUnits'] = true;
+            } elseif (is_array($tiu)) {
+                // No locations and no 'temperature': keep the two C fields from temperatureInUnits
+                $plan = array_merge($plan, $this->parseResourceAllowed('temperatureInUnits', $tiu, null, ['targetTemperatureC', 'currentTemperatureC']));
+                $skip['temperature'] = true;
+                $skip['temperatureInUnits'] = true;
+            }
+        }
+
         foreach ($properties as $resource => $data) {
+            if (isset($skip[(string)$resource])) {
+                continue; // already handled specially above
+            }
             if (!is_array($data)) {
                 continue; // Skip non-array entries (e.g., simple strings)
             }
@@ -179,6 +231,55 @@ class ThinQProfileParser
             ];
         }
         
+        return $plan;
+    }
+
+    /**
+     * Parse a resource but only include a whitelist of attributes
+     *
+     * @param string $resource
+     * @param array<string,mixed> $data
+     * @param string|null $location
+     * @param array<int,string> $allowed
+     * @return array<string, array<string,mixed>>
+     */
+    private function parseResourceAllowed(string $resource, array $data, ?string $location, array $allowed): array
+    {
+        $plan = [];
+        foreach ($data as $attrName => $meta) {
+            if ($attrName === 'locationName' || !is_array($meta)) {
+                continue;
+            }
+            if (!in_array($attrName, $allowed, true)) {
+                continue;
+            }
+            if (!isset($meta['type'])) {
+                continue;
+            }
+            $ident = $this->buildIdent($resource, $attrName, $location);
+            $fullPropertyName = $resource . '.' . $attrName;
+
+            $readable = $this->isReadable($meta);
+            $writeable = $this->isWriteable($meta);
+            if (preg_match('/hour.*to.*start|minute.*to.*start|hour.*to.*stop|minute.*to.*stop/i', $attrName)) {
+                $writeable = true;
+            }
+            $plan[$ident] = [
+                'ident' => $ident,
+                'name' => $this->translateProperty($attrName, $resource, $location),
+                'type' => $this->mapType($meta['type']),
+                'path' => $fullPropertyName,
+                'resource' => $resource,
+                'property' => $attrName,
+                'location' => $location,
+                'readable' => $readable,
+                'writeable' => $writeable,
+                'presentation' => $this->inferPresentation($meta, $attrName, $writeable),
+                'range' => $this->extractRange($meta),
+                'enum' => $this->extractEnum($meta),
+                'meta' => $meta
+            ];
+        }
         return $plan;
     }
     
