@@ -18,6 +18,9 @@ declare(strict_types=1);
 class ThinQProfileParser
 {
     private string $language = 'de';
+
+    /** @var callable|null */
+    private $translateCallback = null;
     
     /**
      * Parse device profile and generate variable plan
@@ -608,8 +611,9 @@ class ThinQProfileParser
             return $name;
         }
         
-        // Fallback: Humanize
-        return $this->humanize($property, $location);
+        // Fallback: Use callback translation or humanize
+        $fallbackName = $this->humanize($property, $location);
+        return $this->translate($fallbackName);
     }
     
     /**
@@ -639,12 +643,26 @@ class ThinQProfileParser
     }
     
     /**
-     * Set language for translations
-     * 
-     * @param string $lang Language code ('de', 'en')
+     * Set translation callback for translating property names
+     *
+     * @param callable $callback Function that takes a string and returns translated string
      */
-    public function setLanguage(string $lang): void
+    public function setTranslateCallback(callable $callback): void
     {
-        $this->language = $lang;
+        $this->translateCallback = $callback;
+    }
+
+    /**
+     * Translate a string using the callback or return as-is
+     *
+     * @param string $text Text to translate
+     * @return string Translated text or original if no callback set
+     */
+    private function translate(string $text): string
+    {
+        if ($this->translateCallback !== null) {
+            return ($this->translateCallback)($text);
+        }
+        return $text;
     }
 }

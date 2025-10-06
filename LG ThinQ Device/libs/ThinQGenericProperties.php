@@ -97,6 +97,8 @@ class ThinQGenericProperties
                 'concentration_wind' => 'Konzentrierter Wind',
                 'auto_fit_wind' => 'Auto-Anpassung',
                 'forest_wind' => 'Waldwind',
+                'rotate_up_down' => 'Vertikal schwenken',
+                'rotate_left_right' => 'Horizontal schwenken',
             ],
             'en' => [
                 // Remote & Operations
@@ -175,6 +177,8 @@ class ThinQGenericProperties
                 'concentration_wind' => 'Concentration Wind',
                 'auto_fit_wind' => 'Auto Fit',
                 'forest_wind' => 'Forest Wind',
+                'rotate_up_down' => 'Rotate Up Down',
+                'rotate_left_right' => 'Rotate Left Right',
             ]
         ];
         

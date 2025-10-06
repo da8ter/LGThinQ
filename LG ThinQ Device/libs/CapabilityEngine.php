@@ -1479,8 +1479,10 @@ class CapabilityEngine
     {
         if ($this->parser === null) {
             $this->parser = new ThinQProfileParser();
-            // TODO: Get language from module property
-            $this->parser->setLanguage('de');
+            // Set translation callback to use locale.json via Symcon's Translate()
+            $this->parser->setTranslateCallback(function($text) {
+                return $this->translate($text);
+            });
         }
         return $this->parser;
     }
