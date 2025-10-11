@@ -7,12 +7,12 @@
   ],
   "actions": [
     { "type": "Button", "label": "Update status", "onClick": "LGTQD_UpdateStatus($id);" },
-    { "type": "Label", "label": "Diagnose & Support" },
-    { "type": "Label", "label": "Hinweis: Falls ein Gerät nicht korrekt funktioniert können Sie eine Diagnose-Datei erstellen. Es werden nur Gerätespezifische Daten gespeichert. Persönliche Daten wie Device-ID oder Tocken werden anonymisiert" },
-    { "type": "Button", "caption": "Support-Paket (ZIP) erzeugen", "download": "LGThinQ_Device_Support.zip", "onClick": ["echo LGTQD_UIExportSupportBundle($id);"] },
+    { "type": "Label", "label": "Diagnose & Support", "visible": false  },
+    { "type": "Label", "label": "Hinweis: Falls ein Gerät nicht korrekt funktioniert können Sie eine Diagnose-Datei erstellen. Es werden nur Gerätespezifische Daten gespeichert. Persönliche Daten wie Device-ID oder Tocken werden anonymisiert", "visible": false },
+    { "type": "Button", "caption": "Support-Paket (ZIP) erzeugen", "download": "LGThinQ_Device_Support.zip", "onClick": ["echo LGTQD_UIExportSupportBundle($id);"], "visible": false  },
     { "type": "Button", "caption": "Reapply Presentations", "onClick": "LGTQD_ReapplyPresentations($id);", "visible": false },
-    { "type": "Button", "caption": "1. Aufräum-Vorschau anzeigen", "onClick": ["echo LGTQD_UICleanupPreview($id);"] },
-    { "type": "Button", "caption": "2. Variablen aufräumen", "confirm": "Nicht im Plan befindliche Variablen werden gelöscht. Fortfahren?", "onClick": "echo LGTQD_CleanupVariables($id, true);" }
+    { "type": "Button", "caption": "1. Aufräum-Vorschau anzeigen", "onClick": ["echo LGTQD_UICleanupPreview($id);"] , "visible": false },
+    { "type": "Button", "caption": "2. Variablen aufräumen", "confirm": "Nicht im Plan befindliche Variablen werden gelöscht. Fortfahren?", "onClick": "echo LGTQD_CleanupVariables($id, true);", "visible": false }
   ],
   "status": [
     { "code": 101, "icon": "inactive", "caption": "Creating" },

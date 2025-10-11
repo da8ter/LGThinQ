@@ -27,7 +27,8 @@ class ThinQEnumTranslator
         'dryer_operation_mode' => [
             'START' => ['de' => 'Starten', 'en' => 'Start'],
             'STOP' => ['de' => 'Stoppen', 'en' => 'Stop'],
-            'POWER_OFF' => ['de' => 'Ausschalten', 'en' => 'Power Off']
+            'POWER_OFF' => ['de' => 'Ausschalten', 'en' => 'Power Off'],
+            'WAKE_UP' => ['de' => 'Aufwecken', 'en' => 'Wake Up']
         ],
         
         // Run States (universal)
@@ -43,13 +44,20 @@ class ThinQEnumTranslator
             'SPINNING' => ['de' => 'Schleudern', 'en' => 'Spinning'],
             'DRYING' => ['de' => 'Trocknen', 'en' => 'Drying'],
             'COOLING' => ['de' => 'Abkühlen', 'en' => 'Cooling'],
+            'COOL_DOWN' => ['de' => 'Abkühlen', 'en' => 'Cool Down'],
             'SOAKING' => ['de' => 'Einweichen', 'en' => 'Soaking'],
             'PREWASH' => ['de' => 'Vorwäsche', 'en' => 'Pre-wash'],
             'DETECTING' => ['de' => 'Erkennung', 'en' => 'Detecting'],
             'FIRMWARE' => ['de' => 'Firmware-Update', 'en' => 'Firmware Update'],
+            'FIRMWARE_UPDATE' => ['de' => 'Firmware-Update', 'en' => 'Firmware Update'],
             'POWER_OFF' => ['de' => 'Ausgeschaltet', 'en' => 'Power Off'],
             'OFF' => ['de' => 'Aus', 'en' => 'Off'],
-            'ON' => ['de' => 'An', 'en' => 'On']
+            'ON' => ['de' => 'An', 'en' => 'On'],
+            'REFRESHING' => ['de' => 'Auffrischen', 'en' => 'Refreshing'],
+            'STEAM_SOFTENING' => ['de' => 'Dampferweichen', 'en' => 'Steam Softening'],
+            'RINSE_HOLD' => ['de' => 'Spülstopp', 'en' => 'Rinse Hold'],
+            'WRINKLE_CARE' => ['de' => 'Knitterschutz', 'en' => 'Wrinkle Care'],
+            'SLEEP' => ['de' => 'Schlafmodus', 'en' => 'Sleep']
         ],
         
         // Air Conditioner Operation Modes
@@ -169,17 +177,21 @@ class ThinQEnumTranslator
      */
     public static function translate(string $property, string $value, string $lang = 'de'): string
     {
-        // Check if we have a translation for this property
-        if (isset(self::$ENUM_MAPS[$property][$value][$lang])) {
-            return self::$ENUM_MAPS[$property][$value][$lang];
+        $propKey = self::normalizePropertyName($property);
+        // Try normalized property first
+        if (isset(self::$ENUM_MAPS[$propKey][$value][$lang])) {
+            return self::$ENUM_MAPS[$propKey][$value][$lang];
         }
-        
-        // Check if value exists in any translation (use first match)
+        // Then try raw property key for backward compatibility
         if (isset(self::$ENUM_MAPS[$property][$value])) {
             $translations = self::$ENUM_MAPS[$property][$value];
             return $translations[$lang] ?? $translations['en'] ?? self::humanize($value);
         }
-        
+        // Check if normalized property exists with the value (any language)
+        if (isset(self::$ENUM_MAPS[$propKey][$value])) {
+            $translations = self::$ENUM_MAPS[$propKey][$value];
+            return $translations[$lang] ?? $translations['en'] ?? self::humanize($value);
+        }
         // Fallback: Humanize the value
         return self::humanize($value);
     }
@@ -208,12 +220,13 @@ class ThinQEnumTranslator
      */
     public static function getTranslationsForProperty(string $property, string $lang = 'de'): array
     {
-        if (!isset(self::$ENUM_MAPS[$property])) {
+        $propKey = self::normalizePropertyName($property);
+        if (!isset(self::$ENUM_MAPS[$propKey])) {
             return [];
         }
         
         $translations = [];
-        foreach (self::$ENUM_MAPS[$property] as $value => $langs) {
+        foreach (self::$ENUM_MAPS[$propKey] as $value => $langs) {
             $translations[$value] = $langs[$lang] ?? $langs['en'] ?? self::humanize($value);
         }
         
@@ -234,13 +247,25 @@ class ThinQEnumTranslator
         string $translation_de, 
         string $translation_en
     ): void {
-        if (!isset(self::$ENUM_MAPS[$property])) {
-            self::$ENUM_MAPS[$property] = [];
+        $propKey = self::normalizePropertyName($property);
+        if (!isset(self::$ENUM_MAPS[$propKey])) {
+            self::$ENUM_MAPS[$propKey] = [];
         }
         
-        self::$ENUM_MAPS[$property][$value] = [
+        self::$ENUM_MAPS[$propKey][$value] = [
             'de' => $translation_de,
             'en' => $translation_en
         ];
+    }
+
+    /**
+     * Normalize property name to snake_case key used in ENUM_MAPS.
+     */
+    private static function normalizePropertyName(string $property): string
+    {
+        // Replace hyphens with underscore and insert underscores before capitals
+        $snake = preg_replace('/([a-z0-9])([A-Z])/', '$1_$2', str_replace('-', '_', $property));
+        $snake = strtolower((string)$snake);
+        return $snake;
     }
 }

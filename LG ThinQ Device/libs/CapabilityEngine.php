@@ -551,6 +551,42 @@ class CapabilityEngine
             }
         }
 
+        // 2b. Special: always-create variables for profile sections 'error' and 'notification.push'
+        // These are universal across devices and should always exist for user visibility.
+        try {
+            if (isset($profile['error']) && is_array($profile['error'])) {
+                if (!isset($this->caps['ERROR_LAST'])) {
+                    $this->caps['ERROR_LAST'] = [
+                        'ident' => 'ERROR_LAST',
+                        'name' => 'Letzter Fehler',
+                        'type' => 'string',
+                        'read' => [],
+                        'create' => [ 'when' => 'always', 'keys' => [] ],
+                        'action' => [ 'enableWhen' => 'never', 'writeableKeys' => [], 'reassertOn' => [] ],
+                        'presentation' => [ 'kind' => 'value' ]
+                    ];
+                }
+            }
+            if (isset($profile['notification']) && is_array($profile['notification'])) {
+                $push = $profile['notification']['push'] ?? null;
+                if (is_array($push)) {
+                    if (!isset($this->caps['PUSH_LAST'])) {
+                        $this->caps['PUSH_LAST'] = [
+                            'ident' => 'PUSH_LAST',
+                            'name' => 'Letzte Push-Nachricht',
+                            'type' => 'string',
+                            'read' => [],
+                            'create' => [ 'when' => 'always', 'keys' => [] ],
+                            'action' => [ 'enableWhen' => 'never', 'writeableKeys' => [], 'reassertOn' => [] ],
+                            'presentation' => [ 'kind' => 'value' ]
+                        ];
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->dbg('buildPlan special sections failed: ' . $e->getMessage());
+        }
+
         // 3. Build final plan (existing logic)
         $plan = [];
         foreach ($this->caps as $cap) {
@@ -1479,8 +1515,10 @@ class CapabilityEngine
     {
         if ($this->parser === null) {
             $this->parser = new ThinQProfileParser();
-            // TODO: Get language from module property
-            $this->parser->setLanguage('de');
+            // Set translation callback to use locale.json via Symcon's Translate()
+            $this->parser->setTranslateCallback(function($text) {
+                return $this->translate($text);
+            });
         }
         return $this->parser;
     }
@@ -1566,6 +1604,11 @@ class CapabilityEngine
                 'reassertOn' => $autoEntry['writeable'] ? ['setup', 'status'] : []
             ]
         ];
+        // Always-create exceptions for certain resources
+        $resLower = strtolower((string)($autoEntry['resource'] ?? ''));
+        if (in_array($resLower, ['operation', 'runstate'], true)) {
+            $capability['create'] = [ 'when' => 'always', 'keys' => [] ];
+        }
         
         // Debug: Log action enablement decision for read-only properties
         if (!$autoEntry['writeable']) {
@@ -1692,7 +1735,7 @@ class CapabilityEngine
             $minuteValue = (int)$value;
             
             // Find hour ident by replacing MINUTE with HOUR in ident
-            $hourIdent = preg_replace('/_MINUTE_/i', '_HOUR_/', $ident);
+            $hourIdent = preg_replace('/_MINUTE_/i', '_HOUR_', $ident);
             $hourValue = $this->getVariableValue($hourIdent);
         }
         

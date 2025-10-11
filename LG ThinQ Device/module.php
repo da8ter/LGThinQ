@@ -158,11 +158,26 @@ class LGThinQDevice extends IPSModule
 
         $this->EnsureConnected();
 
+        // One-time initial status fetch (HTTP) BEFORE creating variables so that
+        // auto-discovery with create=statusHasAny can actually create variables
         try {
+            $hasParent = !method_exists($this, 'HasActiveParent') || $this->HasActiveParent();
+            if ($hasParent) {
+                $this->UpdateStatus();
+            } elseif (method_exists($this, 'RegisterOnceTimer')) {
+                // Defer initial fetch until the parent becomes active
+                @$this->RegisterOnceTimer('InitialUpdateStatus', 'LGTQD_UpdateStatus($_IPS["TARGET"]);');
+                if (method_exists($this, 'SetTimerInterval')) {
+                    @$this->SetTimerInterval('InitialUpdateStatus', 60000);
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->logThrowable('InitialUpdateStatus', $e);
+        }
 
-
+        // Now create variables using the latest stored status
+        try {
             $this->SetupDeviceVariables();
-
         } catch (\Throwable $e) {
             $this->logThrowable('SetupDeviceVariables', $e);
         }
@@ -178,22 +193,6 @@ class LGThinQDevice extends IPSModule
             }
         } catch (\Throwable $e) {
             $this->logThrowable('AutoSubscribe', $e);
-        }
-
-        // One-time initial status fetch (HTTP) to seed STATUS and capability variables
-        try {
-            $hasParent = !method_exists($this, 'HasActiveParent') || $this->HasActiveParent();
-            if ($hasParent) {
-                $this->UpdateStatus();
-            } elseif (method_exists($this, 'RegisterOnceTimer')) {
-                // Defer initial fetch until the parent becomes active
-                @$this->RegisterOnceTimer('InitialUpdateStatus', 'LGTQD_UpdateStatus($_IPS["TARGET"]);');
-                if (method_exists($this, 'SetTimerInterval')) {
-                    @$this->SetTimerInterval('InitialUpdateStatus', 60000);
-                }
-            }
-        } catch (\Throwable $e) {
-            $this->logThrowable('InitialUpdateStatus', $e);
         }
 
         // Schedule a finalize setup pass to ensure variables and initial status after the parent becomes active
@@ -301,15 +300,16 @@ class LGThinQDevice extends IPSModule
         if (method_exists($this, 'SetTimerInterval')) {
             @$this->SetTimerInterval('FinalizeSetup', 0);
         }
-        try {
-            $this->SetupDeviceVariables();
-        } catch (\Throwable $e) {
-            $this->logThrowable('FinalizeSetup SetupDeviceVariables', $e);
-        }
+        // Fetch latest status first, then (re)create any missing variables using that status
         try {
             $this->UpdateStatus();
         } catch (\Throwable $e) {
             $this->logThrowable('FinalizeSetup UpdateStatus', $e);
+        }
+        try {
+            $this->SetupDeviceVariables();
+        } catch (\Throwable $e) {
+            $this->logThrowable('FinalizeSetup SetupDeviceVariables', $e);
         }
         // One-shot push/event subscribe once parent is active
         try {
@@ -623,9 +623,16 @@ class LGThinQDevice extends IPSModule
             }
             $justCreated = !($preExisting[(string)$ident] ?? false);
 
-            // Apply presentation only on creation
+            // Apply presentation on creation
             if ($justCreated && isset($entry['presentation']) && is_array($entry['presentation'])) {
                 $this->applyPresentation($vid, (string)$ident, $entry['presentation'], $flatProfile, (string)($entry['type'] ?? 'STRING'));
+            } elseif (isset($entry['presentation']) && is_array($entry['presentation'])) {
+                // If variable pre-existed, apply presentation if not yet assigned
+                $varInfo = @IPS_GetVariable($vid);
+                $hasCustomPres = is_array($varInfo) && array_key_exists('VariableCustomPresentation', $varInfo) && !empty($varInfo['VariableCustomPresentation']);
+                if (!$hasCustomPres) {
+                    $this->applyPresentation($vid, (string)$ident, $entry['presentation'], $flatProfile, (string)($entry['type'] ?? 'STRING'));
+                }
             }
 
             // Enable action only on creation if defined
@@ -637,7 +644,24 @@ class LGThinQDevice extends IPSModule
                 }
             }
         }
-        
+        // Ensure writeable capabilities have actions enabled even if variable pre-existed
+        // Uses engine policy listIdentsToEnableOnSetup() (reassertOn: ["setup"])
+        try {
+            $identsToEnable = $engine->listIdentsToEnableOnSetup();
+            foreach ($identsToEnable as $ident) {
+                $vid = $this->getVarId((string)$ident);
+                if ($vid > 0 && method_exists($this, 'EnableAction')) {
+                    try {
+                        $this->EnableAction((string)$ident);
+                    } catch (\Throwable $e) {
+                        // ignore
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->logThrowable('EnableActions(Reassert)', $e);
+        }
+
         // Apply status values
         $engine->applyStatus($status);
     }
@@ -1061,7 +1085,7 @@ class LGThinQDevice extends IPSModule
                 @IPS_SetVariableCustomPresentation($vid, $payload);
             }
         } else {
-            // Explicitly no fallback to old variable profiles per requirement
+            // No fallback profile: per requirement skip if custom presentation API is unavailable
             $this->SendDebug('Presentation', 'IPS_SetVariableCustomPresentation not available; skipping ident=' . $ident, 0);
             return;
         }
@@ -1210,6 +1234,12 @@ class LGThinQDevice extends IPSModule
         $engine->setTranslateCallback(function($text) {
             return $this->Translate($text);
         });
+        // Use Symcon's MaintainVariable for creating/updating variables
+        $engine->setMaintainVariableCallback(function(string $ident, string $name, int $type, string $profile, int $position, bool $keep): int {
+            // MaintainVariable returns bool in IPSModule context; always return the variable ID
+            $this->MaintainVariable($ident, $name, $type, $profile, $position, $keep);
+            return (int)@IPS_GetObjectIDByIdent($ident, $this->InstanceID);
+        });
         
         return $engine;
     }
@@ -1323,10 +1353,18 @@ class LGThinQDevice extends IPSModule
             $data = json_decode($response, true);
             
             if (isset($data['profile']) && is_array($data['profile'])) {
-                $this->SendDebug('fetchProfileFromAPI', 'Profile successfully fetched from API', 0);
+                $this->SendDebug('fetchProfileFromAPI', 'Profile successfully fetched from API (profile)', 0);
                 return $data['profile'];
             }
-            
+            if (isset($data['property']) && is_array($data['property'])) {
+                $this->SendDebug('fetchProfileFromAPI', 'Profile successfully fetched from API (property)', 0);
+                return $data['property'];
+            }
+            // Some bridges may already return the profile object
+            if (is_array($data)) {
+                $this->SendDebug('fetchProfileFromAPI', 'Profile fetched from API (raw array)', 0);
+                return $data;
+            }
             return [];
         } catch (\Throwable $e) {
             $this->SendDebug('fetchProfileFromAPI', 'Failed: ' . $e->getMessage(), 0);

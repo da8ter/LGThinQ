@@ -18,6 +18,9 @@ declare(strict_types=1);
 class ThinQProfileParser
 {
     private string $language = 'de';
+
+    /** @var callable|null */
+    private $translateCallback = null;
     
     /**
      * Parse device profile and generate variable plan
@@ -139,6 +142,30 @@ class ThinQProfileParser
                 return $profile['property'];
             }
             return $profile['property'];
+        }
+
+        // Variant 2b: Direct property array passed in (numeric array wrapper)
+        // Some callers already pass the contents of profile['property'] directly.
+        // In that case, unwrap the first element so resources become top-level keys
+        // instead of using a numeric index like "0" which would break path matching.
+        if (isset($profile[0]) && is_array($profile[0])) {
+            $first = $profile[0];
+            // Heuristic: treat as property container when any second-level child has a 'type'
+            $hasTypedChild = false;
+            foreach ($first as $v) {
+                if (!is_array($v)) {
+                    continue;
+                }
+                foreach ($v as $v2) {
+                    if (is_array($v2) && isset($v2['type'])) {
+                        $hasTypedChild = true;
+                        break 2;
+                    }
+                }
+            }
+            if ($hasTypedChild) {
+                return $first;
+            }
         }
         
         // Variant 3: Direct structure (for testing)
@@ -608,8 +635,9 @@ class ThinQProfileParser
             return $name;
         }
         
-        // Fallback: Humanize
-        return $this->humanize($property, $location);
+        // Fallback: Use callback translation or humanize
+        $fallbackName = $this->humanize($property, $location);
+        return $this->translate($fallbackName);
     }
     
     /**
@@ -639,12 +667,26 @@ class ThinQProfileParser
     }
     
     /**
-     * Set language for translations
-     * 
-     * @param string $lang Language code ('de', 'en')
+     * Set translation callback for translating property names
+     *
+     * @param callable $callback Function that takes a string and returns translated string
      */
-    public function setLanguage(string $lang): void
+    public function setTranslateCallback(callable $callback): void
     {
-        $this->language = $lang;
+        $this->translateCallback = $callback;
+    }
+
+    /**
+     * Translate a string using the callback or return as-is
+     *
+     * @param string $text Text to translate
+     * @return string Translated text or original if no callback set
+     */
+    private function translate(string $text): string
+    {
+        if ($this->translateCallback !== null) {
+            return ($this->translateCallback)($text);
+        }
+        return $text;
     }
 }
