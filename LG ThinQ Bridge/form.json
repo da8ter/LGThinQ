@@ -1,9 +1,9 @@
-{
+{ 
     "elements": [
         { "type": "Label", "label": "LG ThinQ Cloud Connection (PAT-based)" },
         { "type": "ValidationTextBox", "name": "AccessToken", "caption": "Personal Access Token (PAT)", "width": "600px" },
         { "type": "Label", "label": "Hint: Create a PAT at https://connect-pat.lgthinq.com." },
-        { "type": "ValidationTextBox", "enabled": false, "name": "CountryCode", "caption": "Country Code (e.g., DE, US)", "width": "150px" },
+        { "type": "ValidationTextBox", "enabled": true, "name": "CountryCode", "caption": "Country Code (e.g., DE, US)", "width": "150px", "validate": "^[A-Za-z]{2}$" },
 
 
         { "type": "ValidationTextBox", "enabled": false, "name": "ClientID", "caption": "Client ID (CN for certificate)", "width": "400px", "placeholder": "leave empty to auto-generate / inherit" },
