@@ -1168,8 +1168,9 @@ class LGThinQBridge extends IPSModule
             // 4) Create or reuse MQTT Client instance
             $NAME_MQTT = 'LGThinQ MQTT Client (' . $HOST . ')';
             $NAME_IO   = 'LGThinQ MQTT Client Socket (' . $HOST . ')';
-            $mqttGUID = $this->findModuleGUIDByName('MQTT Client');
-            if ($mqttGUID === null) {
+            $mqttGUID = '{F7A0DD2E-7684-95C0-64C2-D2A9DC47577B}';
+            $moduleList = @IPS_GetModuleList();
+            if (!is_array($moduleList) || !in_array($mqttGUID, $moduleList, true)) {
                 throw new \RuntimeException($this->t("Module 'MQTT Client' not found."));
             }
             $mqttID = 0;
@@ -1184,15 +1185,16 @@ class LGThinQBridge extends IPSModule
             // Next: find by ObjectIdent marker
             if ($mqttID === 0) {
                 $targetIdent = 'LGThinQ.MQTT.' . (string)$this->InstanceID;
-                foreach ($this->instancesOf('MQTT Client') as $id) {
+                $targetIdentLegacy = 'LGThinQMQTT' . (string)$this->InstanceID;
+                foreach (@IPS_GetInstanceListByModuleID($mqttGUID) as $id) {
                     $obj = @IPS_GetObject($id);
                     $ident = is_array($obj) ? (string)($obj['ObjectIdent'] ?? '') : '';
-                    if ($ident === $targetIdent) { $mqttID = $id; break; }
+                    if ($ident === $targetIdent || $ident === $targetIdentLegacy) { $mqttID = $id; break; }
                 }
             }
             // Next: find by exact ClientID match
             if ($mqttID === 0 && $subjectCN !== '') {
-                foreach ($this->instancesOf('MQTT Client') as $id) {
+                foreach (@IPS_GetInstanceListByModuleID($mqttGUID) as $id) {
                     $c = $this->cfg($id);
                     if (($c['ClientID'] ?? null) === $subjectCN) { $mqttID = $id; break; }
                 }
@@ -1201,7 +1203,7 @@ class LGThinQBridge extends IPSModule
                 $mqttID = IPS_CreateInstance($mqttGUID);
                 IPS_SetName($mqttID, $NAME_MQTT);
                 // Mark instance with stable ident for diagnostics (do not rely on names in lookups)
-                try { IPS_SetIdent($mqttID, 'LGThinQMQTT' . (string)$this->InstanceID); } catch (\Throwable $e) { /* ignore */ }
+                try { IPS_SetIdent($mqttID, 'LGThinQ.MQTT.' . (string)$this->InstanceID); } catch (\Throwable $e) { /* ignore */ }
             }
 
             // Configure MQTT Client first
