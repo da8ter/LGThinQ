@@ -1184,8 +1184,8 @@ class LGThinQBridge extends IPSModule
             }
             // Next: find by ObjectIdent marker
             if ($mqttID === 0) {
-                $targetIdent = 'LGThinQ.MQTT.' . (string)$this->InstanceID;
-                $targetIdentLegacy = 'LGThinQMQTT' . (string)$this->InstanceID;
+                $targetIdent = 'LGThinQMQTT' . (string)$this->InstanceID;
+                $targetIdentLegacy = 'LGThinQ.MQTT.' . (string)$this->InstanceID;
                 foreach (@IPS_GetInstanceListByModuleID($mqttGUID) as $id) {
                     $obj = @IPS_GetObject($id);
                     $ident = is_array($obj) ? (string)($obj['ObjectIdent'] ?? '') : '';
@@ -1203,7 +1203,7 @@ class LGThinQBridge extends IPSModule
                 $mqttID = IPS_CreateInstance($mqttGUID);
                 IPS_SetName($mqttID, $NAME_MQTT);
                 // Mark instance with stable ident for diagnostics (do not rely on names in lookups)
-                try { IPS_SetIdent($mqttID, 'LGThinQ.MQTT.' . (string)$this->InstanceID); } catch (\Throwable $e) { /* ignore */ }
+                try { IPS_SetIdent($mqttID, 'LGThinQMQTT' . (string)$this->InstanceID); } catch (\Throwable $e) { /* ignore */ }
             }
 
             // Configure MQTT Client first
@@ -1227,11 +1227,12 @@ class LGThinQBridge extends IPSModule
             if ($ioID === 0) {
                 // Try to reuse a pre-existing IO by ident
                 $reuse = 0;
-                $targetIdentIO = 'LGThinQ.IO.' . (string)$this->InstanceID;
+                $targetIdentIONew = 'LGThinQIO' . (string)$this->InstanceID;
+                $targetIdentIOLegacy = 'LGThinQ.IO.' . (string)$this->InstanceID;
                 foreach ($this->instancesOf('Client Socket') as $id) {
                     $obj = @IPS_GetObject($id);
                     $ident = is_array($obj) ? (string)($obj['ObjectIdent'] ?? '') : '';
-                    if ($ident === $targetIdentIO) { $reuse = $id; break; }
+                    if ($ident === $targetIdentIONew || $ident === $targetIdentIOLegacy) { $reuse = $id; break; }
                 }
                 if ($reuse > 0) {
                     $ioID = $reuse;
@@ -1244,7 +1245,7 @@ class LGThinQBridge extends IPSModule
                     IPS_SetName($ioID, $NAME_IO);
                     IPS_ConnectInstance($mqttID, $ioID);
                     IPS_Sleep(100);
-                    try { IPS_SetIdent($ioID, 'LGThinQ.IO.' . (string)$this->InstanceID); } catch (\Throwable $e) { /* ignore */ }
+                    try { IPS_SetIdent($ioID, 'LGThinQIO' . (string)$this->InstanceID); } catch (\Throwable $e) { /* ignore */ }
                 }
             }
 
