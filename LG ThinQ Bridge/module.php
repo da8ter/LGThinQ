@@ -1168,8 +1168,9 @@ class LGThinQBridge extends IPSModule
             // 4) Create or reuse MQTT Client instance
             $NAME_MQTT = 'LGThinQ MQTT Client (' . $HOST . ')';
             $NAME_IO   = 'LGThinQ MQTT Client Socket (' . $HOST . ')';
-            $mqttGUID = $this->findModuleGUIDByName('MQTT Client');
-            if ($mqttGUID === null) {
+            $mqttGUID = '{F7A0DD2E-7684-95C0-64C2-D2A9DC47577B}';
+            $moduleList = @IPS_GetModuleList();
+            if (!is_array($moduleList) || !in_array($mqttGUID, $moduleList, true)) {
                 throw new \RuntimeException($this->t("Module 'MQTT Client' not found."));
             }
             $mqttID = 0;
@@ -1183,16 +1184,17 @@ class LGThinQBridge extends IPSModule
             }
             // Next: find by ObjectIdent marker
             if ($mqttID === 0) {
-                $targetIdent = 'LGThinQ.MQTT.' . (string)$this->InstanceID;
-                foreach ($this->instancesOf('MQTT Client') as $id) {
+                $targetIdent = 'LGThinQMQTT' . (string)$this->InstanceID;
+                $targetIdentLegacy = 'LGThinQ.MQTT.' . (string)$this->InstanceID;
+                foreach (@IPS_GetInstanceListByModuleID($mqttGUID) as $id) {
                     $obj = @IPS_GetObject($id);
                     $ident = is_array($obj) ? (string)($obj['ObjectIdent'] ?? '') : '';
-                    if ($ident === $targetIdent) { $mqttID = $id; break; }
+                    if ($ident === $targetIdent || $ident === $targetIdentLegacy) { $mqttID = $id; break; }
                 }
             }
             // Next: find by exact ClientID match
             if ($mqttID === 0 && $subjectCN !== '') {
-                foreach ($this->instancesOf('MQTT Client') as $id) {
+                foreach (@IPS_GetInstanceListByModuleID($mqttGUID) as $id) {
                     $c = $this->cfg($id);
                     if (($c['ClientID'] ?? null) === $subjectCN) { $mqttID = $id; break; }
                 }
@@ -1225,11 +1227,12 @@ class LGThinQBridge extends IPSModule
             if ($ioID === 0) {
                 // Try to reuse a pre-existing IO by ident
                 $reuse = 0;
-                $targetIdentIO = 'LGThinQ.IO.' . (string)$this->InstanceID;
+                $targetIdentIONew = 'LGThinQIO' . (string)$this->InstanceID;
+                $targetIdentIOLegacy = 'LGThinQ.IO.' . (string)$this->InstanceID;
                 foreach ($this->instancesOf('Client Socket') as $id) {
                     $obj = @IPS_GetObject($id);
                     $ident = is_array($obj) ? (string)($obj['ObjectIdent'] ?? '') : '';
-                    if ($ident === $targetIdentIO) { $reuse = $id; break; }
+                    if ($ident === $targetIdentIONew || $ident === $targetIdentIOLegacy) { $reuse = $id; break; }
                 }
                 if ($reuse > 0) {
                     $ioID = $reuse;
@@ -1242,7 +1245,7 @@ class LGThinQBridge extends IPSModule
                     IPS_SetName($ioID, $NAME_IO);
                     IPS_ConnectInstance($mqttID, $ioID);
                     IPS_Sleep(100);
-                    try { IPS_SetIdent($ioID, 'LGThinQ.IO.' . (string)$this->InstanceID); } catch (\Throwable $e) { /* ignore */ }
+                    try { IPS_SetIdent($ioID, 'LGThinQIO' . (string)$this->InstanceID); } catch (\Throwable $e) { /* ignore */ }
                 }
             }
 
