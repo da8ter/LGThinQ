@@ -39,7 +39,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. `flattenKeys()` and `flattenKeysRecursive()` no longer exist anywhere in the codebase
   3. `ThinQApiErrorCodes` is either wired into `ThinQHttpClient` retry logic or the class file is deleted — no middle state
   4. `php -l` passes on every file touched in this phase
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 02-P01-PLAN.md — Delete updateFromStatus, flattenKeys/flattenKeysRecursive, and ThinQApiErrorCodes
 
 ### Phase 3: CapabilityEngine Split
 **Goal**: CapabilityEngine's logic lives in per-device-type handler files, each under 500 lines, with profile-parsing, plan-building, and variable-registration as distinct responsibilities
@@ -72,6 +75,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Shared Trait | 0/TBD | Not started | - |
-| 2. Dead Code Removal | 0/TBD | Not started | - |
+| 2. Dead Code Removal | 0/1 | Planned | - |
 | 3. CapabilityEngine Split | 0/TBD | Not started | - |
 | 4. QA Validation | 0/TBD | Not started | - |
