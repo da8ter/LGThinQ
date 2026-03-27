@@ -12,7 +12,6 @@ require_once __DIR__ . '/libs/ThinQEventManager.php';
 require_once __DIR__ . '/libs/ThinQEventPipeline.php';
 require_once __DIR__ . '/libs/ThinQMqttRouter.php';
 require_once __DIR__ . '/libs/ThinQCertificateManager.php';
-require_once __DIR__ . '/libs/ThinQApiErrorCodes.php';
 
 class LGThinQBridge extends IPSModule
 {
