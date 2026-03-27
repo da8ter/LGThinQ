@@ -7,6 +7,7 @@ require_once __DIR__ . '/libs/CapabilityEngine.php';
 require_once __DIR__ . '/libs/ThinQPresentationBuilder.php';
 require_once __DIR__ . '/libs/ThinQEnergyManager.php';
 require_once __DIR__ . '/libs/ThinQSupportBundle.php';
+require_once __DIR__ . '/libs/ThinQDeviceProfileManager.php';
 
 class LGThinQDevice extends IPSModule
 {
@@ -687,105 +688,12 @@ class LGThinQDevice extends IPSModule
 
     private function fetchDeviceProfile(string $deviceId): array
     {
-        try {
-            $raw = $this->sendAction('GetProfile', ['DeviceID' => $deviceId]);
-            $data = json_decode((string)$raw, true);
-            if (!is_array($data)) {
-                return [];
-            }
-            // Normalize to a profile object that preserves property + error + notification if present
-            // sendAction('GetProfile') may already return the inner 'profile' JSON or wrap it in 'response'
-            $profile = [];
-            // Case A: wrapper contains 'response'
-            if (isset($data['response']) && is_array($data['response'])) {
-                $profile = $data['response'];
-            } elseif (isset($data['property']) || isset($data['error']) || isset($data['notification'])) {
-                // Case B: data looks like a full profile object with keys like 'property', 'error', 'notification'
-                $profile = $data;
-            } elseif (isset($data['profile']) && is_array($data['profile'])) {
-                // Case C: wrapper contains 'profile'
-                $profile = $data['profile'];
-            } else {
-                // Case D: legacy: treat entire payload as property content
-                $profile = ['property' => $data];
-            }
-            // Ensure structure types are arrays
-            if (!isset($profile['property']) || !is_array($profile['property'])) {
-                // some devices might return 'property' wrapped in index 0
-                if (isset($profile[0]) && is_array($profile[0])) {
-                    $profile['property'] = $profile[0];
-                }
-            }
-            return $profile;
-        } catch (Throwable $e) {
-            $this->logThrowable('FetchProfile', $e);
-            return [];
-        }
+        return $this->getProfileManager()->fetchDeviceProfile($deviceId);
     }
 
     private function resolveDeviceType(string $deviceId, array $profile): string
     {
-        // Prefer fresh information from the device list each time
-        $did = trim($deviceId);
-        $this->SendDebug('ResolveDeviceType', 'Begin: deviceId=' . $did, 0);
-        try {
-            $listRaw = $this->sendAction('GetDevices');
-            $list = json_decode((string)$listRaw, true);
-            if (!is_array($list)) {
-                $this->SendDebug('ResolveDeviceType', 'GetDevices returned non-array payload', 0);
-            } else {
-                $this->SendDebug('ResolveDeviceType', 'Devices count=' . count($list), 0);
-                foreach ($list as $idx => $entry) {
-                    if (!is_array($entry)) {
-                        $this->SendDebug('ResolveDeviceType', 'Entry #' . $idx . ' not an object', 0);
-                        continue;
-                    }
-                    $keys = implode(',', array_keys($entry));
-                    // Accept multiple id field variants
-                    $candId = (string)($entry['deviceId'] ?? ($entry['device_id'] ?? ($entry['id'] ?? '')));
-                    if ($candId === '') {
-                        $this->SendDebug('ResolveDeviceType', 'Entry #' . $idx . ' missing id fields; keys=' . $keys, 0);
-                        continue;
-                    }
-                    $match = (strcasecmp($candId, $did) === 0);
-                    if (!$match) {
-                        // Also allow substring match when IDs include prefixes/suffixes (rare)
-                        $match = (strpos($candId, $did) !== false) || (strpos($did, $candId) !== false);
-                    }
-                    if (!$match) {
-                        continue;
-                    }
-
-                    // Found matching device entry: try different type fields
-                    $typeDirect = (string)($entry['deviceType'] ?? '');
-                    $typeInfo   = '';
-                    if (isset($entry['deviceInfo']) && is_array($entry['deviceInfo'])) {
-                        $typeInfo = (string)($entry['deviceInfo']['deviceType'] ?? '');
-                    }
-                    $type = $typeDirect !== '' ? $typeDirect : $typeInfo;
-                    $this->SendDebug('ResolveDeviceType', sprintf('Match at #%d: id=%s typeDirect=%s typeInfo=%s', $idx, substr($candId, 0, 8) . '…', $typeDirect, $typeInfo), 0);
-                    if ($type !== '') {
-                        return $type;
-                    }
-                    $this->SendDebug('ResolveDeviceType', 'Matching entry has no deviceType fields; keys=' . $keys, 0);
-                }
-            }
-        } catch (Throwable $e) {
-            $this->logThrowable('ResolveDeviceType', $e);
-        }
-
-        /*
-        // Fallback: previously detected type (cached) — keep for stability but log it
-        $cached = trim((string)$this->ReadAttributeString('DeviceType'));
-        if ($cached !== '') {
-            $this->SendDebug('ResolveDeviceType', 'Using cached DeviceType=' . $cached, 0);
-            return $cached;
-        }
-        */
-
-        // No fallback to profile or AC by request — return empty to surface the issue upstream
-        $this->SendDebug('ResolveDeviceType', 'FAILED to resolve device type from device list; returning empty', 0);
-        return '';
+        return $this->getProfileManager()->resolveDeviceType($deviceId, $profile);
     }
 
 
@@ -876,98 +784,33 @@ class LGThinQDevice extends IPSModule
         return $engine;
     }
 
-    private function readStoredProfile(): array
+    private function getProfileManager(): ThinQDeviceProfileManager
     {
-        $raw = (string)$this->ReadAttributeString('LastProfile');
-        $profile = json_decode($raw, true);
-        return is_array($profile) ? $profile : [];
-    }
-    
-    /**
-     * Check if status contains properties that are not in the cached profile
-     * 
-     * @param array<string, mixed> $status
-     * @param array<string, mixed> $profile
-     * @return bool
-     */
-    private function statusHasNewProperties(array $status, array $profile): bool
-    {
-        // Flatten both to compare full paths
-        $statusFlat = $this->flatten($status);
-        $profileFlat = $this->flatten($profile['property'] ?? $profile); // Profile has 'property' wrapper
-        
-        // Check for status properties that are not in profile
-        foreach ($statusFlat as $statusKey => $statusValue) {
-            // Skip null values
-            if ($statusValue === null) {
-                continue;
-            }
-            
-            // Check if this key exists in profile
-            // Profile structure: property.{resource}.{property}.type or .mode or .value
-            // Status structure: {resource}.{property} = value
-            
-            // Look for corresponding profile entry
-            $found = false;
-            foreach ($profileFlat as $profileKey => $_) {
-                // Match: status "timer.relativeHourToStart" with profile "property.timer.relativeHourToStart.type"
-                if (strpos($profileKey, $statusKey) !== false || strpos($statusKey, str_replace('property.', '', explode('.type', $profileKey)[0])) !== false) {
-                    $found = true;
-                    break;
-                }
-            }
-            
-            if (!$found) {
-                $this->SendDebug('statusHasNewProperties', sprintf('New property found in status: %s', $statusKey), 0);
-                return true;
-            }
-        }
-        
-        return false;
+        return new ThinQDeviceProfileManager(
+            $this,
+            fn(string $a, array $p = []) => $this->sendAction($a, $p),
+            fn(array $a, string $p = '') => $this->flatten($a, $p)
+        );
     }
 
-    /**
-     * Fetch fresh profile from API
-     * 
-     * @return array<string, mixed>
-     */
+    private function readStoredProfile(): array
+    {
+        return $this->getProfileManager()->readStoredProfile();
+    }
+
+    private function statusHasNewProperties(array $status, array $profile): bool
+    {
+        return $this->getProfileManager()->statusHasNewProperties($status, $profile);
+    }
+
     private function fetchProfileFromAPI(): array
     {
-        try {
-            $deviceId = trim((string)$this->ReadPropertyString('DeviceID'));
-            if ($deviceId === '') {
-                return [];
-            }
-            
-            // Send request to bridge using existing sendAction method
-            $response = $this->sendAction('GetProfile', ['DeviceID' => $deviceId]);
-            $data = json_decode($response, true);
-            
-            if (isset($data['profile']) && is_array($data['profile'])) {
-                $this->SendDebug('fetchProfileFromAPI', 'Profile successfully fetched from API (profile)', 0);
-                return $data['profile'];
-            }
-            if (isset($data['property']) && is_array($data['property'])) {
-                $this->SendDebug('fetchProfileFromAPI', 'Profile successfully fetched from API (property)', 0);
-                return $data['property'];
-            }
-            // Some bridges may already return the profile object
-            if (is_array($data)) {
-                $this->SendDebug('fetchProfileFromAPI', 'Profile fetched from API (raw array)', 0);
-                return $data;
-            }
-            return [];
-        } catch (\Throwable $e) {
-            $this->SendDebug('fetchProfileFromAPI', 'Failed: ' . $e->getMessage(), 0);
-            return [];
-        }
+        return $this->getProfileManager()->fetchProfileFromAPI();
     }
 
     private function readLastStatus(): array
     {
-        $raw = (string)$this->ReadAttributeString('LastStatus');
-        $status = json_decode($raw, true);
-        return is_array($status) ? $status : [];
+        return $this->getProfileManager()->readLastStatus();
     }
 
     private function setValueByVarType(string $ident, $value): void
