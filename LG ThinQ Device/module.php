@@ -258,8 +258,6 @@ class LGThinQDevice extends IPSModule
 
             $this->WriteAttributeString('LastStatus', json_encode($status));
 
-            // Dedizierte Variablen aktualisieren
-            $this->updateFromStatus($status);
             // CapabilityEngine: Werte anwenden
             $engine = $this->prepareEngine();
             if ($engine !== null) {
@@ -1299,48 +1297,7 @@ class LGThinQDevice extends IPSModule
         
         return false;
     }
-    
-    /**
-     * Extract all top-level keys from nested array
-     * 
-     * @param array<string, mixed> $arr
-     * @return array<string>
-     */
-    private function flattenKeys(array $arr): array
-    {
-        $keys = [];
-        foreach ($arr as $key => $value) {
-            if (is_array($value)) {
-                foreach ($this->flattenKeysRecursive($key, $value) as $subKey) {
-                    $keys[] = $subKey;
-                }
-            } else {
-                $keys[] = $key;
-            }
-        }
-        return array_unique($keys);
-    }
-    
-    /**
-     * Recursively extract keys
-     * 
-     * @param string $prefix
-     * @param array<string, mixed> $arr
-     * @return array<string>
-     */
-    private function flattenKeysRecursive(string $prefix, array $arr): array
-    {
-        $keys = [$prefix];
-        foreach ($arr as $key => $value) {
-            if (is_array($value)) {
-                $keys = array_merge($keys, $this->flattenKeysRecursive($prefix . '.' . $key, $value));
-            } else {
-                $keys[] = $prefix . '.' . $key;
-            }
-        }
-        return $keys;
-    }
-    
+
     /**
      * Fetch fresh profile from API
      * 
@@ -1409,12 +1366,6 @@ class LGThinQDevice extends IPSModule
                 @SetValueString($vid, (string)$value);
                 break;
         }
-    }
-
-    private function updateFromStatus(array $status): void
-    {
-        // Placeholder for mapping selected status fields to dedicated variables
-        // Keep empty to avoid fatal errors; CapabilityEngine->applyStatus handles most updates
     }
 
     private function flatten(array $data, string $prefix = ''): array
