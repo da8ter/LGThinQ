@@ -55,23 +55,23 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CAPE-01 | — | Pending |
-| CAPE-02 | — | Pending |
-| CAPE-03 | — | Pending |
-| TRAIT-01 | — | Pending |
-| TRAIT-02 | — | Pending |
-| TRAIT-03 | — | Pending |
-| DEAD-01 | — | Pending |
-| DEAD-02 | — | Pending |
-| DEAD-03 | — | Pending |
-| QA-01 | — | Pending |
-| QA-02 | — | Pending |
+| TRAIT-01 | Phase 1 | Pending |
+| TRAIT-02 | Phase 1 | Pending |
+| TRAIT-03 | Phase 1 | Pending |
+| DEAD-01 | Phase 2 | Pending |
+| DEAD-02 | Phase 2 | Pending |
+| DEAD-03 | Phase 2 | Pending |
+| CAPE-01 | Phase 3 | Pending |
+| CAPE-02 | Phase 3 | Pending |
+| CAPE-03 | Phase 3 | Pending |
+| QA-01 | Phase 4 | Pending |
+| QA-02 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 11 total
-- Mapped to phases: 0 (Roadmap pending)
-- Unmapped: 11 ⚠️
+- Mapped to phases: 11
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-27*
-*Last updated: 2026-03-27 after initial definition*
+*Last updated: 2026-03-27 — Traceability populated after roadmap creation*
