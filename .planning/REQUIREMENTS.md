@@ -13,9 +13,9 @@
 
 ### Shared Module Trait
 
-- [ ] **TRAIT-01**: `ThinQModuleTrait` erstellt mit allen gemeinsamen Hilfsmethoden (mindestens: `t()`, `isKernelReady()`, `findModuleGUIDByName()` und weitere Duplikate)
-- [ ] **TRAIT-02**: `LGThinQBridge` nutzt `ThinQModuleTrait` — eigene Kopien der Hilfsmethoden entfernt
-- [ ] **TRAIT-03**: `LGThinQDevice` nutzt `ThinQModuleTrait` — eigene Kopien der Hilfsmethoden entfernt
+- [x] **TRAIT-01**: `ThinQModuleTrait` erstellt mit allen gemeinsamen Hilfsmethoden (mindestens: `t()`, `isKernelReady()`, `findModuleGUIDByName()` und weitere Duplikate)
+- [x] **TRAIT-02**: `LGThinQBridge` nutzt `ThinQModuleTrait` — eigene Kopien der Hilfsmethoden entfernt
+- [x] **TRAIT-03**: `LGThinQDevice` nutzt `ThinQModuleTrait` — eigene Kopien der Hilfsmethoden entfernt
 
 ### Dead Code Removal
 
@@ -55,9 +55,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TRAIT-01 | Phase 1 | Pending |
-| TRAIT-02 | Phase 1 | Pending |
-| TRAIT-03 | Phase 1 | Pending |
+| TRAIT-01 | Phase 1 | Complete |
+| TRAIT-02 | Phase 1 | Complete |
+| TRAIT-03 | Phase 1 | Complete |
 | DEAD-01 | Phase 2 | Pending |
 | DEAD-02 | Phase 2 | Pending |
 | DEAD-03 | Phase 2 | Pending |
