@@ -7,9 +7,9 @@
 
 ### Capability Engine Refactoring
 
-- [ ] **CAPE-01**: `CapabilityEngine.php` aufgeteilt — je eine Handler-Datei pro LG-Geräteklasse (Washer, Fridge, AC, etc.), jede Datei unter 500 Zeilen
-- [ ] **CAPE-02**: Verantwortlichkeitstrennung innerhalb der Handler: Profil-Parsing, Plan-Building und Variablen-Registrierung als getrennte, klar benannte Methoden oder Klassen
-- [ ] **CAPE-03**: Alle Dateien unter 500 Zeilen — `CapabilityEngine.php`, Bridge `module.php` (~1.751 Z.), Device `module.php` (~1.889 Z.) inklusive
+- [x] **CAPE-01**: `CapabilityEngine.php` aufgeteilt — je eine Handler-Datei pro LG-Geräteklasse (Washer, Fridge, AC, etc.), jede Datei unter 500 Zeilen
+- [x] **CAPE-02**: Verantwortlichkeitstrennung innerhalb der Handler: Profil-Parsing, Plan-Building und Variablen-Registrierung als getrennte, klar benannte Methoden oder Klassen
+- [x] **CAPE-03**: Alle Dateien unter 500 Zeilen — `CapabilityEngine.php`, Bridge `module.php` (~1.751 Z.), Device `module.php` (~1.889 Z.) inklusive
 
 ### Shared Module Trait
 
@@ -61,9 +61,9 @@
 | DEAD-01 | Phase 2 | Pending |
 | DEAD-02 | Phase 2 | Pending |
 | DEAD-03 | Phase 2 | Pending |
-| CAPE-01 | Phase 3 | Pending |
-| CAPE-02 | Phase 3 | Pending |
-| CAPE-03 | Phase 3 | Pending |
+| CAPE-01 | Phase 3 | Complete |
+| CAPE-02 | Phase 3 | Complete |
+| CAPE-03 | Phase 3 | Complete |
 | QA-01 | Phase 4 | Pending |
 | QA-02 | Phase 4 | Pending |
 

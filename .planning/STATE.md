@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 01-shared-trait PLAN.md
-last_updated: "2026-03-27T10:49:04.677Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-03-27T20:00:54.771Z"
 last_activity: 2026-03-27
 progress:
   total_phases: 4
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 1
+  completed_phases: 2
+  total_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Bestehende Symcon-Instanzen laufen nach dem Refactoring genauso wie vorher — null Regressions, bessere Wartbarkeit.
-**Current focus:** Phase 01 — shared-trait
+**Current focus:** Phase 03 — capabilityengine-split
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
+Phase: 03 (capabilityengine-split) — EXECUTING
+Plan: 1 of 1
 Status: Phase complete — ready for verification
 Last activity: 2026-03-27
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01-shared-trait P01 | 2 | 4 tasks | 3 files |
+| Phase 03 P03 | 120 | 6 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Recent decisions affecting current work:
 - Project: Manual tests + php -l only (no test framework available)
 - [Phase 01-shared-trait]: PHP trait used for shared helpers (t, isKernelReady, findModuleGUIDByName) to preserve direct IPSModule inheritance
 - [Phase 01-shared-trait]: Trait path resolved via __DIR__ . '/../libs/' from module subdirectory to shared libs/
+- [Phase 03]: Pass private module methods as callable callbacks to extracted classes (anonymizeArray, flatten, fetchDeviceProfile, createBridgeConfig, etc.)
+- [Phase 03]: Use factory helper methods (util(), getProfileManager()) in module.php to construct extraction classes
 
 ### Pending Todos
 
@@ -74,10 +77,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- DEAD-03 requires a binary decision: integrate ThinQApiErrorCodes into ThinQHttpClient OR delete it. Decision must be made during Phase 2 planning.
+None.
 
 ## Session Continuity
 
-Last session: 2026-03-27T10:46:26.788Z
-Stopped at: Completed 01-shared-trait PLAN.md
+Last session: 2026-03-27T20:00:54.768Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None

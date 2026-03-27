@@ -13,8 +13,8 @@ Four phases transform the module library from God-class territory into maintaina
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Shared Trait** - Extract duplicated helper methods into `ThinQModuleTrait` and integrate it into Bridge and Device
-- [ ] **Phase 2: Dead Code Removal** - Delete empty placeholders, unused helpers, and the unreferenced error-codes class
-- [ ] **Phase 3: CapabilityEngine Split** - Break the 2,585-line God class into per-device-type handler files with clear internal responsibility separation
+- [x] **Phase 2: Dead Code Removal** - Delete empty placeholders, unused helpers, and the unreferenced error-codes class
+- [x] **Phase 3: CapabilityEngine Split** - Break the 2,585-line God class into per-device-type handler files with clear internal responsibility separation (completed 2026-03-27)
 - [ ] **Phase 4: QA Validation** - Confirm syntax passes `php -l` on every changed file and public interfaces are identical to pre-refactoring
 
 ## Phase Details
@@ -42,7 +42,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 1 plan
 
 Plans:
-- [ ] 02-P01-PLAN.md — Delete updateFromStatus, flattenKeys/flattenKeysRecursive, and ThinQApiErrorCodes
+- [x] 02-P01-PLAN.md — Delete updateFromStatus, flattenKeys/flattenKeysRecursive, and ThinQApiErrorCodes
 
 ### Phase 3: CapabilityEngine Split
 **Goal**: CapabilityEngine's logic lives in per-device-type handler files, each under 500 lines, with profile-parsing, plan-building, and variable-registration as distinct responsibilities
@@ -76,5 +76,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Shared Trait | 0/TBD | Not started | - |
 | 2. Dead Code Removal | 0/1 | Planned | - |
-| 3. CapabilityEngine Split | 0/TBD | Not started | - |
+| 3. CapabilityEngine Split | 1/1 | Complete   | 2026-03-27 |
 | 4. QA Validation | 0/TBD | Not started | - |
