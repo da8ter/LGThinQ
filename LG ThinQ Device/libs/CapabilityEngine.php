@@ -10,6 +10,7 @@ require_once __DIR__ . '/CapabilityProfileExtractor.php';
 require_once __DIR__ . '/CapabilityCatalogLoader.php';
 require_once __DIR__ . '/CapabilityPlanBuilder.php';
 require_once __DIR__ . '/CapabilityVarManager.php';
+require_once __DIR__ . '/CapabilityControlBuilder.php';
 
 /**
  * CapabilityEngine
@@ -35,6 +36,9 @@ class CapabilityEngine
 
     /** @var ThinQProfileParser|null */
     private ?ThinQProfileParser $parser = null;
+
+    /** @var CapabilityControlBuilder|null */
+    private ?CapabilityControlBuilder $controlBuilder = null;
 
     /** @var bool */
     private bool $autoDiscoveryEnabled = true;
@@ -65,6 +69,22 @@ class CapabilityEngine
     private function getVarManager(): CapabilityVarManager
     {
         return new CapabilityVarManager($this->caps, $this->flatProfile, $this->flatStatus);
+    }
+
+    /**
+     * Lazy-init CapabilityControlBuilder for current state.
+     * Re-created on each call so it always has fresh caps/profile/status.
+     */
+    private function getControlBuilder(): CapabilityControlBuilder
+    {
+        return new CapabilityControlBuilder(
+            $this->caps,
+            $this->flatProfile,
+            $this->flatStatus,
+            $this->instanceId,
+            function(string $msg) { $this->dbg($msg); },
+            $this->getVarManager()
+        );
     }
 
     /**
@@ -471,365 +491,7 @@ class CapabilityEngine
      */
     public function buildControlPayload(string $ident, $value): ?array
     {
-        $cap = $this->caps[$ident] ?? null;
-        if (!is_array($cap)) {
-            $this->dbg(sprintf('buildControlPayload: Capability not found for ident=%s (available: %s)', $ident, implode(', ', array_keys($this->caps))));
-            return null;
-        }
-        $this->dbg(sprintf('buildControlPayload: Found capability for %s, write config: %s', $ident, json_encode($cap['write'] ?? null)));
-        // Clamp
-        if (isset($cap['write']['clamp']) && is_array($cap['write']['clamp'])) {
-            $min = $cap['write']['clamp']['min'] ?? null;
-            $max = $cap['write']['clamp']['max'] ?? null;
-            if (is_numeric($min)) { $value = max((int)$min, (int)$value); }
-            if (is_numeric($max)) { $value = min((int)$max, (int)$value); }
-        }
-        // Composite decompose
-        if (isset($cap['write']['composite']) && is_array($cap['write']['composite'])) {
-            $comp = $cap['write']['composite'];
-            $fn = strtolower((string)($comp['decompose'] ?? ''));
-            $targets = $comp['targets'] ?? [];
-            $out = [];
-            if ($fn === 'minutes_to_hm' && is_array($targets) && count($targets) >= 2) {
-                $total = (int)$value;
-                $h = intdiv($total, 60);
-                $m = $total % 60;
-                $t0 = (string)($targets[0]['path'] ?? '');
-                $t1 = (string)($targets[1]['path'] ?? '');
-                if ($t0 !== '') $this->setByPath($out, $t0, $h);
-                if ($t1 !== '') $this->setByPath($out, $t1, $m);
-                return $out;
-            }
-        }
-        // Enum map (map incoming value to a set of target paths/values)
-        if (isset($cap['write']['enumMap']) && is_array($cap['write']['enumMap'])) {
-            $map = $cap['write']['enumMap'];
-            // Convert boolean to string properly: false -> "false", true -> "true"
-            if (is_bool($value)) {
-                $key = $value ? 'true' : 'false';
-            } else {
-                $key = (string)$value;
-            }
-            if (array_key_exists($key, $map) && is_array($map[$key])) {
-                $out = [];
-                foreach ($map[$key] as $path => $v) {
-                    $this->setByPath($out, (string)$path, $v);
-                }
-                // Per SDK: Washer/Oven/Cooktop enum writes need top-level location wrapping
-                $enumLocWrap = $cap['write']['enumMapLocationWrap'] ?? null;
-                if (is_string($enumLocWrap) && $enumLocWrap !== '') {
-                    $out['location'] = ['locationName' => $enumLocWrap];
-                }
-                // coSendConst for enumMap (e.g., Oven cookMode → ovenOperationMode=START)
-                $enumConst = $cap['write']['enumMapCoSendConst'] ?? null;
-                if (is_array($enumConst)) {
-                    foreach ($enumConst as $entry) {
-                        if (!is_array($entry)) continue;
-                        $cRes = (string)($entry['resource'] ?? '');
-                        $cProp = (string)($entry['property'] ?? '');
-                        $cVal = $entry['value'] ?? null;
-                        if ($cRes === '' || $cProp === '' || $cVal === null) continue;
-                        if (!isset($out[$cRes]) || !is_array($out[$cRes])) {
-                            $out[$cRes] = [];
-                        }
-                        if (!array_key_exists($cProp, $out[$cRes])) {
-                            $out[$cRes][$cProp] = $cVal;
-                        }
-                    }
-                }
-                return $out;
-            }
-        }
-        // arrayTemplate: choose array element by where and set fields
-        if (isset($cap['write']['arrayTemplate']) && is_array($cap['write']['arrayTemplate'])) {
-            $cfg = $cap['write']['arrayTemplate'];
-            $container = (string)($cfg['container'] ?? '');
-            $path = (string)($cfg['path'] ?? ''); // optional base path inside element
-            $where = is_array($cfg['where'] ?? null) ? $cfg['where'] : [];
-            $set   = is_array($cfg['set'] ?? null) ? $cfg['set'] : [];
-            if ($container !== '' && !empty($set)) {
-                $flatSrc = $this->flatStatus ?: $this->flatProfile;
-                $idx = $this->findArrayIndex($flatSrc, $container, $where);
-                if ($idx === null) return null;
-                $out = [];
-                foreach ($set as $k => $v) {
-                    $tplVal = $v;
-                    $this->walkReplace($tplVal, $value);
-                    $p = $container . '.' . $idx . '.' . ($path !== '' ? ($path . '.') : '') . (string)$k;
-                    $this->setByPath($out, $p, $tplVal);
-                }
-                // Normalize container to a sequential array if numeric indices are present
-                if (isset($out[$container]) && is_array($out[$container])) {
-                    $allNumeric = true;
-                    foreach (array_keys($out[$container]) as $k2) {
-                        if (!is_int($k2)) { $allNumeric = false; break; }
-                    }
-                    if ($allNumeric) {
-                        $out[$container] = array_values($out[$container]);
-                    }
-                }
-                return $out;
-            }
-        }
-        // Template
-        if (isset($cap['write']['template']) && is_array($cap['write']['template'])) {
-            $tpl = $cap['write']['template'];
-            $converted = $this->convertValueForType($cap, $value);
-            $out = $this->replaceTemplatePlaceholders($tpl, $converted);
-            return $out;
-        }
-
-        // attribute: generic builder inspired by SDK
-        // {
-        //   "write": {
-        //     "attribute": {
-        //       "resource": "temperatureInUnits",
-        //       "property": "targetTemperatureC",
-        //       "extras": { "locationName": "FRIDGE" },
-        //       "coSend": { "unit": "C" },
-        //       "clampFromProfile": true
-        //     }
-        //   }
-        // }
-        // Optional: "locationWrap": "MAIN" → puts location as separate top-level key (washer/oven pattern)
-        if (isset($cap['write']['attribute']) && is_array($cap['write']['attribute'])) {
-            $cfg = $cap['write']['attribute'];
-            $resource = (string)($cfg['resource'] ?? '');
-            $property = (string)($cfg['property'] ?? '');
-            $extras = is_array($cfg['extras'] ?? null) ? $cfg['extras'] : [];
-            if ($resource !== '' && $property !== '') {
-                // Special handling for timer properties: send BOTH hour and minute when partner is writable
-                $timerPair = $this->getTimerPairValue($ident, $property, $value);
-                if ($timerPair !== null) {
-                    $resourcePayload = $extras + $timerPair;
-                    if (is_array($cfg['coSend'] ?? null)) {
-                        $resourcePayload = $cfg['coSend'] + $resourcePayload;
-                    }
-                    $payload = [$resource => $resourcePayload];
-                    if (isset($cfg['locationWrap']) && is_string($cfg['locationWrap']) && $cfg['locationWrap'] !== '') {
-                        $payload['location'] = ['locationName' => $cfg['locationWrap']];
-                        unset($payload[$resource]['locationName']);
-                    }
-                    $this->applyCoSendFromStatus($cfg, $payload);
-                    $this->applyCoSendConst($cfg, $payload);
-                    return $payload;
-                }
-                // Optional clamp from profile writable range
-                if (!empty($cfg['clampFromProfile'])) {
-                    $rng = $this->findRangeFromProfile($resource, $property);
-                    if (is_array($rng)) {
-                        $v = $value;
-                        if (isset($rng['min']) && is_numeric($rng['min'])) { $v = max((float)$rng['min'], (float)$v); }
-                        if (isset($rng['max']) && is_numeric($rng['max'])) { $v = min((float)$rng['max'], (float)$v); }
-                        $value = $v;
-                    }
-                }
-                // Optional valueTemplate (e.g. @onoff, @startstop)
-                if (isset($cfg['valueTemplate'])) {
-                    $node = $cfg['valueTemplate'];
-                    $this->walkReplace($node, $value);
-                    $converted = $node;
-                } else {
-                    $converted = $this->convertValueForType($cap, $value);
-                }
-                $resourcePayload = $extras + [$property => $converted];
-                // coSend: additional properties to merge into the resource payload
-                if (is_array($cfg['coSend'] ?? null)) {
-                    $resourcePayload = $cfg['coSend'] + $resourcePayload;
-                }
-                $payload = [$resource => $resourcePayload];
-                // locationWrap: put location as separate top-level key (SDK washer pattern)
-                if (isset($cfg['locationWrap']) && is_string($cfg['locationWrap']) && $cfg['locationWrap'] !== '') {
-                    $payload['location'] = ['locationName' => $cfg['locationWrap']];
-                    unset($payload[$resource]['locationName']);
-                }
-                // coSendFromStatus: include partner properties' current values in payload
-                $this->applyCoSendFromStatus($cfg, $payload);
-                // coSendConst: include constant companion values in payload
-                $this->applyCoSendConst($cfg, $payload);
-                return $payload;
-            }
-        }
-
-        // multiAttribute: build a combined payload of multiple attribute entries
-        if (isset($cap['write']['multiAttribute']) && is_array($cap['write']['multiAttribute'])) {
-            $cfg = $cap['write']['multiAttribute'];
-            $items = is_array($cfg['items'] ?? null) ? $cfg['items'] : [];
-            if (!empty($items)) {
-                $payload = [];
-                foreach ($items as $item) {
-                    if (!is_array($item)) continue;
-                    $resource = (string)($item['resource'] ?? '');
-                    $property = (string)($item['property'] ?? '');
-                    if ($resource === '' || $property === '') continue;
-                    $extras = is_array($item['extras'] ?? null) ? $item['extras'] : [];
-                    $useVal = array_key_exists('valueConst', $item) ? $item['valueConst'] : $value;
-                    // Optional clamp
-                    if (!empty($item['clampFromProfile'])) {
-                        $rng = $this->findRangeFromProfile($resource, $property);
-                        if (is_array($rng) && is_numeric($useVal)) {
-                            $v = $useVal;
-                            if (isset($rng['min']) && is_numeric($rng['min'])) { $v = max((float)$rng['min'], (float)$v); }
-                            if (isset($rng['max']) && is_numeric($rng['max'])) { $v = min((float)$rng['max'], (float)$v); }
-                            $useVal = $v;
-                        }
-                    }
-                    // Optional valueTemplate per item
-                    if (isset($item['valueTemplate'])) {
-                        $node = $item['valueTemplate'];
-                        $this->walkReplace($node, $useVal);
-                        $converted = $node;
-                    } else {
-                        $converted = $this->convertValueForType($cap, $useVal);
-                    }
-                    if (!isset($payload[$resource]) || !is_array($payload[$resource])) {
-                        $payload[$resource] = [];
-                    }
-                    $payload[$resource] = $extras + $payload[$resource];
-                    $payload[$resource][$property] = $converted;
-                }
-                if (!empty($payload)) return $payload;
-            }
-        }
-
-        // firstOf: pick the first matching write option based on profile keys
-        if (isset($cap['write']['firstOf']) && is_array($cap['write']['firstOf'])) {
-            foreach ($cap['write']['firstOf'] as $opt) {
-                if (!is_array($opt)) continue;
-                // Prefer explicit writeable condition
-                $writeKeys = $opt['profileWriteableAny'] ?? [];
-                if (is_array($writeKeys) && !empty($writeKeys)) {
-                    $ok = false;
-                    foreach ($writeKeys as $wk) {
-                        $wk = (string)$wk;
-                        if ($wk === '') continue;
-                        // Use robust writeability detection that supports ".mode" paths and wrappers
-                        if ($this->profileHasWriteAny([$wk])) { $ok = true; break; }
-                        // Backward-compatibility: if caller provided a base path (or we can derive it), test that too
-                        $base = preg_replace('/\.(mode|type)$/i', '', $wk);
-                        if (is_string($base) && $base !== '' && $this->flatProfileIsWriteable($base)) { $ok = true; break; }
-                    }
-                    if (!$ok) continue; // not writeable, skip option
-                } else {
-                    // Fallback: presence only
-                    $keys = $opt['profileHasAny'] ?? ($opt['whenProfileHasAny'] ?? []);
-                    $keys = is_array($keys) ? $keys : [];
-                    if (!empty($keys) && !$this->flatProfileHasAny($keys)) {
-                        continue;
-                    }
-                }
-                // Support attribute within firstOf
-                if (isset($opt['attribute']) && is_array($opt['attribute'])) {
-                    $cfg = $opt['attribute'];
-                    $resource = (string)($cfg['resource'] ?? '');
-                    $property = (string)($cfg['property'] ?? '');
-                    $extras = is_array($cfg['extras'] ?? null) ? $cfg['extras'] : [];
-                    if ($resource !== '' && $property !== '') {
-                        $useVal = $value;
-                        if (!empty($cfg['clampFromProfile'])) {
-                            $rng = $this->findRangeFromProfile($resource, $property);
-                            if (is_array($rng) && is_numeric($useVal)) {
-                                $v = $useVal;
-                                if (isset($rng['min']) && is_numeric($rng['min'])) { $v = max((float)$rng['min'], (float)$v); }
-                                if (isset($rng['max']) && is_numeric($rng['max'])) { $v = min((float)$rng['max'], (float)$v); }
-                                $useVal = $v;
-                            }
-                        }
-                        if (isset($cfg['valueTemplate'])) {
-                            $node = $cfg['valueTemplate'];
-                            $this->walkReplace($node, $useVal);
-                            $converted = $node;
-                        } else {
-                            $converted = $this->convertValueForType($cap, $useVal);
-                        }
-                        $resourcePayload = $extras + [$property => $converted];
-                        if (is_array($cfg['coSend'] ?? null)) {
-                            $resourcePayload = $cfg['coSend'] + $resourcePayload;
-                        }
-                        $payload = [$resource => $resourcePayload];
-                        if (isset($cfg['locationWrap']) && is_string($cfg['locationWrap']) && $cfg['locationWrap'] !== '') {
-                            $payload['location'] = ['locationName' => $cfg['locationWrap']];
-                            unset($payload[$resource]['locationName']);
-                        }
-                        return $payload;
-                    }
-                }
-                // Support template within firstOf
-                if (isset($opt['template']) && is_array($opt['template'])) {
-                    $converted = $this->convertValueForType($cap, $value);
-                    $out = $this->replaceTemplatePlaceholders($opt['template'], $converted);
-                    return $out;
-                }
-                // Support enumMap within firstOf (optional)
-                if (isset($opt['enumMap']) && is_array($opt['enumMap'])) {
-                    $map = $opt['enumMap'];
-                    $key = (string)$value;
-                    if (array_key_exists($key, $map) && is_array($map[$key])) {
-                        $out = [];
-                        foreach ($map[$key] as $path => $v) {
-                            $this->setByPath($out, (string)$path, $v);
-                        }
-                        return $out;
-                    }
-                }
-                // Support composite within firstOf (optional)
-                if (isset($opt['composite']) && is_array($opt['composite'])) {
-                    $comp = $opt['composite'];
-                    $fn = strtolower((string)($comp['decompose'] ?? ''));
-                    $targets = $comp['targets'] ?? [];
-                    if ($fn === 'minutes_to_hm' && is_array($targets) && count($targets) >= 2) {
-                        $total = (int)$value;
-                        $h = intdiv($total, 60);
-                        $m = $total % 60;
-                        $t0 = (string)($targets[0]['path'] ?? '');
-                        $t1 = (string)($targets[1]['path'] ?? '');
-                        $out = [];
-                        if ($t0 !== '') $this->setByPath($out, $t0, $h);
-                        if ($t1 !== '') $this->setByPath($out, $t1, $m);
-                        return $out;
-                    }
-                }
-                // Support multiAttribute within firstOf
-                if (isset($opt['multiAttribute']) && is_array($opt['multiAttribute'])) {
-                    $cfg = $opt['multiAttribute'];
-                    $items = is_array($cfg['items'] ?? null) ? $cfg['items'] : [];
-                    if (!empty($items)) {
-                        $payload = [];
-                        foreach ($items as $item) {
-                            if (!is_array($item)) continue;
-                            $resource = (string)($item['resource'] ?? '');
-                            $property = (string)($item['property'] ?? '');
-                            if ($resource === '' || $property === '') continue;
-                            $extras = is_array($item['extras'] ?? null) ? $item['extras'] : [];
-                            $useVal = array_key_exists('valueConst', $item) ? $item['valueConst'] : $value;
-                            if (!empty($item['clampFromProfile'])) {
-                                $rng = $this->findRangeFromProfile($resource, $property);
-                                if (is_array($rng) && is_numeric($useVal)) {
-                                    $v = $useVal;
-                                    if (isset($rng['min']) && is_numeric($rng['min'])) { $v = max((float)$rng['min'], (float)$v); }
-                                    if (isset($rng['max']) && is_numeric($rng['max'])) { $v = min((float)$rng['max'], (float)$v); }
-                                    $useVal = $v;
-                                }
-                            }
-                            if (isset($item['valueTemplate'])) {
-                                $node = $item['valueTemplate'];
-                                $this->walkReplace($node, $useVal);
-                                $converted = $node;
-                            } else {
-                                $converted = $this->convertValueForType($cap, $useVal);
-                            }
-                            if (!isset($payload[$resource]) || !is_array($payload[$resource])) {
-                                $payload[$resource] = [];
-                            }
-                            $payload[$resource] = $extras + $payload[$resource];
-                            $payload[$resource][$property] = $converted;
-                        }
-                        if (!empty($payload)) return $payload;
-                    }
-                }
-            }
-        }
-        return null;
+        return $this->getControlBuilder()->buildControlPayload($ident, $value);
     }
 
     // ---------- Helpers ----------
@@ -926,120 +588,23 @@ class CapabilityEngine
 
     private function profileHasWriteAny(array $writeableKeys): bool
     {
-        foreach ($writeableKeys as $wk) {
-            $wk = (string)$wk;
-            if ($wk === '') continue;
-            // 1) Direct mode value
-            if (array_key_exists($wk, $this->flatProfile) && $this->modeHasW($this->flatProfile[$wk])) {
-                return true;
-            }
-            // 2) Any nested path under the given key shows a writeable mode
-            $prefix = $wk . '.';
-            foreach ($this->flatProfile as $k => $v) {
-                if (strpos($k, $prefix) === 0 && $this->modeHasW($v)) return true;
-            }
-            // 2b) Wrapped direct mode keys (profile./value./property./indexed)
-            $wrappers = ['','property.','value.','profile.'];
-            foreach ($wrappers as $wrap) {
-                $cand = $wrap . $wk;
-                if (array_key_exists($cand, $this->flatProfile) && $this->modeHasW($this->flatProfile[$cand])) return true;
-                for ($i = 0; $i <= 4; $i++) {
-                    $candIdx = $wrap . $i . '.' . $wk;
-                    if (array_key_exists($candIdx, $this->flatProfile) && $this->modeHasW($this->flatProfile[$candIdx])) return true;
-                }
-            }
-            // 2c) Suffix match: any key ending with the wk path (covers additional nesting above)
-            $suffix = '.' . $wk;
-            foreach ($this->flatProfile as $k => $v) {
-                if ($k === $wk) {
-                    if ($this->modeHasW($v)) return true;
-                    continue;
-                }
-                $lenS = strlen($suffix);
-                $lenK = strlen($k);
-                if ($lenK >= $lenS && substr($k, -$lenS) === $suffix) {
-                    if ($this->modeHasW($v)) return true;
-                }
-            }
-            // 3) Consider base container (strip trailing .mode/.type) and detect presence of value.w (min/max/step)
-            $base = preg_replace('/\.(mode|type)$/i', '', $wk);
-            if (is_string($base) && $base !== '') {
-                // Probing common wrappers: '', 'property.', 'value.', 'profile.', and indexed forms
-                $candidates = [$base];
-                foreach (['property.', 'value.', 'profile.'] as $wrap) {
-                    $candidates[] = $wrap . $base;
-                    for ($i = 0; $i <= 4; $i++) {
-                        $candidates[] = $wrap . $i . '.' . $base;
-                    }
-                    // value.property.N.
-                    if ($wrap === 'value.') {
-                        for ($i = 0; $i <= 4; $i++) {
-                            $candidates[] = 'value.property.' . $i . '.' . $base;
-                        }
-                    }
-                    // profile.value.property.N.
-                    if ($wrap === 'profile.') {
-                        for ($i = 0; $i <= 4; $i++) {
-                            $candidates[] = 'profile.value.property.' . $i . '.' . $base;
-                        }
-                    }
-                }
-                // Now search for any path under candidate that contains '.value.w'
-                foreach ($this->flatProfile as $k => $v) {
-                    foreach ($candidates as $cand) {
-                        if (strpos($k, $cand) === 0 && strpos($k, '.value.w') !== false) {
-                            return true; // writeable definition exists (min/step/max specifics)
-                        }
-                    }
-                }
-            }
-        }
-        return false;
+        return $this->getControlBuilder()->profileHasWriteAny($writeableKeys);
     }
 
     private function modeHasW($mode): bool
     {
-        if (is_string($mode)) {
-            return str_contains(strtolower($mode), 'w');
-        }
-        if (is_array($mode)) {
-            foreach ($mode as $m) { if ($this->modeHasW($m)) return true; }
-        }
-        return false;
+        return $this->getControlBuilder()->modeHasW($mode);
     }
 
     /** @param array<int, string> $keys */
     private function flatProfileHasAny(array $keys): bool
     {
-        foreach ($keys as $k) {
-            $k = (string)$k;
-            if ($k === '') continue;
-            if (array_key_exists($k, $this->flatProfile)) return true;
-            foreach ($this->flatProfile as $fk => $_) {
-                if (strpos($fk, $k) !== false) return true;
-            }
-        }
-        return false;
+        return $this->getControlBuilder()->flatProfileHasAny($keys);
     }
 
     private function flatProfileIsWriteable(string $basePath): bool
     {
-        $basePath = (string)$basePath;
-        if ($basePath === '') return false;
-        // 1) Direct mode flag indicates write (contains 'w')
-        $modeKey = $basePath . '.mode';
-        if (array_key_exists($modeKey, $this->flatProfile) && $this->modeHasW($this->flatProfile[$modeKey])) {
-            return true;
-        }
-        // 2) Any nested value.w under the base path indicates writeable range
-        $prefix = $basePath . '.';
-        foreach ($this->flatProfile as $k => $_) {
-            if (strpos($k, $prefix) !== 0) continue;
-            if (strpos($k, '.value.w') !== false) {
-                return true;
-            }
-        }
-        return false;
+        return $this->getControlBuilder()->flatProfileIsWriteable($basePath);
     }
 
     /**
@@ -1097,22 +662,6 @@ class CapabilityEngine
         return $out;
     }
 
-    /** @param array<string, mixed> $arr */
-    private function setByPath(array &$arr, string $path, $value): void
-    {
-        $parts = explode('.', $path);
-        $ref = &$arr;
-        foreach ($parts as $p) {
-            // Use integer array indices for numeric-looking parts to ensure JSON arrays are emitted
-            $key = ctype_digit($p) ? (int)$p : $p;
-            if (!isset($ref[$key]) || !is_array($ref[$key])) {
-                $ref[$key] = [];
-            }
-            $ref = &$ref[$key];
-        }
-        $ref = $value;
-    }
-
     /**
      * Find min/max/step for a resource.property from the flattened profile.
      * Looks for keys like:
@@ -1150,174 +699,6 @@ class CapabilityEngine
             });
         }
         return $this->parser;
-    }
-
-    /**
-     * Get timer pair values (hour + minute) for timer properties
-     * Returns array with both values or null if not a timer property
-     * 
-     * @param string $ident Current variable ident
-     * @param string $property Property name (e.g., "relativeMinuteToStart")
-     * @param mixed $value Current value being set
-     * @return array<string, mixed>|null
-     */
-    private function getTimerPairValue(string $ident, string $property, $value): ?array
-    {
-        // Check if this is a timer hour or minute property
-        // Matches: relativeHourToStart, absoluteMinuteToStop, timerHour, timerMinute,
-        //          targetHour, targetMinute, sleepTimerRelativeHourToStop, etc.
-        if (!preg_match('/(hour|minute).*(to|timer)|^(timer|target|remain)(hour|minute)$/i', $property)) {
-            return null;
-        }
-        
-        $isHourProperty = (stripos($property, 'hour') !== false);
-        $isMinuteProperty = (stripos($property, 'minute') !== false);
-        
-        if (!$isHourProperty && !$isMinuteProperty) {
-            return null;
-        }
-        
-        // Determine partner ident (handle both _HOUR_ mid-ident and _HOUR at end)
-        if ($isHourProperty) {
-            $partnerIdent = preg_replace('/_HOUR(_|$)/i', '_MINUTE$1', $ident);
-        } else {
-            $partnerIdent = preg_replace('/_MINUTE(_|$)/i', '_HOUR$1', $ident);
-        }
-        
-        // Only pair if partner capability exists and is writable
-        // Per SDK: AC pairs hour+minute, Washer sends only hour (minute is read-only)
-        $partnerCap = $this->caps[$partnerIdent] ?? null;
-        if (!is_array($partnerCap)) {
-            $this->dbg(sprintf('getTimerPairValue: partner %s not found in caps, skipping pair', $partnerIdent));
-            return null;
-        }
-        $partnerEnableWhen = (string)($partnerCap['action']['enableWhen'] ?? 'never');
-        if ($partnerEnableWhen === 'never') {
-            $this->dbg(sprintf('getTimerPairValue: partner %s is read-only (enableWhen=never), skipping pair', $partnerIdent));
-            return null;
-        }
-        
-        // Find the partner property name and build paired payload
-        if ($isHourProperty) {
-            $hourProperty = $property;
-            $minuteProperty = preg_replace('/[Hh]our/', 'Minute', $property);
-            if ($minuteProperty === $property) {
-                $minuteProperty = preg_replace('/HOUR/', 'MINUTE', $property);
-            }
-            $hourValue = (int)$value;
-            $minuteValue = $this->getVariableValue($partnerIdent);
-        } else {
-            $minuteProperty = $property;
-            $hourProperty = preg_replace('/[Mm]inute/', 'Hour', $property);
-            if ($hourProperty === $property) {
-                $hourProperty = preg_replace('/MINUTE/', 'HOUR', $property);
-            }
-            $minuteValue = (int)$value;
-            $hourValue = $this->getVariableValue($partnerIdent);
-        }
-        
-        $this->dbg(sprintf('getTimerPairValue: pairing %s=%d + %s=%d', $hourProperty, $hourValue, $minuteProperty, $minuteValue));
-        
-        return [
-            $hourProperty => $hourValue,
-            $minuteProperty => $minuteValue
-        ];
-    }
-    
-    /**
-     * Get value of a variable by ident
-     * 
-     * @param string $ident
-     * @return int
-     */
-    private function getVariableValue(string $ident): int
-    {
-        // Find variable by ident in this instance
-        $varId = @IPS_GetObjectIDByIdent($ident, $this->instanceId);
-        if ($varId === false) {
-            return 0;
-        }
-        return (int)GetValue($varId);
-    }
-
-    /**
-     * Apply coSendFromStatus: read partner variable current values and merge into payload.
-     * Per SDK: AC two-set temperature sends both heat+cool, Cooktop sends power+timer together.
-     *
-     * Config format: "coSendFromStatus": [{"ident": "...", "resource": "...", "property": "..."}]
-     *
-     * @param array<string, mixed> $cfg  attribute write config
-     * @param array<string, mixed> &$payload  payload to modify (by reference)
-     */
-    private function applyCoSendFromStatus(array $cfg, array &$payload): void
-    {
-        $companions = $cfg['coSendFromStatus'] ?? null;
-        if (!is_array($companions) || empty($companions)) {
-            return;
-        }
-        foreach ($companions as $companion) {
-            if (!is_array($companion)) continue;
-            $pIdent = (string)($companion['ident'] ?? '');
-            $pResource = (string)($companion['resource'] ?? '');
-            $pProperty = (string)($companion['property'] ?? '');
-            if ($pIdent === '' || $pResource === '' || $pProperty === '') continue;
-
-            $pValue = $this->getVariableValueMixed($pIdent);
-            if (!isset($payload[$pResource]) || !is_array($payload[$pResource])) {
-                $payload[$pResource] = [];
-            }
-            // Only add if not already set (don't overwrite the primary value)
-            if (!array_key_exists($pProperty, $payload[$pResource])) {
-                $payload[$pResource][$pProperty] = $pValue;
-                $this->dbg(sprintf('coSendFromStatus: added %s.%s=%s from %s', $pResource, $pProperty, json_encode($pValue), $pIdent));
-            }
-        }
-    }
-
-    /**
-     * Apply coSendConst: inject constant companion values into payload.
-     * Per SDK: Oven always sends ovenOperationMode="START" alongside cook/timer/temp writes.
-     *
-     * Config format: "coSendConst": [{"resource": "...", "property": "...", "value": "..."}]
-     *
-     * @param array<string, mixed> $cfg  attribute write config
-     * @param array<string, mixed> &$payload  payload to modify (by reference)
-     */
-    private function applyCoSendConst(array $cfg, array &$payload): void
-    {
-        $constants = $cfg['coSendConst'] ?? null;
-        if (!is_array($constants) || empty($constants)) {
-            return;
-        }
-        foreach ($constants as $entry) {
-            if (!is_array($entry)) continue;
-            $cResource = (string)($entry['resource'] ?? '');
-            $cProperty = (string)($entry['property'] ?? '');
-            $cValue = $entry['value'] ?? null;
-            if ($cResource === '' || $cProperty === '' || $cValue === null) continue;
-
-            if (!isset($payload[$cResource]) || !is_array($payload[$cResource])) {
-                $payload[$cResource] = [];
-            }
-            if (!array_key_exists($cProperty, $payload[$cResource])) {
-                $payload[$cResource][$cProperty] = $cValue;
-                $this->dbg(sprintf('coSendConst: added %s.%s=%s', $cResource, $cProperty, json_encode($cValue)));
-            }
-        }
-    }
-
-    /**
-     * Get variable value as mixed type (int, float, string, or bool)
-     * @param string $ident
-     * @return mixed
-     */
-    private function getVariableValueMixed(string $ident)
-    {
-        $varId = @IPS_GetObjectIDByIdent($ident, $this->instanceId);
-        if ($varId === false) {
-            return 0;
-        }
-        return GetValue($varId);
     }
 
 }
