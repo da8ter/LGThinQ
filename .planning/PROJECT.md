@@ -25,7 +25,7 @@ Bestehende Symcon-Instanzen laufen nach dem Refactoring genauso wie vorher — n
 ### Active
 
 - [ ] CapabilityEngine (~2.585 Zeilen) aufteilen: Gerätetyp-Handler-Dateien + klare Verantwortlichkeitstrennung innerhalb der Handler (unter 500 Zeilen je Datei)
-- [ ] Gemeinsame Hilfsmethoden (t(), isKernelReady(), findModuleGUIDByName() etc.) in `ThinQModuleTrait` extrahieren — in Bridge und Device einbinden
+- [x] Gemeinsame Hilfsmethoden (t(), isKernelReady(), findModuleGUIDByName() etc.) in `ThinQModuleTrait` extrahieren — in Bridge und Device einbinden — Validated in Phase 01: shared-trait
 - [ ] Toten Code entfernen: leere `updateFromStatus()`, unbenutztes `flattenKeys()` / `flattenKeysRecursive()`, ungenutzten `ThinQApiErrorCodes`-Aufruf
 - [ ] Syntax-Check (php -l) auf alle geänderten Dateien + manuelle Verifikation im Symcon-System
 
@@ -58,9 +58,9 @@ Bestehende Symcon-Instanzen laufen nach dem Refactoring genauso wie vorher — n
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | CapabilityEngine: Gerätetyp-Handler + Verantwortlichkeitstrennung kombinieren | Bessere Navigation UND saubere Architektur | — Pending |
-| Shared Helpers als PHP Trait | Keine Vererbungshierarchie nötig; IP-Symcon erwartet direkte IPSModule-Kindklassen | — Pending |
+| Shared Helpers als PHP Trait | Keine Vererbungshierarchie nötig; IP-Symcon erwartet direkte IPSModule-Kindklassen | ✓ Phase 01 |
 | API Key und ~UnixTimestamp-Fix explizit ausgeschlossen | Scope-Kontrolle; sind eigenständige Themen | — Pending |
 | Manuelle Tests + php -l | Kein Test-Framework vorhanden; pragmatischer Ansatz | — Pending |
 
 ---
-*Last updated: 2026-03-27 — Projektinitialisierung*
+*Last updated: 2026-03-27 — Phase 01 (shared-trait) complete*
