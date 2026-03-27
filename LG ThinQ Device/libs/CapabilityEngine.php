@@ -37,9 +37,6 @@ class CapabilityEngine
     /** @var ThinQProfileParser|null */
     private ?ThinQProfileParser $parser = null;
 
-    /** @var CapabilityControlBuilder|null */
-    private ?CapabilityControlBuilder $controlBuilder = null;
-
     /** @var bool */
     private bool $autoDiscoveryEnabled = true;
     
@@ -87,42 +84,24 @@ class CapabilityEngine
         );
     }
 
-    /**
-     * Set callback for maintaining variables (create/update/delete)
-     * Signature: function(string $ident, string $name, int $type, string $profile, int $position, bool $keep): int
-     */
+    /** Signature: function(string $ident, string $name, int $type, string $profile, int $position, bool $keep): int */
     public function setMaintainVariableCallback(callable $callback): void
     {
         $this->maintainVariableCallback = $callback;
     }
-    
-    /**
-     * Set translation callback for translating variable names
-     * 
-     * @param callable $callback Function that takes a string and returns translated string
-     */
+
     public function setTranslateCallback(callable $callback): void
     {
         $this->translateCallback = $callback;
     }
-    
-    /**
-     * Translate a string using the callback or return as-is
-     * 
-     * @param string $text Text to translate
-     * @return string Translated text or original if no callback set
-     */
+
     private function translate(string $text): string
     {
-        if ($this->translateCallback !== null) {
-            return ($this->translateCallback)($text);
-        }
-        return $text;
+        return $this->translateCallback !== null ? ($this->translateCallback)($text) : $text;
     }
 
     private function debugEnabled(): bool
     {
-        // Read the parent module's Debug property to decide whether to emit debug logs
         try {
             $v = @IPS_GetProperty($this->instanceId, 'Debug');
             return is_bool($v) ? $v : false;
@@ -141,41 +120,24 @@ class CapabilityEngine
     /** @param array<string, mixed> $cap */
     private function capHasWriteDefinition(array $cap): bool
     {
-        $w = $cap['write'] ?? null;
-        if (!is_array($w)) return false;
-        foreach (['enumMap','template','composite','arrayTemplate','attribute','multiAttribute','firstOf'] as $k) {
-            if (isset($w[$k]) && is_array($w[$k])) return true;
-        }
-        return false;
+        return $this->getControlBuilder()->capHasWriteDefinition($cap);
     }
 
-    /**
-     * Load capabilities for the given device type. Profile can be used to decide variants.
-     *
-     * @param string $deviceType
-     * @param array<string, mixed> $profile
-     */
+    /** @param array<string, mixed> $profile */
     public function loadCapabilities(string $deviceType, array $profile): void
     {
-        // Manual capability files are disabled. Use auto-discovery only.
         $this->caps = [];
         $this->flatProfile = $this->flatten($profile);
         $this->dbg('Manual capabilities disabled; using auto-discovery only.');
     }
 
-    /**
-     * Return loaded capability descriptors.
-     * @return array<int, array<string, mixed>>
-     */
+    /** @return array<int, array<string, mixed>> */
     public function getDescriptors(): array
     {
         return array_values($this->caps);
     }
-    
-    /**
-     * Get presentation map for all capabilities
-     * @return array<string, array<string, mixed>> Map of ident => presentation
-     */
+
+    /** @return array<string, array<string, mixed>> Map of ident => presentation */
     public function getPresentationMap(): array
     {
         $map = [];
@@ -187,34 +149,19 @@ class CapabilityEngine
         return $map;
     }
 
-    /**
-     * Ensure variables exist and attach actions according to descriptors.
-     *
-     * @param array<string, mixed> $profile
-     * @param array<string, mixed>|null $status
-     * @param string $deviceType
-     */
+    /** @param array<string, mixed>|null $status */
     public function ensureVariables(array $profile, ?array $status, string $deviceType): void
     {
-        // Do NOT reload capabilities here - use the ones loaded by buildPlan()
-        // This preserves auto-discovered capabilities based on current status
-        
+        // Use caps loaded by buildPlan() — do NOT reload here (preserves auto-discovered caps).
         $flatStatus = is_array($status) ? $this->flatten($status) : [];
         $this->flatStatus = $flatStatus;
         
         foreach ($this->caps as $cap) {
             $ident = (string)($cap['ident'] ?? '');
             if ($ident === '') continue;
-            
             $should = $this->shouldCreate($cap, $this->flatProfile, $flatStatus);
             $vid = $this->getVarId($ident);
-            
-            // Skip if variable should not be created (but never delete existing variables!)
-            if (!$should && $vid === 0) {
-                continue;
-            }
-            
-            // Create variable if it doesn't exist
+            if (!$should && $vid === 0) continue;
             if ($vid === 0) {
                 $type = strtoupper((string)($cap['type'] ?? 'string'));
                 $ipsType = match ($type) {
@@ -224,35 +171,23 @@ class CapabilityEngine
                     default   => VARIABLETYPE_STRING
                 };
                 $name = (string)($cap['name'] ?? $ident);
-                
-                // Use MaintainVariable callback if available, otherwise fallback to manual creation
                 if ($this->maintainVariableCallback !== null) {
                     $vid = call_user_func($this->maintainVariableCallback, $ident, $name, $ipsType, '', 0, true);
                 } else {
-                    // Fallback: manual creation (legacy)
                     $vid = IPS_CreateVariable($ipsType);
                     IPS_SetParent($vid, $this->instanceId);
                     IPS_SetIdent($vid, $ident);
                     IPS_SetName($vid, $name);
                 }
             }
-            
-            // EnableAction: always, profile writeable, or fallback when a write mapping exists
             $enableWhen = strtolower((string)($cap['action']['enableWhen'] ?? ''));
-            
             if ($enableWhen === 'always') {
                 $this->enableAction($ident);
             } elseif ($enableWhen === 'profilewriteableany') {
                 $writeKeys = $cap['action']['writeableKeys'] ?? [];
                 $hasWrite = is_array($writeKeys) && $this->profileHasWriteAny($writeKeys);
-                
-                if ($hasWrite) {
+                if ($hasWrite || $this->capHasWriteDefinition($cap)) {
                     $this->enableAction($ident);
-                } else {
-                    // Fallback: if the capability defines a write mapping, still enable action
-                    if ($this->capHasWriteDefinition($cap)) {
-                        $this->enableAction($ident);
-                    }
                 }
             } else {
                 $this->dbg(sprintf('NOT enabling action for %s (enableWhen=%s)', $ident, $enableWhen));
@@ -434,23 +369,13 @@ class CapabilityEngine
                 $this->setValueByType($vid, $cap, $val);
                 $updated++;
             }
-            // NOTE: Do not re-enable actions on every status update to avoid noisy logs and redundant calls.
-            // Action enabling is performed during variable creation in the main module (SetupDeviceVariables).
         }
-        // Timer reset: when a timer status changes to UNSET (false), zero the related hour/minute vars
         $this->resetDeactivatedTimers($flat);
 
         $this->dbg(sprintf('applyStatus: %d capabilities, %d updated, %d skipped (no variable)', count($this->caps), $updated, $skipped));
     }
 
-    /**
-     * When a timer control variable (*_START_TIMER, *_STOP_TIMER) reports UNSET,
-     * set the corresponding HOUR_TO_* and MINUTE_TO_* variables to 0.
-     *
-     * Ident mapping:
-     *   *_START_TIMER  → *_HOUR_TO_START  + *_MINUTE_TO_START
-     *   *_STOP_TIMER   → *_HOUR_TO_STOP   + *_MINUTE_TO_STOP
-     */
+    /** Zero HOUR_TO and MINUTE_TO vars when their START_TIMER or STOP_TIMER reports UNSET. */
     private function resetDeactivatedTimers(array $flat): void
     {
         foreach ($this->caps as $cap) {
@@ -481,14 +406,7 @@ class CapabilityEngine
         }
     }
 
-    /**
-     * Build a control payload for a given ident/value based on capability descriptor.
-     * Returns null if the ident is not handled by capabilities.
-     *
-     * @param string $ident
-     * @param mixed $value
-     * @return array<string, mixed>|null
-     */
+    /** @return array<string, mixed>|null */
     public function buildControlPayload(string $ident, $value): ?array
     {
         return $this->getControlBuilder()->buildControlPayload($ident, $value);
@@ -499,112 +417,24 @@ class CapabilityEngine
     /** @param array<string, mixed> $cap */
     private function shouldCreate(array $cap, array $flatProfile, array $flatStatus): bool
     {
-        $create = $cap['create'] ?? [];
-        $when = strtolower((string)($create['when'] ?? 'always'));
-        $keys = $create['keys'] ?? [];
-        if ($when === 'always') return true;
-        if (!is_array($keys) || empty($keys)) return false;
-        if ($when === 'profilehasall') {
-            // All keys must be present in profile (direct or substring match)
-            foreach ($keys as $k) {
-                $k = (string)$k;
-                if ($k === '') return false;
-                $found = array_key_exists($k, $flatProfile);
-                if (!$found) {
-                    foreach ($flatProfile as $fk => $_) {
-                        if (strpos($fk, $k) !== false) { $found = true; break; }
-                    }
-                }
-                if (!$found) return false;
-            }
-            return true;
-        }
-        if ($when === 'profilehasany') {
-            foreach ($keys as $k) { if (array_key_exists($k, $flatProfile)) return true; }
-            // Substring match (handles array prefixes like property.0.*)
-            foreach ($keys as $k) {
-                foreach ($flatProfile as $fk => $_) {
-                    if (strpos($fk, $k) !== false) return true;
-                }
-            }
-            // As a last resort, treat writeable mode as present
-            foreach ($keys as $b) {
-                if ($this->profileHasWriteAny([$b . '.mode'])) return true;
-            }
-            return false;
-        }
-        if ($when === 'statushasany') {
-            // 1) Direct key present
-            foreach ($keys as $k) { if (array_key_exists($k, $flatStatus)) return true; }
-            // 2) Substring match (covers simple nesting)
-            foreach ($keys as $k) {
-                foreach ($flatStatus as $fk => $_) {
-                    if (strpos($fk, $k) !== false) return true;
-                }
-            }
-            // 3) Index-insensitive match: ignore numeric array indices in status paths
-            //    Example: status has 'temperature.0.targetTemperature' while key is 'temperature.targetTemperature'
-            foreach ($keys as $k) {
-                foreach ($flatStatus as $fk => $_) {
-                    $fkNorm = preg_replace('/\.\d+(?=\.|$)/', '', (string)$fk);
-                    if ($fkNorm === $k || strpos((string)$fkNorm, (string)$k) !== false) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-        return false;
+        return $this->getControlBuilder()->shouldCreate($cap, $flatProfile, $flatStatus);
     }
 
     private function enableAction(string $ident): void
     {
-        $this->dbg(sprintf('enableAction called for ident: %s, instanceId: %d - SKIPPING (will be handled by main module)', $ident, $this->instanceId));
-
-        // NOTE: Action enabling is now handled directly in the main module's SetupDeviceVariables method
-        // using $this->EnableAction() which is the correct Symcon approach
-        // This method is kept for compatibility but doesn't do the actual enabling anymore
+        // Action enabling is handled in the main module's SetupDeviceVariables via EnableAction().
+        $this->dbg(sprintf('enableAction: %s - SKIPPING (handled by main module)', $ident));
     }
 
     /** @param array<string, mixed> $cap */
     private function shouldEnableAction(array $cap): bool
     {
-        $enableWhen = strtolower((string)($cap['action']['enableWhen'] ?? ''));
-        if ($enableWhen === 'never') {
-            return false;
-        }
-        if ($enableWhen === 'always') {
-            return true;
-        }
-        if ($enableWhen === 'profilewriteableany') {
-            $writeKeys = $cap['action']['writeableKeys'] ?? [];
-            if (is_array($writeKeys) && $this->profileHasWriteAny($writeKeys)) {
-                return true;
-            }
-            return $this->capHasWriteDefinition($cap);
-        }
-        return false;
+        return $this->getControlBuilder()->shouldEnableAction($cap);
     }
 
     private function profileHasWriteAny(array $writeableKeys): bool
     {
         return $this->getControlBuilder()->profileHasWriteAny($writeableKeys);
-    }
-
-    private function modeHasW($mode): bool
-    {
-        return $this->getControlBuilder()->modeHasW($mode);
-    }
-
-    /** @param array<int, string> $keys */
-    private function flatProfileHasAny(array $keys): bool
-    {
-        return $this->getControlBuilder()->flatProfileHasAny($keys);
-    }
-
-    private function flatProfileIsWriteable(string $basePath): bool
-    {
-        return $this->getControlBuilder()->flatProfileIsWriteable($basePath);
     }
 
     /**
@@ -617,29 +447,9 @@ class CapabilityEngine
         return $this->getVarManager()->readValue($cap, $flat);
     }
 
-    private function getFromFlat(array $flat, string $path)
-    {
-        return $flat[$path] ?? null;
-    }
-
     private function setValueByType(int $vid, array $cap, $val): void
     {
         $this->getVarManager()->setValueByType($vid, $cap, $val);
-    }
-
-    private function convertValueForType(array $cap, $value)
-    {
-        return $this->getVarManager()->convertValueForType($cap, $value);
-    }
-
-    private function replaceTemplatePlaceholders(array $tpl, $value): array
-    {
-        return $this->getVarManager()->replaceTemplatePlaceholders($tpl, $value);
-    }
-
-    private function walkReplace(&$node, $value): void
-    {
-        $this->getVarManager()->walkReplace($node, $value);
     }
 
     private function getVarId(string $ident): int
@@ -660,28 +470,6 @@ class CapabilityEngine
             }
         }
         return $out;
-    }
-
-    /**
-     * Find min/max/step for a resource.property from the flattened profile.
-     * Looks for keys like:
-     *   property.<resource>.<index?>.<property>.value.w.{min|max|step}
-     * and returns the first values found.
-     * @return array{min?:float,max?:float,step?:float}|null
-     */
-    private function findRangeFromProfile(string $resource, string $property): ?array
-    {
-        return $this->getVarManager()->findRangeFromProfile($resource, $property);
-    }
-
-    private function findArrayIndex(array $flat, string $container, array $where): ?int
-    {
-        return $this->getVarManager()->findArrayIndex($flat, $container, $where);
-    }
-
-    private function collectArrayIndices(array $flat, string $container): array
-    {
-        return $this->getVarManager()->collectArrayIndices($flat, $container);
     }
 
     // === Auto-Discovery Helper Methods ===

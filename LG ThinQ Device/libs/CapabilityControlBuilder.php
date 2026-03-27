@@ -604,4 +604,89 @@ class CapabilityControlBuilder
         }
         return false;
     }
+
+    /** @param array<string, mixed> $cap */
+    public function capHasWriteDefinition(array $cap): bool
+    {
+        $w = $cap['write'] ?? null;
+        if (!is_array($w)) return false;
+        foreach (['enumMap','template','composite','arrayTemplate','attribute','multiAttribute','firstOf'] as $k) {
+            if (isset($w[$k]) && is_array($w[$k])) return true;
+        }
+        return false;
+    }
+
+    /** @param array<string, mixed> $cap */
+    public function shouldEnableAction(array $cap): bool
+    {
+        $enableWhen = strtolower((string)($cap['action']['enableWhen'] ?? ''));
+        if ($enableWhen === 'never') return false;
+        if ($enableWhen === 'always') return true;
+        if ($enableWhen === 'profilewriteableany') {
+            $writeKeys = $cap['action']['writeableKeys'] ?? [];
+            if (is_array($writeKeys) && $this->profileHasWriteAny($writeKeys)) {
+                return true;
+            }
+            return $this->capHasWriteDefinition($cap);
+        }
+        return false;
+    }
+
+    /**
+     * @param array<string, mixed> $cap
+     * @param array<string, mixed> $flatProfile
+     * @param array<string, mixed> $flatStatus
+     */
+    public function shouldCreate(array $cap, array $flatProfile, array $flatStatus): bool
+    {
+        $create = $cap['create'] ?? [];
+        $when = strtolower((string)($create['when'] ?? 'always'));
+        $keys = $create['keys'] ?? [];
+        if ($when === 'always') return true;
+        if (!is_array($keys) || empty($keys)) return false;
+        if ($when === 'profilehasall') {
+            foreach ($keys as $k) {
+                $k = (string)$k;
+                if ($k === '') return false;
+                $found = array_key_exists($k, $flatProfile);
+                if (!$found) {
+                    foreach ($flatProfile as $fk => $_) {
+                        if (strpos($fk, $k) !== false) { $found = true; break; }
+                    }
+                }
+                if (!$found) return false;
+            }
+            return true;
+        }
+        if ($when === 'profilehasany') {
+            foreach ($keys as $k) { if (array_key_exists($k, $flatProfile)) return true; }
+            foreach ($keys as $k) {
+                foreach ($flatProfile as $fk => $_) {
+                    if (strpos($fk, $k) !== false) return true;
+                }
+            }
+            foreach ($keys as $b) {
+                if ($this->profileHasWriteAny([$b . '.mode'])) return true;
+            }
+            return false;
+        }
+        if ($when === 'statushasany') {
+            foreach ($keys as $k) { if (array_key_exists($k, $flatStatus)) return true; }
+            foreach ($keys as $k) {
+                foreach ($flatStatus as $fk => $_) {
+                    if (strpos($fk, $k) !== false) return true;
+                }
+            }
+            foreach ($keys as $k) {
+                foreach ($flatStatus as $fk => $_) {
+                    $fkNorm = preg_replace('/\.\d+(?=\.|$)/', '', (string)$fk);
+                    if ($fkNorm === $k || strpos((string)$fkNorm, (string)$k) !== false) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        return false;
+    }
 }
