@@ -66,7 +66,7 @@ $acBody = World::$cloud->calls('POST devices/{id}/control')[0]['body'] ?? null;
 check(sameJson($acBody, ['temperature' => ['unit' => 'C', 'targetTemperature' => 24]]) && World::$cloud->calls('GET devices/{id}/profile') === [],
     'eine gespeicherte Kopie ohne Hülle wird beim Lesen repariert, 24 °C geht ohne neuen Profilabruf mit unit raus: ' . json_encode($acBody));
 
-section('F7 Grenzen je Fach');
+section('F7 Grenzen je Fach (behoben)');
 World::start();
 [$f] = World::example('refrigerator');
 World::quiet();
@@ -78,9 +78,13 @@ World::start();
 World::quiet();
 @RequestAction(World::varId($wc, 'WINE_LOWER_TEMPERATURE_TARGET_TEMPERATURE'), 7);
 $wb = World::$cloud->calls('POST devices/{id}/control')[0]['body'] ?? null;
-befund('F7', $ok && ($fb['temperatureInUnits']['targetTemperatureC'] ?? null) === -18 && ($wb['temperatureInUnits']['targetTemperatureC'] ?? null) === 7,
-    'Gefrierfach -18 °C und Weinfach unten 7 °C kommen unverändert an',
-    sprintf('Gefrierfach gesendet %s%s; Weinfach unten gesendet %s (Grenzen des ersten Fachs)', json_encode($fb), $rej !== '' ? ', LG lehnt ab: ' . $rej : '', json_encode($wb)));
+check($ok && ($fb['temperatureInUnits']['targetTemperatureC'] ?? null) === -18, 'Gefrierfach -18 °C geht unverändert raus und LG nimmt es an: ' . json_encode($fb));
+check(($wb['temperatureInUnits']['targetTemperatureC'] ?? null) === 7, 'Weinfach unten 7 °C geht unverändert raus: ' . json_encode($wb));
+World::start();
+[$f] = World::example('refrigerator');
+World::quiet();
+@RequestAction(World::varId($f, 'FREEZER_TEMPERATURE_TARGET_TEMPERATURE'), -30);
+check((World::$cloud->calls('POST devices/{id}/control')[0]['body']['temperatureInUnits']['targetTemperatureC'] ?? null) === -21, 'außerhalb des Bereichs: auf die Grenze des Gefrierfachs (-21), nicht des Kühlfachs');
 
 section('F8 Mehrzonen- und Mehrkanalgeräte');
 $missing = [];

@@ -28,6 +28,9 @@ class CapabilityEngine
     /** @var array<string, mixed> */
     private array $caps = [];
 
+    /** @var array<string, mixed> the profile as buildPlan got it (stored form, see ThinQShape) */
+    private array $profile = [];
+
     /** @var array<string, mixed> */
     private array $flatProfile = [];
     /** @var array<string, mixed> */
@@ -78,7 +81,8 @@ class CapabilityEngine
             $this->flatStatus,
             $this->instanceId,
             function(string $msg) { $this->dbg($msg); },
-            $this->getVarManager()
+            $this->getVarManager(),
+            $this->profile
         );
     }
 
@@ -275,6 +279,7 @@ class CapabilityEngine
     {
         // Auto-discover from the profile, apply companion patterns, add ERROR_LAST/PUSH_LAST
         $this->caps = [];
+        $this->profile = $profile;
         $this->flatProfile = $this->flatten($profile);
         $this->flatStatus = is_array($status) ? $this->flatten($status) : [];
         $builder = new CapabilityPlanBuilder(

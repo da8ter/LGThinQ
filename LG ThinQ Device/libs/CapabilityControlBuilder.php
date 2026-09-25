@@ -20,7 +20,8 @@ class CapabilityControlBuilder
         private array $flatStatus,
         private int $instanceId,
         ?callable $debugCallback,
-        private CapabilityVarManager $varManager
+        private CapabilityVarManager $varManager,
+        private array $profile = []
     ) {
         $this->debugCallback = $debugCallback;
     }
@@ -108,7 +109,7 @@ class CapabilityControlBuilder
                     return $payload;
                 }
                 if (!empty($cfg['clampFromProfile'])) {
-                    $rng = $this->varManager->findRangeFromProfile($resource, $property);
+                    $rng = $this->rangeFor($resource, $property, $extras, $cfg['locationWrap'] ?? null);
                     if (is_array($rng)) {
                         $v = $value;
                         if (isset($rng['min']) && is_numeric($rng['min'])) { $v = max((float)$rng['min'], (float)$v); }
@@ -132,6 +133,19 @@ class CapabilityControlBuilder
             }
         }
         return null;
+    }
+
+    /**
+     * min/max/step of the addressed element (its selector in extras, e.g. locationName FREEZER) or
+     * zone (locationWrap); the old scan over the flat profile only when the profile has no such element.
+     *
+     * @param array<string, mixed> $extras
+     */
+    private function rangeFor(string $resource, string $property, array $extras, mixed $zone): ?array
+    {
+        $selector = array_intersect_key($extras, array_flip(ThinQShape::SELECTORS));
+        return ThinQShape::range($this->profile, $resource, $property, $selector, is_string($zone) && $zone !== '' ? $zone : null)
+            ?? $this->varManager->findRangeFromProfile($resource, $property);
     }
 
     /** @param array<string, mixed> $arr */
