@@ -51,7 +51,7 @@ class LGThinQBridge extends IPSModule
         $this->RegisterPropertyInteger('PushCooldownMin', 30);
 
         $this->RegisterAttributeString('ClientID', '');
-        $this->RegisterAttributeString('AccessTokenBackup', '');
+        $this->RegisterAttributeString('AccessTokenBackup', ''); // no longer written, only cleared (held a PAT copy)
         $this->RegisterAttributeString('Devices', '[]');
         $this->RegisterAttributeString('EventSubscriptions', '{}');
         // Push subscribe throttling metadata
@@ -70,8 +70,10 @@ class LGThinQBridge extends IPSModule
             }
             return;
         }
-        // Ensure PAT survives module reloads (restore from backup if property got cleared)
-        $this->ensureAccessTokenPersistence();
+        // Earlier versions kept a copy of the PAT in this attribute; the property is the only place for it.
+        if ($this->ReadAttributeString('AccessTokenBackup') !== '') {
+            $this->WriteAttributeString('AccessTokenBackup', '');
+        }
         // Initialize default ClientID attribute on first run (without modifying properties)
         $this->ensureDefaultClientID();
         $this->bootServices();
@@ -132,9 +134,6 @@ class LGThinQBridge extends IPSModule
                 if (!is_array($el) || !isset($el['name'])) { continue; }
                 if ($el['name'] === 'ClientID') {
                     $el['value'] = $effectiveId;
-                } elseif ($el['name'] === 'AccessToken') {
-                    // Keep PAT visible after module reload
-                    $el['value'] = (string)$this->ReadPropertyString('AccessToken');
                 } elseif ($el['name'] === 'CountryCode') {
                     $el['value'] = (string)$this->ReadPropertyString('CountryCode');
                 }
@@ -160,24 +159,6 @@ class LGThinQBridge extends IPSModule
                 $rand5 = str_pad((string)mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
             }
             $this->WriteAttributeString('ClientID', 'Symcon' . $rand5);
-        }
-    }
-
-    /**
-     * Restore AccessToken (PAT) from attribute backup if the property is empty (e.g., after module reload),
-     * and keep the attribute in sync when the property is set.
-     */
-    private function ensureAccessTokenPersistence(): void
-    {
-        try {
-            $prop = (string)@($this->ReadPropertyString('AccessToken'));
-            $attr = (string)@($this->ReadAttributeString('AccessTokenBackup'));
-            // Only keep backup attribute in sync; do not modify properties here
-            if ($prop !== '' && $attr !== $prop) {
-                $this->WriteAttributeString('AccessTokenBackup', $prop);
-            }
-        } catch (\Throwable $e) {
-            // Do not log secrets; just ignore
         }
     }
 

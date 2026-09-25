@@ -17,7 +17,10 @@ World::start();
 check(Kernel::$instances[World::$bridge]['status'] === IS_ACTIVE, 'Bridge mit PAT und Land ist aktiv (102)');
 check(World::timer(World::$bridge, 'EventRenewTimer')['interval'] === (24 * 3600 - 5 * 60) * 1000, 'Erneuerungs-Timer: TTL 24 h minus 5 min Vorlauf');
 check(World::attr(World::$bridge, 'ClientID') === World::$clientId, 'ClientID folgt der ClientID des MQTT-Clients');
-check(World::attr(World::$bridge, 'AccessTokenBackup') === World::$cloud->pat, 'PAT-Sicherung im Attribut (Wiederherstellung nach Reload)');
+check(World::attr(World::$bridge, 'AccessTokenBackup') === '', 'keine Kopie des PAT im Attribut AccessTokenBackup');
+Kernel::$instances[World::$bridge]['attributes']['AccessTokenBackup'] = World::$cloud->pat; // left behind by an earlier version
+IPS_ApplyChanges(World::$bridge);
+check(World::attr(World::$bridge, 'AccessTokenBackup') === '', 'eine alte PAT-Kopie im Attribut wird beim Übernehmen gelöscht');
 IPS_SetProperty(World::$bridge, 'AccessToken', '');
 IPS_ApplyChanges(World::$bridge);
 check(Kernel::$instances[World::$bridge]['status'] === IS_INACTIVE, 'ohne PAT: Status 104');
@@ -31,6 +34,8 @@ IPS_ApplyChanges(World::$bridge);
 $form = json_decode($bridge()->GetConfigurationForm(), true);
 $fields = array_column(array_filter($form['elements'], 'is_array'), 'value', 'name');
 check(($fields['ClientID'] ?? '') === World::$clientId && ($fields['CountryCode'] ?? '') === 'DE', 'Formular zeigt ClientID und Land');
+$pat = array_values(array_filter($form['elements'], static fn($e): bool => is_array($e) && ($e['name'] ?? '') === 'AccessToken'))[0] ?? [];
+check(($pat['type'] ?? '') === 'PasswordTextBox' && !array_key_exists('value', $pat), 'PAT-Feld ist ein Passwortfeld und das Formular setzt den PAT nicht ein');
 
 section('HTTP-Client');
 World::quiet();
