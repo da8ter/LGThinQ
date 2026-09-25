@@ -600,14 +600,7 @@ class LGThinQBridge extends IPSModule
         $this->eventManager = new ThinQEventManager($this, $this->config, $this->httpClient, $this->subscriptionRepository);
         $this->eventPipeline = new ThinQEventPipeline();
         $this->eventPipeline->onEvent(function (string $deviceId, array $payload): void {
-            $this->SendDataToChildren(json_encode([
-                'DataID' => self::CHILD_INTERFACE_GUID,
-                'Buffer' => json_encode([
-                    'Action' => 'Event',
-                    'DeviceID' => $deviceId,
-                    'Event' => $payload
-                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
-            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $this->sendToChildren('Event', $deviceId, ['Event' => $payload]);
         });
         $this->eventPipeline->onMeta(function (string $type, string $deviceId, array $payload): void {
             $this->handleMetaEvent($type, $deviceId, $payload);
@@ -781,36 +774,16 @@ class LGThinQBridge extends IPSModule
                 $this->SendDebug('Push', 'Meta event ' . $type . ' for ' . $deviceId, 0);
                 break;
             case 'DEVICE_PUSH':
-                // DEVICE_PUSH can carry status data (e.g. hot water heat pumps send temperature updates via DEVICE_PUSH)
-                $report = null;
-                if (isset($payload['report']) && is_array($payload['report'])) {
-                    $report = $payload['report'];
-                } elseif (isset($payload['state']) && is_array($payload['state'])) {
-                    $report = $payload['state'];
-                } elseif (isset($payload['data']) && is_array($payload['data'])) {
-                    $data = $payload['data'];
-                    if (isset($data['report']) && is_array($data['report'])) {
-                        $report = $data['report'];
-                    } elseif (isset($data['state']) && is_array($data['state'])) {
-                        $report = $data['state'];
-                    } else {
-                        // data itself contains status fields directly (e.g. Water Heater temperature push)
-                        $report = $data;
-                    }
+                // The push itself (e.g. WASHING_IS_COMPLETE) goes to the device as an action of its own ...
+                $code = (string)($payload['pushCode'] ?? '');
+                if ($code !== '' && $deviceId !== '') {
+                    $this->sendToChildren('Push', $deviceId, ['PushCode' => $code, 'Push' => $payload]);
                 }
-                // Fallback: status fields sent at top-level of DEVICE_PUSH payload (no report/state/data wrapper)
-                if ($report === null) {
-                    $metaKeys = ['pushType', 'type', 'deviceId', 'device_id', 'pushCode', 'pushStep', 'timestamp', 'messageId'];
-                    $statusData = array_diff_key($payload, array_flip($metaKeys));
-                    if (!empty($statusData)) {
-                        $report = $statusData;
-                    }
-                }
+                // ... and status data only when the push carries it nested (water heaters send temperatures this way).
+                $report = self::nestedReport($payload);
                 if ($report !== null && $deviceId !== '') {
                     $this->SendDebug('Push', 'DEVICE_PUSH status forward for ' . $deviceId, 0);
                     $this->eventPipeline->dispatchEvent($deviceId, $report);
-                } else {
-                    $this->SendDebug('Push', 'DEVICE_PUSH (no report/state) for ' . $deviceId, 0);
                 }
                 break;
             default:
@@ -823,6 +796,39 @@ class LGThinQBridge extends IPSModule
     protected function SendDebug($Message, $Data, $Format)
     {
         return parent::SendDebug($Message, ThinQRedactor::text((string)$Data, [trim((string)$this->ReadPropertyString('AccessToken')), self::API_KEY]), $Format);
+    }
+
+    /** @param array<string, mixed> $fields */
+    private function sendToChildren(string $action, string $deviceId, array $fields): void
+    {
+        $this->SendDataToChildren((string)json_encode([
+            'DataID' => self::CHILD_INTERFACE_GUID,
+            'Buffer' => json_encode(['Action' => $action, 'DeviceID' => $deviceId] + $fields, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+
+    /**
+     * Status data nested in a push: report, state, data.report, data.state or data itself.
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>|null
+     */
+    private static function nestedReport(array $payload): ?array
+    {
+        foreach (['report', 'state'] as $key) {
+            if (isset($payload[$key]) && is_array($payload[$key])) {
+                return $payload[$key];
+            }
+        }
+        $data = $payload['data'] ?? null;
+        if (!is_array($data)) {
+            return null;
+        }
+        foreach (['report', 'state'] as $key) {
+            if (isset($data[$key]) && is_array($data[$key])) {
+                return $data[$key];
+            }
+        }
+        return $data;
     }
 
     public function DebugLog(string $tag, string $message): void

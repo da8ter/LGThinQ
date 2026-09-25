@@ -378,7 +378,7 @@ class LGThinQDevice extends IPSModule
         $action = (string)($buf['Action'] ?? '');
         $this->SendDebug('ReceiveData', 'Action: ' . $action, 0);
         
-        if ($action !== 'Event') {
+        if ($action !== 'Event' && $action !== 'Push') {
             return '';
         }
 
@@ -388,6 +388,16 @@ class LGThinQDevice extends IPSModule
         
         if ($deviceId === '' || strcasecmp($deviceId, $incomingDeviceId) !== 0) {
             $this->SendDebug('ReceiveData', 'DeviceID mismatch - ignoring', 0);
+            return '';
+        }
+
+        if ($action === 'Push') {
+            // A push notification (e.g. WASHING_IS_COMPLETE) is not device state: PUSH_LAST only.
+            $code = trim((string)($buf['PushCode'] ?? ''));
+            if ($code !== '' && $this->getVarId('PUSH_LAST') > 0) {
+                $this->setValueByVarType('PUSH_LAST', $code);
+                @SetValueInteger($this->getVarId('LASTUPDATE'), ThinQClock::now());
+            }
             return '';
         }
 

@@ -92,16 +92,18 @@ for ($t = 0; $t < 30 * 3600; $t += 60) {
 }
 check($gap === 0, 'auch nach erneutem Stellen des Timers keine Lücke');
 
-section('F6 DEVICE_PUSH');
+section('F6 DEVICE_PUSH (behoben)');
 World::start();
 [$w, $wid] = World::example('washer');
+$before = (string)World::attr($w, 'LastStatus');
 World::quiet();
 World::$cloud->devicePush($wid, 'WASHING_IS_COMPLETE');
 World::flushMqtt();
-$push = World::value($w, 'PUSH_LAST');
-$polluted = array_values(array_intersect(array_keys(json_decode((string)World::attr($w, 'LastStatus'), true) ?: []), ['serviceId', 'deviceType', 'userList', 'pushType', 'pushCode']));
-befund('F6', $push === 'WASHING_IS_COMPLETE' && $polluted === [], 'pushCode landet in PUSH_LAST, nicht im Gerätestatus',
-    sprintf('PUSH_LAST "%s"; LastStatus bekam %s', $push, $polluted === [] ? 'nichts' : implode(', ', $polluted)));
+check(World::value($w, 'PUSH_LAST') === 'WASHING_IS_COMPLETE', 'DEVICE_PUSH: pushCode landet in PUSH_LAST');
+check((string)World::attr($w, 'LastStatus') === $before && World::$cloud->calls('GET devices/{id}/profile') === [], 'der Gerätestatus bleibt unberührt, kein Profilabruf wegen fremder Hüllenfelder');
+World::mqtt(World::topic(), ['push' => ['pushType' => 'DEVICE_PUSH', 'deviceId' => $wid, 'pushCode' => 'WASHING_IS_COMPLETE',
+    'data' => ['runState' => ['currentState' => 'END']]]]);
+check(World::value($w, 'RUN_STATE_CURRENT_STATE') === 'END', 'Statusdaten, die ein Push verschachtelt mitbringt (data), kommen weiterhin an');
 
 section('F14 MQTT-Einrichtung');
 World::start();
