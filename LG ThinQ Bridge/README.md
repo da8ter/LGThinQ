@@ -9,7 +9,7 @@ Die `LG ThinQ Bridge` stellt die Verbindung zwischen IP‑Symcon und der LG Thin
 - **Ereignisse**: MQTT/Event‑Route, Client‑Zertifikatserzeugung und automatische Subscriptions
 
 ## Voraussetzungen
-- IP‑Symcon ab Version 7.1
+- IP‑Symcon ab Version 8.1
 - LG‑Konto und ein gültiger Personal Access Token (PAT)
   - PAT erstellen: https://connect-pat.lgthinq.com
 
@@ -19,8 +19,8 @@ Die `LG ThinQ Bridge` stellt die Verbindung zwischen IP‑Symcon und der LG Thin
 ## Einrichtung (Konfiguration)
 Name | Beschreibung
 ---- | -----------
-Personal Access Token (PAT) | Pflichtfeld. Wird in der Bridge hinterlegt.
-Country Code | Zweistelliger Ländercode (z. B. DE, US). Bestimmt die Region der API.
+Personal Access Token (PAT) | Pflichtfeld, Passwortfeld. Wird in der Bridge hinterlegt.
+Country Code | Zweistelliger Ländercode (z. B. DE, US). Bestimmt die Region der API nach LGs Ländertabelle; ein unbekannter Code ergibt Status 104.
 Client ID | Client‑Kennung; automatisch erzeugt.
 
 ## Aktionen (Konfig‑Seite)
@@ -57,6 +57,8 @@ Ruft das Geräteprofil ab.
 bool LGTQ_ControlDevice(int $InstanzID, string $DeviceID, string $JSONPayload)
 ```
 Sendet einen Steuerbefehl (Control) an das angegebene Gerät.
+
+Bei einem Fehler der LG-API werfen diese vier Funktionen eine Ausnahme mit HTTP-Status und LG-Fehlercode, statt ein leeres Ergebnis zu liefern.
 
 
 ## Schnellstart

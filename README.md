@@ -12,8 +12,8 @@ Dieses Repository integriert LG ThinQ Geräte in IP-Symcon. Es stellt eine siche
 
 ## Voraussetzungen
 
-- IP-Symcon **7.1** oder höher
-- PHP **8.0** oder höher (mit OpenSSL-Erweiterung für MQTT-Zertifikate)
+- IP-Symcon **8.1** oder höher
+- PHP mit OpenSSL-Erweiterung (für die MQTT-Zertifikate)
 - LG ThinQ Personal Access Token (PAT) – erstellen unter https://connect-pat.lgthinq.com
 
 ## Modul-Übersicht
@@ -47,15 +47,7 @@ Dieses Repository integriert LG ThinQ Geräte in IP-Symcon. Es stellt eine siche
 
 ## Unterstützte Geräte
 
-Prinzipiell werden alle LG ThinQ-fähigen Geräte unterstützt. Auto-Discovery erkennt automatisch neue Properties. Geräte mit manuellen Capability-Definitionen:
-
-| Gerätetyp | Datei |
-|---|---|
-| Waschmaschine | `washer.json` |
-| Klimaanlage | `air_conditioner.json` |
-| Kühlschrank | `refrigerator.json` |
-
-Weitere Geräte funktionieren über Auto-Discovery sofort ohne Konfiguration.
+Prinzipiell werden alle LG ThinQ-fähigen Geräte unterstützt: Variablen, Wertebereiche und Befehle entstehen aus dem Geräteprofil, das LG liefert. Geräte mit mehreren Zonen (Kochfeld, Pflanzenanbaugerät), Kanälen (Lichtschalter, Steckdosenleiste), Fächern (Kühlschrank) oder Teilgeräten (WashTower) bekommen je Zone, Kanal, Fach bzw. Teilgerät eigene Variablen.
 
 ## PHP-Befehle
 
@@ -67,13 +59,24 @@ Weitere Geräte funktionieren über Auto-Discovery sofort ohne Konfiguration.
 | `LGTQ_SubscribeAll($id)` | Alle Geräte abonnieren |
 | `LGTQ_UnsubscribeAll($id)` | Alle Abonnements aufheben |
 | `LGTQ_RenewAll($id)` | Alle Event-Subscriptions erneuern |
+| `LGTQ_SubscribeDevice($id, $deviceId, $push, $event)` | Ein Gerät abonnieren |
+| `LGTQ_UnsubscribeDevice($id, $deviceId, $push, $event)` | Abonnement eines Geräts aufheben |
+| `LGTQ_GetDevices($id)` | Geräteliste als JSON |
+| `LGTQ_GetDeviceStatus($id, $deviceId)` | Status eines Geräts als JSON |
+| `LGTQ_GetDeviceProfile($id, $deviceId)` | Profil eines Geräts als JSON |
+| `LGTQ_ControlDevice($id, $deviceId, $json)` | Steuerbefehl an ein Gerät |
+
+`LGTQ_GetDevices`, `LGTQ_GetDeviceStatus`, `LGTQ_GetDeviceProfile` und `LGTQ_ControlDevice` werfen bei einem Fehler der LG-API eine Ausnahme (HTTP-Status und LG-Fehlercode in der Meldung), statt ein leeres Ergebnis zu liefern.
 
 ### Device
 | Befehl | Beschreibung |
 |---|---|
 | `LGTQD_UpdateStatus($id)` | Status des Geräts aktualisieren |
-| `LGTQD_RequestAction($id, $ident, $value)` | Aktion auf Variable ausführen |
+| `LGTQD_ControlDevice($id, $json)` | Steuerbefehl im LG-Format senden |
 | `LGTQD_CleanupVariables($id, $delete)` | Verwaiste Variablen aufräumen |
+| `LGTQD_ReapplyPresentations($id)` | Darstellungen der Variablen neu setzen |
+
+Bedienbare Variablen schaltet man wie üblich mit `RequestAction($variablenId, $wert)`.
 
 ## Architektur
 
@@ -85,9 +88,9 @@ Weitere Geräte funktionieren über Auto-Discovery sofort ohne Konfiguration.
 ┌──────────▼───────────────┐
 │     LG ThinQ Bridge      │  (Typ 2: Splitter)
 │  ┌─────────────────────┐ │
-│  │ ThinQHttpClient      │ │  HTTP API
+│  │ ThinQApi             │ │  HTTP API
 │  │ ThinQMqttRouter      │ │  MQTT Events
-│  │ ThinQEventManager    │ │  Event Subscriptions
+│  │ ThinQSubscriptionService│ Event-/Push-Abos
 │  │ ThinQCertificateManager│  Zertifikate
 │  └─────────────────────┘ │
 └──────────┬───────────────┘
@@ -95,9 +98,24 @@ Weitere Geräte funktionieren über Auto-Discovery sofort ohne Konfiguration.
 ┌──────────▼───────────────┐
 │     LG ThinQ Device      │  (Typ 3: Device)
 │  ┌─────────────────────┐ │
-│  │ CapabilityEngine     │ │  Auto-Discovery + Capabilities
-│  │ ThinQProfileParser   │ │  Profil-Analyse
-│  │ ThinQEnumTranslator  │ │  Enum-Übersetzungen
+│  │ ThinQShape           │ │  Datenformen der LG-Profile
+│  │ CapabilityEngine     │ │  Variablen + Befehle
+│  │ ThinQDeviceSetup     │ │  Einrichtung
+│  │ ThinQDeviceStatus    │ │  Status, Events, Pushes
 │  └─────────────────────┘ │
 └──────────────────────────┘
 ```
+
+## Update auf 0.2.0
+
+- **Symcon 8.1 oder höher**: Die Module laufen als Module Strict.
+- **Entfallene Funktionen**: Die internen Hilfsfunktionen `LGTQ_public…` und `LGTQD_public…`, `LGTQ_findModuleGUIDByName` und `LGTQD_findModuleGUIDByName`, `LGTQ_DebugLog`, die Cache-Funktionen (`LGTQ_GetDevicesCache`, `LGTQ_SaveDevicesCache`, `LGTQ_GetEventSubscriptionsCache`, `LGTQ_SaveEventSubscriptionsCache`) sowie `LGTQD_FinalizeSetup` und `LGTQD_EnsureConnected` gibt es nicht mehr. Skripte, die sie aufrufen, müssen angepasst werden.
+- **Fehler als Ausnahme**: siehe PHP-Befehle der Bridge.
+- **Region**: Der Server folgt jetzt LGs Ländertabelle (wie in LGs SDK), ein unbekannter Ländercode setzt die Bridge auf Status 104. In 83 Ländern ändert sich dadurch der Server; dort „MQTT Verbindung einrichten“ erneut ausführen. Deutschland, Österreich und die Schweiz sind nicht betroffen.
+- **PAT**: Das Feld ist ein Passwortfeld; die interne Kopie des Tokens wird gelöscht. Debug-Ausgaben schwärzen Token und Schlüssel.
+- **MQTT**: Der Topicfilter `app/clients/{ClientID}/push` wird zur Laufzeit mit der ClientID gefüllt; Event-Abos werden vor Ablauf erneuert, Push-Abos höchstens täglich.
+- **Neue Variablen**: je Zone, Kanal, Fach und WashTower-Teilgerät, Timer, sobald das Gerät sie meldet, und der Energieverbrauch (`ENERGY_*`).
+- **Umbenannte Idents**: Bei Kochfeld und Pflanzenanbaugerät bekommt die erste Zone das Zonenpräfix (z. B. `POWER_POWER_LEVEL` → `LEFT_FRONT_POWER_POWER_LEVEL`). ID und Historie bleiben; Skripte mit `IPS_GetObjectIDByIdent` auf den alten Ident müssen angepasst werden.
+- **Namen**: Neue Variablen heißen in englischem Symcon englisch, in deutschem wie bisher; bestehende Variablen behalten ihren Namen.
+- **Temperaturen mit 0,5-Schritt**: Neue Variablen sind Float. Bestehende bleiben Integer, zeigen 23,5 °C als 24 °C und senden ganze Grad. Wer halbe Grad möchte, löscht die Variable; das Modul legt sie als Float neu an (die Historie geht dabei verloren).
+- **LASTUPDATE** nutzt die Darstellung Datum/Uhrzeit.

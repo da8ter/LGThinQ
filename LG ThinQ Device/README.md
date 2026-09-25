@@ -9,7 +9,9 @@ Das Modul `LG ThinQ Device` repräsentiert ein einzelnes LG ThinQ Gerät in IP�
 - Setzt Aktionen (EnableAction) für bedienbare Variablen, damit Befehle an die Bridge/Cloud gesendet werden können.
 
 ## Funktionsumfang
-- Automatisches Anlegen/Anpassen von Variablen je nach Gerätemodell und -profil.
+- Automatisches Anlegen/Anpassen von Variablen je nach Gerätemodell und -profil, bei Geräten mit Zonen, Kanälen, Fächern oder Teilgeräten (WashTower) je Zone, Kanal, Fach bzw. Teilgerät.
+- Variablennamen in der Sprache von Symcon (Deutsch oder Englisch).
+- Ist die Bridge beim Anlegen noch nicht bereit, wiederholt das Gerät die Einrichtung selbständig, bis Profil und Gerätetyp vorliegen.
 - Interne Abbildung von Lese-/Schreibpfaden aus dem Gerätestatus/‑profil (z. B. zusammengesetzte Werte wie Minuten ↔ Stunden/Minuten).
 - Anwendung von Präsentationen (z. B. Slider mit MIN/MAX/STEP, Umschalter, Tastenleisten).
 - Steuerung über `RequestAction` mit Payload‑Erzeugung passend zur jeweiligen Fähigkeit (Capability).
@@ -23,6 +25,7 @@ Das Modul `LG ThinQ Device` repräsentiert ein einzelnes LG ThinQ Gerät in IP�
 ## Bedienung
 - Die erzeugten Variablen bilden Gerätezustände und Bedienelemente ab. Änderungen an bedienbaren Variablen senden automatisch Befehle an die Bridge/Cloud.
 - Über die Aktion „Update status“ kann der aktuelle Status manuell abgefragt werden.
+- `LGTQD_ReapplyPresentations($id)` setzt die Darstellungen aller Variablen neu.
 
 ## Energieverbrauch
 - Das Modul erkennt automatisch, ob ein Gerät die LG Energy API unterstützt.
