@@ -108,8 +108,28 @@ befund('N1', $wrong === [] && $unknown !== 'KIC', 'Region je Land wie LGs SDK (p
     sprintf('%d von %d Ländern falsch, u. a. %s; unbekanntes Land wird still %s', count($wrong), $total, implode(', ', array_slice($wrong, 0, 5)), $unknown));
 
 section('N4 Exportierte Funktionen');
-$proxies = array_values(array_filter(Kernel::exportedFunctions(), static fn(string $f): bool => preg_match('/^lgtqd?_public/i', $f) === 1));
-befund('N4', $proxies === [], 'Proxy-Methoden erscheinen nicht als LGTQ_-/LGTQD_-Funktionen',
-    sprintf('%d Funktionen, u. a. %s', count($proxies), implode(', ', array_slice($proxies, 0, 4))));
+// The module API: form buttons, script functions and the timer targets (RenewEvents, InitialSetup, UpdateEnergy).
+$api = ['lgtq_controldevice', 'lgtq_getdeviceprofile', 'lgtq_getdevicestatus', 'lgtq_getdevices', 'lgtq_renewall', 'lgtq_renewevents',
+    'lgtq_subscribeall', 'lgtq_subscribedevice', 'lgtq_syncdevices', 'lgtq_testconnection', 'lgtq_uigeneratemqttclientcerts',
+    'lgtq_uisetupmqttconnection', 'lgtq_unsubscribeall', 'lgtq_unsubscribedevice', 'lgtq_update',
+    'lgtqd_autosubscribe', 'lgtqd_cleanupvariables', 'lgtqd_controldevice', 'lgtqd_initialsetup', 'lgtqd_reapplypresentations',
+    'lgtqd_uicleanuppreview', 'lgtqd_uiexportsupportbundle', 'lgtqd_updateenergy', 'lgtqd_updatestatus'];
+$exported = array_map('strtolower', Kernel::exportedFunctions());
+check(array_diff($api, $exported) === [], 'Modul-API bleibt als LGTQ_-/LGTQD_-Funktionen erhalten');
+$internal = array_values(array_diff($exported, $api));
+befund('N4', $internal === [], 'Nur die Modul-API erscheint als LGTQ_-/LGTQD_-Funktion',
+    sprintf('%d weitere Funktionen, u. a. %s', count($internal), implode(', ', array_slice($internal, 0, 4))));
+World::start();
+World::example('washer');
+World::liveAc();
+$dangling = [];
+foreach (Kernel::$instances as $id => $inst) {
+    foreach ($inst['timers'] as $name => $t) {
+        if (preg_match('/^\s*(\w+)\s*\(/', (string)$t['script'], $m) !== 1 || !function_exists($m[1])) {
+            $dangling[] = "#$id $name: " . $t['script'];
+        }
+    }
+}
+check($dangling === [], 'jedes Timer-Skript ruft eine exportierte Funktion' . ($dangling === [] ? '' : ': ' . implode(', ', $dangling)));
 
 done();
