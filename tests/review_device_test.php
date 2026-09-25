@@ -139,6 +139,10 @@ World::start();
 [$wt, $wtid] = World::example('washtower');
 $push($wtid, ['dryer' => ['runState' => ['currentState' => 'RUNNING']]]);
 check(World::value($wt, 'DRYER_RUN_STATE_CURRENT_STATE') === 'RUNNING' && World::value($wt, 'WASHER_RUN_STATE_CURRENT_STATE') === 'POWER_OFF', 'WashTower: Trockner und Waschmaschine getrennt');
+World::quiet();
+@RequestAction(World::varId($wt, 'WASHER_TIMER_RELATIVE_HOUR_TO_START'), 3);
+$sent = World::$cloud->calls('POST devices/{id}/control')[0] ?? [];
+check(($sent['status'] ?? 0) === 200 && isset($sent['body']['washer']['timer']) && !isset($sent['body']['timer']), 'WashTower: Zahlenbefehl im Teilgerät {"washer": {"timer": …}}: ' . json_encode($sent['body'] ?? null));
 
 section('F9 Energie (behoben)');
 World::start();
