@@ -10,6 +10,8 @@ require_once __DIR__ . '/libs/ThinQSupportBundle.php';
 require_once __DIR__ . '/libs/ThinQShape.php';
 require_once __DIR__ . '/libs/ThinQDeviceProfileManager.php';
 require_once __DIR__ . '/libs/ThinQDeviceUtil.php';
+require_once __DIR__ . '/libs/ThinQDeviceSetup.php';
+require_once __DIR__ . '/libs/ThinQCleanup.php';
 
 class LGThinQDevice extends IPSModule
 {
@@ -37,88 +39,22 @@ class LGThinQDevice extends IPSModule
         $this->ConnectParent(self::GATEWAY_MODULE_GUID);
     }
 
-    /**
-     * Preview variables that would be deleted by CleanupVariables(true)
-     * @return string Multiline list and summary
-     */
+    /** Variables that CleanupVariables(true) would delete, as a list with a sum. */
     public function UICleanupPreview(): string
     {
         try {
-            $profile = $this->readStoredProfile();
-            $status = $this->readLastStatus();
-            $type = trim((string)$this->ReadAttributeString('DeviceType'));
-            if ($type === '') {
-                return $this->t('No DeviceType set – aborting.');
-            }
-            $engine = $this->getCapabilityEngine();
-            $plan = $engine->buildPlan($type, $profile, $status);
-            $valid = array_fill_keys(array_keys($plan), true);
-            $valid['INFO'] = true; $valid['STATUS'] = true; $valid['LASTUPDATE'] = true;
-            $valid['ENERGY_YESTERDAY'] = true; $valid['ENERGY_THIS_MONTH'] = true; $valid['ENERGY_LAST_MONTH'] = true;
-
-            $children = @IPS_GetChildrenIDs($this->InstanceID);
-            if (!is_array($children)) {
-                return $this->t('No children.');
-            }
-            $unknown = [];
-            foreach ($children as $cid) {
-                $var = @IPS_GetVariable($cid);
-                if (!is_array($var)) { continue; }
-                $obj = @IPS_GetObject($cid);
-                if (!is_array($obj)) { continue; }
-                $ident = (string)($obj['ObjectIdent'] ?? '');
-                if ($ident === '' || isset($valid[$ident])) {
-                    continue; // not targeted for deletion by CleanupVariables(true)
-                }
-                $unknown[] = sprintf('%s (ID %d, Name "%s")',
-                    $ident !== '' ? $ident : '(no ident)',
-                    (int)$cid,
-                    (string)($obj['ObjectName'] ?? '')
-                );
-            }
-            if (empty($unknown)) {
-                return $this->t('Keine Variablen zum Löschen gefunden.');
-            }
-            $header = $this->t('Folgende Variablen würden gelöscht werden') . ":\n";
-            return $header . implode("\n", $unknown) . "\n\n" .
-                sprintf($this->t('Summe: %d'), count($unknown));
+            return $this->cleanup()->preview();
         } catch (\Throwable $e) {
             $this->logThrowable('UICleanupPreview', $e);
             return 'UICleanupPreview failed: ' . $e->getMessage();
         }
     }
-    
-    // Configuration form is provided via form.json
 
-    /**
-     * Reapply current capability presentations to existing variables.
-     * Useful after changing capability JSON or presentation schema.
-     */
+    /** Applies the current presentations of the plan to the existing variables again. */
     public function ReapplyPresentations(): void
     {
         try {
-            $profile = $this->readStoredProfile();
-            $type = trim((string)$this->ReadAttributeString('DeviceType'));
-            if ($type === '') {
-                return;
-            }
-
-            $engine = $this->getCapabilityEngine();
-            // Use latest status to allow presentation derived from profile while keeping values
-            $status = $this->readLastStatus();
-            $plan = $engine->buildPlan($type, $profile, $status);
-            $flatProfile = $this->flatten($profile);
-
-            foreach ($plan as $ident => $entry) {
-                $vid = (int)@IPS_GetObjectIDByIdent((string)$ident, $this->InstanceID);
-                if ($vid <= 0) {
-                    continue;
-                }
-                $presentation = $entry['presentation'] ?? null;
-                if (is_array($presentation) && !empty($presentation)) {
-                    $this->applyPresentation($vid, (string)$ident, $presentation, $flatProfile, (string)($entry['type'] ?? 'STRING'));
-                }
-            }
+            $this->setup()->reapplyPresentations();
         } catch (\Throwable $e) {
             $this->logThrowable('ReapplyPresentations', $e);
         }
@@ -495,102 +431,14 @@ class LGThinQDevice extends IPSModule
     }
 
 
-    private function setupDevice(): void
-    {
-        $deviceId = trim((string)$this->ReadPropertyString('DeviceID'));
-        if ($deviceId === '') {
-            throw new Exception('DeviceID missing');
-        }
-
-        $profile = $this->fetchDeviceProfile($deviceId);
-        $status = $this->readLastStatus();
-        $type = $this->resolveDeviceType($deviceId, $profile);
-
-        // Diagnostic: an empty profile here is the root cause of "device created but only
-        // generic variables" — GetProfile failed/returned nothing at this moment.
-        $propCount = (isset($profile['property']) && is_array($profile['property'])) ? count($profile['property']) : 0;
-        $this->SendDebug('setupDevice', sprintf('profile=%s (keys=%s, property entries=%d), type=%s',
-            empty($profile) ? 'EMPTY' : 'ok',
-            is_array($profile) ? implode(',', array_keys($profile)) : 'n/a',
-            $propCount, $type !== '' ? $type : '(empty)'), 0);
-
-        $this->WriteAttributeString('LastProfile', json_encode($profile));
-        $this->WriteAttributeString('DeviceType', $type);
-
-        // Use central method for consistency
-        $this->ensureDeviceVariablesWithPresentations($profile, $status, $type);
-
-        // Energy API: fetch energy profile and create variables if supported
-        try {
-            $energyProfile = $this->energy()->fetchEnergyProfile($deviceId);
-            if ($energyProfile !== null) { // null: the call failed, keep the known state and the ENERGY_* variables
-                $this->WriteAttributeString('EnergyProfile', json_encode($energyProfile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-            }
-            $this->energy()->setupEnergyVariables();
-            $this->energy()->scheduleEnergyTimer();
-            // First values right away instead of after the first 6 h timer interval
-            if ($this->energy()->getEnergyProperties() !== [] && ThinQClock::now() - (int)$this->GetBuffer('EnergyFetchedAt') >= 6 * 3600) {
-                $this->UpdateEnergy();
-            }
-        } catch (\Throwable $e) {
-            $this->logThrowable('SetupEnergy', $e);
-        }
-    }
-
     /**
-     * Remove or hide variables that are not part of the current plan.
-     * This helps to clean up duplicates created by older discovery versions.
-     *
-     * @param bool $delete If true, delete unknown variables; if false, only hide them.
-     * @return string Summary
+     * Deletes the variables that are not part of the current plan (older discovery versions).
+     * @param bool $delete false only counts them
      */
     public function CleanupVariables(bool $delete = false): string
     {
         try {
-            $profile = $this->readStoredProfile();
-            $status = $this->readLastStatus();
-            $type = trim((string)$this->ReadAttributeString('DeviceType'));
-            if ($type === '') {
-                return 'No DeviceType set – aborting.';
-            }
-            $engine = $this->getCapabilityEngine();
-            $plan = $engine->buildPlan($type, $profile, $status);
-            $valid = array_fill_keys(array_keys($plan), true);
-            // Always keep module meta variables
-            $valid['INFO'] = true; $valid['STATUS'] = true; $valid['LASTUPDATE'] = true;
-            // Energy variables are managed outside the capability plan
-            $valid['ENERGY_YESTERDAY'] = true; $valid['ENERGY_THIS_MONTH'] = true; $valid['ENERGY_LAST_MONTH'] = true;
-
-            $children = @IPS_GetChildrenIDs($this->InstanceID);
-            if (!is_array($children)) {
-                return 'No children.';
-            }
-            $hidden = 0; $deleted = 0; $kept = 0; $unknown = [];
-            foreach ($children as $cid) {
-                // Only variables
-                $var = @IPS_GetVariable($cid);
-                if (!is_array($var)) { continue; }
-                $obj = @IPS_GetObject($cid);
-                if (!is_array($obj)) { continue; }
-                $ident = (string)($obj['ObjectIdent'] ?? '');
-                if ($ident === '' || isset($valid[$ident])) {
-                    $kept++;
-                    continue;
-                }
-                $unknown[] = ['id' => $cid, 'ident' => $ident, 'name' => (string)($obj['ObjectName'] ?? '')];
-                if ($delete) {
-                    @IPS_DeleteVariable($cid);
-                    $deleted++;
-                } else {
-                    $hidden++;
-                }
-            }
-            $summary = sprintf('CleanupVariables: kept=%d, hidden=%d, deleted=%d', $kept, $hidden, $deleted);
-            if (!empty($unknown)) {
-                $names = array_map(function($e){ return ($e['ident'] !== '' ? $e['ident'] : '(no ident)') . ' [' . $e['name'] . ']'; }, $unknown);
-                $this->SendDebug('CleanupVariables', 'Unknown: ' . implode(', ', $names), 0);
-            }
-            return $summary;
+            return $this->cleanup()->run($delete);
         } catch (\Throwable $e) {
             $this->logThrowable('CleanupVariables', $e);
             return 'CleanupVariables failed: ' . $e->getMessage();
@@ -599,144 +447,17 @@ class LGThinQDevice extends IPSModule
 
     private function SetupDeviceVariables(): void
     {
-        $this->setupDevice();
+        $this->setup()->setupDevice();
     }
-    
-    /**
-     * Central method to ensure variables with presentations and actions
-     * Used by both setupDevice() and ReceiveData()
-     * 
-     * @param array $profile
-     * @param array $status
-     * @param string $type
-     * @return void
-     */
+
     private function ensureDeviceVariablesWithPresentations(array $profile, array $status, string $type): void
     {
-        $engine = $this->getCapabilityEngine();
-        // Track which variables exist before creation to apply presentations/actions only once
-        $plan = [];
-        $preExisting = [];
-        try {
-            $plan = $engine->buildPlan($type, $profile, $status);
-            foreach ($plan as $ident => $_) {
-                $preExisting[(string)$ident] = ((int)@IPS_GetObjectIDByIdent((string)$ident, $this->InstanceID)) > 0;
-            }
-            $engine->ensureVariables($profile, $status, $type);
-            // Surface per-capability creation failures (caught inside ensureVariables so one
-            // bad variable does not abort the rest) in the message log even without Debug.
-            $failures = $engine->getCreateFailures();
-            if (!empty($failures)) {
-                $this->LogMessage(sprintf('%s: %s', $this->t('Variable creation failed'), implode('; ', $failures)), KL_ERROR);
-            }
-        } catch (\Throwable $e) {
-            // Make the failure visible in the Symcon message log even without Debug,
-            // and abort cleanly so presentation/action work is not attempted on a broken plan.
-            $this->LogMessage(sprintf('%s (type=%s): %s', $this->t('Variable setup failed'), $type, $e->getMessage()), KL_ERROR);
-            $this->logThrowable('EnsureDeviceVariables', $e);
-            return;
-        }
-        
-        // Apply presentations and enable actions only for newly created variables
-        $flatProfile = $this->flatten($profile);
-        foreach ($plan as $ident => $entry) {
-            $vid = $this->getVarId((string)$ident);
-            if ($vid <= 0) {
-                continue;
-            }
-            $justCreated = !($preExisting[(string)$ident] ?? false);
-
-            // Apply presentation on creation
-            if ($justCreated && isset($entry['presentation']) && is_array($entry['presentation'])) {
-                $this->applyPresentation($vid, (string)$ident, $entry['presentation'], $flatProfile, (string)($entry['type'] ?? 'STRING'));
-            } elseif (isset($entry['presentation']) && is_array($entry['presentation'])) {
-                // If variable pre-existed, apply presentation if not yet assigned
-                $varInfo = @IPS_GetVariable($vid);
-                $custom = is_array($varInfo) ? ($varInfo['VariableCustomPresentation'] ?? null) : null;
-                $hasCustomPres = !empty($custom);
-                $shouldUpgradeOptions = false;
-                // If plan provides options but current presentation has none, we should upgrade
-                $planHasOptions = isset($entry['presentation']['options']) && is_array($entry['presentation']['options']) && !empty($entry['presentation']['options']);
-                if ($planHasOptions && $hasCustomPres) {
-                    $customHasOptions = false;
-                    if (is_array($custom)) {
-                        $customHasOptions = isset($custom['OPTIONS']) && is_array($custom['OPTIONS']) && !empty($custom['OPTIONS']);
-                    } elseif (is_string($custom)) {
-                        $decoded = json_decode($custom, true);
-                        if (is_array($decoded)) {
-                            $customHasOptions = isset($decoded['OPTIONS']) && is_array($decoded['OPTIONS']) && !empty($decoded['OPTIONS']);
-                        } else {
-                            $customHasOptions = (strpos($custom, 'OPTIONS') !== false);
-                        }
-                    }
-                    $shouldUpgradeOptions = !$customHasOptions;
-                }
-                // An older INTEGER variable of a 0.5 range keeps its type but gets whole steps on its slider
-                $customStep = is_string($custom) ? (json_decode($custom, true)['STEP_SIZE'] ?? null) : (is_array($custom) ? ($custom['STEP_SIZE'] ?? null) : null);
-                $stepTooFine = ($entry['presentation']['kind'] ?? '') === 'slider' && is_numeric($customStep) && (float)$customStep < 1
-                    && ThinQValue::typeOf($vid) === VARIABLETYPE_INTEGER;
-                if (!$hasCustomPres || $shouldUpgradeOptions || $stepTooFine) {
-                    $this->applyPresentation($vid, (string)$ident, $entry['presentation'], $flatProfile, (string)($entry['type'] ?? 'STRING'));
-                }
-            }
-
-            // Enable action only on creation if defined
-            if ($justCreated && ($entry['enableAction'] ?? false)) {
-                try {
-                    $this->EnableAction((string)$ident);
-                } catch (\Throwable $e) {
-                    // Silent fail
-                }
-            }
-        }
-        // Ensure writeable capabilities have actions enabled even if variable pre-existed
-        // Uses engine policy listIdentsToEnableOnSetup() (reassertOn: ["setup"])
-        try {
-            $identsToEnable = $engine->listIdentsToEnableOnSetup();
-            foreach ($identsToEnable as $ident) {
-                $vid = $this->getVarId((string)$ident);
-                if ($vid > 0) {
-                    try {
-                        $this->EnableAction((string)$ident);
-                    } catch (\Throwable $e) {
-                        // ignore
-                    }
-                }
-            }
-        } catch (\Throwable $e) {
-            $this->logThrowable('EnableActions(Reassert)', $e);
-        }
-
-        // Apply status values
-        $engine->applyStatus($status);
+        $this->setup()->ensureVariables($profile, $status, $type);
     }
 
-    /**
-     * True when the instance has only the generic/baseline variables and none of the
-     * capability-derived ones. Used to self-heal devices whose capability variables were
-     * never created (e.g. the initial setup ran before the parent connection was active).
-     * Mirrors the variable-detection pattern used by CleanupVariables().
-     */
     private function hasOnlyGenericVariables(): bool
     {
-        $generic = [
-            'INFO' => true, 'STATUS' => true, 'LASTUPDATE' => true,
-            'ENERGY_YESTERDAY' => true, 'ENERGY_THIS_MONTH' => true, 'ENERGY_LAST_MONTH' => true,
-        ];
-        foreach ((array)@IPS_GetChildrenIDs($this->InstanceID) as $cid) {
-            if (!is_array(@IPS_GetVariable((int)$cid))) {
-                continue; // not a variable
-            }
-            $obj = @IPS_GetObject((int)$cid);
-            $ident = is_array($obj) ? (string)($obj['ObjectIdent'] ?? '') : '';
-            if ($ident === '') {
-                continue;
-            }
-            if (!isset($generic[$ident])) {
-                return false; // a capability variable already exists
-            }
-        }
-        return true;
+        return $this->setup()->hasOnlyGenericVariables();
     }
 
     /**
@@ -890,7 +611,7 @@ class LGThinQDevice extends IPSModule
 
     private function flatten(array $data, string $prefix = ''): array
     {
-        return $this->util()->flatten($data, $prefix);
+        return ThinQDeviceUtil::flatten($data, $prefix);
     }
 
     private function anonymizeArray(array $data): array
@@ -920,6 +641,19 @@ class LGThinQDevice extends IPSModule
 
 
     // ── Energy API ──────────────────────────────────────────────────────
+
+    private function setup(): ThinQDeviceSetup
+    {
+        return new ThinQDeviceSetup($this->moduleContext(), $this->getProfileManager(), fn(): CapabilityEngine => $this->getCapabilityEngine(),
+            fn(): ThinQEnergyManager => $this->energy(),
+            fn(int $vid, string $ident, array $presentation, array $flatProfile, string $type) => $this->applyPresentation($vid, $ident, $presentation, $flatProfile, $type),
+            fn() => $this->UpdateEnergy());
+    }
+
+    private function cleanup(): ThinQCleanup
+    {
+        return new ThinQCleanup($this->moduleContext(), $this->getProfileManager(), fn(): CapabilityEngine => $this->getCapabilityEngine());
+    }
 
     private function energy(): ThinQEnergyManager
     {

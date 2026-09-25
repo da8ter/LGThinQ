@@ -19,13 +19,13 @@ class ThinQDeviceUtil
         ThinQValue::write((int)@IPS_GetObjectIDByIdent($ident, $this->ctx->instanceId), $value);
     }
 
-    public function flatten(array $data, string $prefix = ''): array
+    public static function flatten(array $data, string $prefix = ''): array
     {
         $result = [];
         foreach ($data as $key => $value) {
             $path = $prefix === '' ? (string)$key : $prefix . '.' . (string)$key;
             if (is_array($value)) {
-                $result += $this->flatten($value, $path);
+                $result += self::flatten($value, $path);
             } else {
                 $result[$path] = $value;
             }
