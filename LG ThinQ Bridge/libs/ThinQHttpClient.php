@@ -2,17 +2,21 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/ThinQHttpTransport.php';
+
 final class ThinQHttpClient
 {
     private IPSModule $module;
     private ThinQBridgeConfig $config;
     private string $apiKey;
+    private ThinQHttpTransport $transport;
 
     public function __construct(IPSModule $module, ThinQBridgeConfig $config, string $apiKey)
     {
         $this->module = $module;
         $this->config = $config;
         $this->apiKey = $apiKey;
+        $this->transport = new ThinQHttpTransport();
     }
 
     private function dbg(string $tag, string $message): void
@@ -71,28 +75,14 @@ final class ThinQHttpClient
             }
         }
 
-        $context = stream_context_create([
-            'http' => [
-                'method' => $method,
-                'header' => implode("\r\n", $headers),
-                'ignore_errors' => true,
-                'timeout' => 15,
-                'protocol_version' => 1.1,
-                'content' => $method !== 'GET' ? $body : null
-            ]
-        ]);
-
-        $result = @file_get_contents($url, false, $context);
-        if ($result === false || $result === null) {
-            $error = error_get_last();
-            throw new Exception('HTTP error calling ' . $url . ': ' . ($error['message'] ?? 'unknown'));
+        $reply = $this->transport->send($method, $url, $headers, $method !== 'GET' ? $body : null, 15);
+        $result = $reply['body'];
+        if ($result === false) {
+            throw new Exception('HTTP error calling ' . $url . ': ' . ($reply['error'] !== '' ? $reply['error'] : 'unknown'));
         }
 
-        $statusHeader = $http_response_header[0] ?? '';
-        $statusCode = 0;
-        if (preg_match('/HTTP\/[0-9.]+\s+(\d+)/', $statusHeader, $match)) {
-            $statusCode = (int)$match[1];
-        }
+        $statusHeader = $reply['statusLine'];
+        $statusCode = $reply['status'];
 
         if ($this->config->debug) {
             @IPS_LogMessage('LG ThinQ HTTP', 'ResponseStatus: ' . $statusCode . ' HeaderLine: ' . $statusHeader);

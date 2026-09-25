@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/ThinQClock.php';
+
 trait ThinQModuleTrait
 {
     private function t(string $text): string

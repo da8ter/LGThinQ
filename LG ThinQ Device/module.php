@@ -260,7 +260,7 @@ class LGThinQDevice extends IPSModule
             $this->WriteAttributeString('LastStatus', $encoded);
 
             @SetValueString($this->getVarId('STATUS'), $encoded);
-            @SetValueInteger($this->getVarId('LASTUPDATE'), time());
+            @SetValueInteger($this->getVarId('LASTUPDATE'), ThinQClock::now());
 
             $this->WriteAttributeString('LastStatus', json_encode($status));
 
@@ -407,7 +407,7 @@ class LGThinQDevice extends IPSModule
         $encoded = json_encode($merged, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $this->WriteAttributeString('LastStatus', $encoded);
         @SetValueString($this->getVarId('STATUS'), $encoded);
-        @SetValueInteger($this->getVarId('LASTUPDATE'), time());
+        @SetValueInteger($this->getVarId('LASTUPDATE'), ThinQClock::now());
 
         $profile = $this->readStoredProfile();
         $type = trim((string)$this->ReadAttributeString('DeviceType'));
@@ -426,7 +426,7 @@ class LGThinQDevice extends IPSModule
                 $this->selfHealCooldownElapsed() ? 'elapsed' : 'active'), 0);
             $hasParent = !method_exists($this, 'HasActiveParent') || $this->HasActiveParent();
             if ($this->selfHealCooldownElapsed() && $hasParent && trim((string)$this->ReadPropertyString('DeviceID')) !== '') {
-                $this->WriteAttributeInteger('LastSelfHealTs', time());
+                $this->WriteAttributeInteger('LastSelfHealTs', ThinQClock::now());
                 try {
                     if (!empty($profile) && $type !== '') {
                         $this->SendDebug('ReceiveData', 'Self-heal: recreating variables from cached profile', 0);
@@ -773,7 +773,7 @@ class LGThinQDevice extends IPSModule
      */
     private function selfHealCooldownElapsed(): bool
     {
-        return (time() - (int)$this->ReadAttributeInteger('LastSelfHealTs')) >= 300;
+        return (ThinQClock::now() - (int)$this->ReadAttributeInteger('LastSelfHealTs')) >= 300;
     }
 
     private function prepareEngine(): ?CapabilityEngine

@@ -230,35 +230,11 @@ final class ThinQCertificateManager
      */
     public function downloadAmazonRootCA1(): string
     {
-        $url = 'https://www.amazontrust.com/repository/AmazonRootCA1.pem';
-        if (function_exists('curl_init')) {
-            $ch = @curl_init($url);
-            if ($ch !== false) {
-                @curl_setopt_array($ch, [
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_FOLLOWLOCATION => true,
-                    CURLOPT_TIMEOUT => 10,
-                    CURLOPT_SSL_VERIFYPEER => true,
-                    CURLOPT_SSL_VERIFYHOST => 2,
-                    CURLOPT_USERAGENT => 'LGThinQBridge/1.0 (+Symcon)',
-                ]);
-                $resp = @curl_exec($ch);
-                $code = (int)@curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                @curl_close($ch);
-                if (is_string($resp) && $code === 200 && strpos($resp, '-----BEGIN CERTIFICATE-----') !== false) {
-                    return (string)$resp;
-                }
-            }
-        }
-        $ctx = @stream_context_create([
-            'http'  => ['timeout' => 10, 'method' => 'GET', 'header' => "User-Agent: LGThinQBridge/1.0\r\n"],
-            'https' => ['timeout' => 10],
-        ]);
-        $resp = @file_get_contents($url, false, $ctx);
-        if (is_string($resp) && strpos($resp, '-----BEGIN CERTIFICATE-----') !== false) {
-            return (string)$resp;
-        }
-        return '';
+        return (new ThinQHttpTransport())->fetchText(
+            'https://www.amazontrust.com/repository/AmazonRootCA1.pem',
+            10,
+            static fn(string $body): bool => strpos($body, '-----BEGIN CERTIFICATE-----') !== false
+        );
     }
 
     /**

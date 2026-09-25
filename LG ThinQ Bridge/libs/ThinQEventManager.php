@@ -30,7 +30,7 @@ final class ThinQEventManager
             $current = $subs[$deviceId] ?? null;
             if (is_array($current)) {
                 $expiresAt = (int)($current['expiresAt'] ?? 0);
-                if ($expiresAt > 0 && $expiresAt > (time() + $leadSeconds)) {
+                if ($expiresAt > 0 && $expiresAt > (ThinQClock::now() + $leadSeconds)) {
                     // Still valid beyond renew lead window; no API call needed
                     return true;
                 }
@@ -39,7 +39,7 @@ final class ThinQEventManager
             $ttl = $this->config->normalizedEventTtlHours();
             $body = ['expire' => ['unit' => 'HOUR', 'timer' => $ttl]];
             $this->httpClient->request('POST', 'event/' . rawurlencode($deviceId) . '/subscribe', $body);
-            $expiresAt = time() + ($ttl * 3600);
+            $expiresAt = ThinQClock::now() + ($ttl * 3600);
             $this->repository->updateExpiry($deviceId, $expiresAt);
             return true;
         } catch (Throwable $e) {
@@ -65,7 +65,7 @@ final class ThinQEventManager
     {
         $subs = $this->repository->getAll();
         $leadSeconds = $this->config->normalizedEventRenewLeadMinutes() * 60;
-        $now = time();
+        $now = ThinQClock::now();
         foreach (array_keys($subs) as $deviceId) {
             $deviceId = (string)$deviceId;
             if ($deviceId === '') {

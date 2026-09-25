@@ -116,7 +116,7 @@ class ThinQEnergyManager
 
         $this->module->publicSendDebug('Energy', 'Fetching energy usage data...', 0);
 
-        $today = new \DateTime('now');
+        $today = (new \DateTime())->setTimestamp(ThinQClock::now());
         $yesterday = (clone $today)->modify('-1 day');
         $firstOfMonth = (clone $today)->modify('first day of this month');
         $lastMonth = (clone $firstOfMonth)->modify('-1 day');
