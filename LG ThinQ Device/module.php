@@ -671,7 +671,11 @@ class LGThinQDevice extends IPSModule
                     }
                     $shouldUpgradeOptions = !$customHasOptions;
                 }
-                if (!$hasCustomPres || $shouldUpgradeOptions) {
+                // An older INTEGER variable of a 0.5 range keeps its type but gets whole steps on its slider
+                $customStep = is_string($custom) ? (json_decode($custom, true)['STEP_SIZE'] ?? null) : (is_array($custom) ? ($custom['STEP_SIZE'] ?? null) : null);
+                $stepTooFine = ($entry['presentation']['kind'] ?? '') === 'slider' && is_numeric($customStep) && (float)$customStep < 1
+                    && ThinQValue::typeOf($vid) === VARIABLETYPE_INTEGER;
+                if (!$hasCustomPres || $shouldUpgradeOptions || $stepTooFine) {
                     $this->applyPresentation($vid, (string)$ident, $entry['presentation'], $flatProfile, (string)($entry['type'] ?? 'STRING'));
                 }
             }

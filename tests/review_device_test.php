@@ -155,7 +155,7 @@ $new = array_values(array_diff(World::idents($i), $before));
 check(in_array('TIMER_ABSOLUTE_START_TIMER', $new, true) && in_array('SLEEP_TIMER_RELATIVE_STOP_TIMER', $new, true),
     'ein Push legt Variablen an, die erst mit einem Statuswert entstehen (Timer SET): ' . implode(', ', $new));
 
-section('F13 Bereich mit Schrittweite 0,5');
+section('F13 Bereich mit Schrittweite 0,5 (behoben)');
 World::start();
 [$ac, $acid] = World::liveAc();
 $var = World::variable($ac, 'TEMPERATURE_TARGET_TEMPERATURE');
@@ -163,9 +163,26 @@ World::quiet();
 @RequestAction(World::varId($ac, 'TEMPERATURE_TARGET_TEMPERATURE'), 23.5);
 $sent = World::$cloud->calls('POST devices/{id}/control')[0]['body']['temperature']['targetTemperature'] ?? null;
 $push($acid, ['temperature' => ['targetTemperature' => 23.5]]);
-$shown = World::value($ac, 'TEMPERATURE_TARGET_TEMPERATURE');
-befund('F13', $var['type'] === VARIABLETYPE_FLOAT && $sent === 23.5 && $shown === 23.5, 'Solltemperatur in 0,5-Schritten',
-    sprintf('Variablentyp %s, 23,5 gesendet als %s, gemeldete 23,5 angezeigt als %s', ['Boolean', 'Integer', 'Float', 'String'][$var['type']], json_encode($sent), json_encode($shown)));
+check($var['type'] === VARIABLETYPE_FLOAT && $sent === 23.5 && World::value($ac, 'TEMPERATURE_TARGET_TEMPERATURE') === 23.5,
+    'neue Variable als Float: 23,5 geht als 23,5 raus und wird als 23,5 angezeigt');
+// An older installation: the same ident as INTEGER variable with the 0.5 slider of back then (the live AC)
+$oldVid = World::varId($ac, 'TEMPERATURE_TARGET_TEMPERATURE');
+Kernel::deleteObject($oldVid);
+$vid = IPS_CreateVariable(VARIABLETYPE_INTEGER);
+IPS_SetParent($vid, $ac);
+IPS_SetIdent($vid, 'TEMPERATURE_TARGET_TEMPERATURE');
+IPS_SetVariableCustomPresentation($vid, ['PRESENTATION' => VARIABLE_PRESENTATION_SLIDER, 'MIN' => 18.0, 'MAX' => 30.0, 'STEP_SIZE' => 0.5, 'DIGITS' => 1]);
+IPS_ApplyChanges($ac);
+$pres = IPS_GetVariable($vid)['VariableCustomPresentation'];
+$pres = is_string($pres) ? json_decode($pres, true) : $pres;
+check(World::varId($ac, 'TEMPERATURE_TARGET_TEMPERATURE') === $vid && World::variable($ac, 'TEMPERATURE_TARGET_TEMPERATURE')['type'] === VARIABLETYPE_INTEGER
+    && (float)($pres['STEP_SIZE'] ?? 0) >= 1.0 && (int)($pres['DIGITS'] ?? -1) === 0, 'bestehende Integer-Variable bleibt (ID und Historie), ihr Regler bekommt ganze Schritte');
+$push($acid, ['temperature' => ['targetTemperature' => 23.5]]);
+check(World::value($ac, 'TEMPERATURE_TARGET_TEMPERATURE') === 24, 'bestehende Integer-Variable: gemeldete 23,5 erscheinen gerundet als 24 statt gar nicht');
+World::quiet();
+@RequestAction($vid, 25);
+check((World::$cloud->calls('POST devices/{id}/control')[0]['body']['temperature']['targetTemperature'] ?? null) === 25 && World::value($ac, 'TEMPERATURE_TARGET_TEMPERATURE') === 25,
+    'bestehende Integer-Variable: 25 geht als 25 raus und bleibt stehen');
 
 section('F15 Nachgeholte Einrichtung meldet an');
 World::start();
@@ -179,13 +196,12 @@ befund('F15', isset(World::$cloud->eventSubs[$wid], World::$cloud->pushSubs[$wid
     sprintf('Variablen angelegt: %s; Event-Abo %s, Push-Abo %s', in_array('RUN_STATE_CURRENT_STATE', World::idents($w), true) ? 'ja' : 'nein',
         isset(World::$cloud->eventSubs[$wid]) ? 'ja' : 'nein', isset(World::$cloud->pushSubs[$wid]) ? 'ja' : 'nein'));
 
-section('N2 Timer UNSET setzt Stunden und Minuten zurück');
+section('N2 Timer UNSET setzt Stunden und Minuten zurück (behoben)');
 World::start();
 [$ac, $acid] = World::liveAc();
 SetValueFloat(World::varId($ac, 'SLEEP_TIMER_RELATIVE_HOUR_TO_STOP'), 2.0);
 $push($acid, ['sleepTimer' => ['relativeStopTimer' => 'UNSET']]);
-$h = World::value($ac, 'SLEEP_TIMER_RELATIVE_HOUR_TO_STOP');
-befund('N2', $h === 0.0, 'Sleep-Timer UNSET: Stunden auf 0', 'SLEEP_TIMER_RELATIVE_HOUR_TO_STOP bleibt ' . json_encode($h) . ' — Integer-Zugriff auf eine Float-Variable');
+check(World::value($ac, 'SLEEP_TIMER_RELATIVE_HOUR_TO_STOP') === 0.0, 'Sleep-Timer UNSET setzt die Stunden (Float-Variable) auf 0');
 
 section('N3 MaintainReferences (behoben)');
 World::start();

@@ -16,28 +16,7 @@ class ThinQDeviceUtil
 
     public function setValueByVarType(string $ident, mixed $value): void
     {
-        $vid = (int)@IPS_GetObjectIDByIdent($ident, $this->ctx->instanceId);
-        if ($vid <= 0) {
-            return;
-        }
-        $var = @IPS_GetVariable($vid);
-        if (!is_array($var)) {
-            return;
-        }
-        switch ((int)$var['VariableType']) {
-            case VARIABLETYPE_BOOLEAN:
-                @SetValueBoolean($vid, (bool)$value);
-                break;
-            case VARIABLETYPE_INTEGER:
-                @SetValueInteger($vid, (int)$value);
-                break;
-            case VARIABLETYPE_FLOAT:
-                @SetValueFloat($vid, (float)$value);
-                break;
-            case VARIABLETYPE_STRING:
-                @SetValueString($vid, (string)$value);
-                break;
-        }
+        ThinQValue::write((int)@IPS_GetObjectIDByIdent($ident, $this->ctx->instanceId), $value);
     }
 
     public function flatten(array $data, string $prefix = ''): array

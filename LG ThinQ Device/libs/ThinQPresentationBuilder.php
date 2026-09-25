@@ -61,13 +61,16 @@ class ThinQPresentationBuilder
             if (is_numeric($min)) { $payload['MIN'] = (float)$min; }
             if (is_numeric($max)) { $payload['MAX'] = (float)$max; }
             if (!is_numeric($step) || (float)$step === 0.0) { $step = 1.0; }
-            $payload['STEP_SIZE'] = (float)$step;
+            $isInteger = ThinQValue::typeOf($vid) === VARIABLETYPE_INTEGER; // an older INTEGER variable of a 0.5 range
+            $payload['STEP_SIZE'] = $isInteger ? max(1.0, (float)$step) : (float)$step;
             if (isset($presentation['suffix'])) {
                 $payload['SUFFIX'] = $this->t((string)$presentation['suffix']);
             } elseif (isset($range['suffix'])) {
                 $payload['SUFFIX'] = $this->t((string)$range['suffix']);
             }
-            if (isset($presentation['digits'])) {
+            if ($isInteger) {
+                $payload['DIGITS'] = 0;
+            } elseif (isset($presentation['digits'])) {
                 $payload['DIGITS'] = (int)$presentation['digits'];
             } elseif (isset($range['digits'])) {
                 $payload['DIGITS'] = (int)$range['digits'];

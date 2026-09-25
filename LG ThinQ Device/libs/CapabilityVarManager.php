@@ -56,44 +56,19 @@ class CapabilityVarManager
         return $flat[$path] ?? null;
     }
 
+    /** Writes a status value by the variable's actual type (ThinQValue::write). */
     public function setValueByType(int $vid, array $cap, $val): void
     {
-        $type = strtoupper((string)($cap['type'] ?? 'string'));
-
-        if ($type === 'BOOLEAN') {
-            $current = @GetValueBoolean($vid);
-            $new = (bool)$val;
-            if ($current !== $new) {
-                @SetValueBoolean($vid, $new);
-            }
-        } elseif ($type === 'INTEGER') {
-            $current = @GetValueInteger($vid);
-            $new = (int)$val;
-            if ($current !== $new) {
-                @SetValueInteger($vid, $new);
-            }
-        } elseif ($type === 'FLOAT') {
-            $current = @GetValueFloat($vid);
-            $new = (float)$val;
-            if (abs($current - $new) > 0.0001) {
-                @SetValueFloat($vid, $new);
-            }
-        } else {
-            $current = @GetValueString($vid);
-            $new = (string)$val;
-            if ($current !== $new) {
-                @SetValueString($vid, $new);
-            }
-        }
+        ThinQValue::write($vid, $val);
     }
 
+    /** A value for a command, by the capability's type; numbers as ThinQValue::forCommand. */
     public function convertValueForType(array $cap, $value)
     {
-        $type = strtoupper((string)($cap['type'] ?? 'string'));
-        return match ($type) {
+        return match (strtoupper((string)($cap['type'] ?? 'string'))) {
             'BOOLEAN' => (bool)$value,
-            'INTEGER' => (int)$value,
-            'FLOAT'   => (float)$value,
+            'INTEGER' => (int)round((float)$value),
+            'FLOAT'   => ThinQValue::forCommand($value),
             default   => (string)$value
         };
     }

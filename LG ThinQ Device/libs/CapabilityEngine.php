@@ -6,6 +6,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/ThinQGenericProperties.php';
 require_once __DIR__ . '/ThinQEnumTranslator.php';
 require_once __DIR__ . '/ThinQShape.php';
+require_once __DIR__ . '/ThinQValue.php';
 require_once __DIR__ . '/ThinQProfileParser.php';
 require_once __DIR__ . '/CapabilityProfileExtractor.php';
 require_once __DIR__ . '/CapabilityPlanBuilder.php';
@@ -393,11 +394,8 @@ class CapabilityEngine
                 if ($vid === 0) {
                     continue;
                 }
-                $current = @GetValueInteger($vid);
-                if ($current !== 0) {
-                    @SetValueInteger($vid, 0);
-                    $this->dbg(sprintf('resetDeactivatedTimers: %s → 0 (timer %s is UNSET)', $resetIdent, $ident));
-                }
+                ThinQValue::write($vid, 0); // hours of some devices are FLOAT (number), others INTEGER
+                $this->dbg(sprintf('resetDeactivatedTimers: %s → 0 (timer %s is UNSET)', $resetIdent, $ident));
             }
         }
     }

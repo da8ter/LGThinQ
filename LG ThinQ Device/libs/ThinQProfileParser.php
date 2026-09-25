@@ -226,7 +226,7 @@ class ThinQProfileParser
             $entry = [
                 'ident' => $ident,
                 'name' => $this->translateProperty($attrName, $resource, $location),
-                'type' => $this->mapType($meta['type']),
+                'type' => ThinQValue::variableType($meta),
                 'path' => $fullPropertyName,
                 'resource' => $resource,
                 'property' => $attrName,
@@ -284,7 +284,7 @@ class ThinQProfileParser
             $entry = [
                 'ident' => $ident,
                 'name' => $this->translateProperty($attrName, $resource, $location),
-                'type' => $this->mapType($meta['type']),
+                'type' => ThinQValue::variableType($meta),
                 'path' => $fullPropertyName,
                 'resource' => $resource,
                 'property' => $attrName,
@@ -340,23 +340,6 @@ class ThinQProfileParser
         // Insert underscore before uppercase letters (except first char)
         $snake = preg_replace('/([a-z0-9])([A-Z])/', '$1_$2', $input);
         return strtolower($snake);
-    }
-    
-    /**
-     * Map API type to Symcon variable type
-     * 
-     * @param string $apiType
-     * @return int Symcon VARIABLETYPE_* constant
-     */
-    private function mapType(string $apiType): int
-    {
-        return match(strtolower($apiType)) {
-            'boolean' => VARIABLETYPE_BOOLEAN,
-            'number' => VARIABLETYPE_FLOAT,   // number = unbound numeric (e.g. temperature) → float
-            'range' => VARIABLETYPE_INTEGER,   // range = integer steps with min/max → integer
-            'enum' => VARIABLETYPE_STRING, // Could be INTEGER if mapped
-            default => VARIABLETYPE_STRING
-        };
     }
     
     /**

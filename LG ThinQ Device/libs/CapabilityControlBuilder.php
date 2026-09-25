@@ -110,11 +110,8 @@ class CapabilityControlBuilder
                 }
                 if (!empty($cfg['clampFromProfile'])) {
                     $rng = $this->rangeFor($resource, $property, $extras, $cfg['locationWrap'] ?? null);
-                    if (is_array($rng)) {
-                        $v = $value;
-                        if (isset($rng['min']) && is_numeric($rng['min'])) { $v = max((float)$rng['min'], (float)$v); }
-                        if (isset($rng['max']) && is_numeric($rng['max'])) { $v = min((float)$rng['max'], (float)$v); }
-                        $value = $v;
+                    if (is_array($rng) && is_numeric($value)) {
+                        $value = ThinQValue::clamp((float)$value, $rng);
                     }
                 }
                 $converted = $this->varManager->convertValueForType($cap, $value);

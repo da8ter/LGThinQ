@@ -75,14 +75,14 @@ World::start();
 check(World::attr($ac, 'DeviceType') === 'DEVICE_AIR_CONDITIONER' && count(World::idents($ac)) > 20, count(World::idents($ac)) . ' Variablen angelegt');
 check(World::value($ac, 'TEMPERATURE_CURRENT_TEMPERATURE') === 21.0 && World::value($ac, 'AIR_CON_JOB_MODE_CURRENT_JOB_MODE') === 'COOL', 'Ist-Temperatur und Betriebsart aus dem Status');
 World::quiet();
-check(RequestAction(World::varId($ac, 'TEMPERATURE_TARGET_TEMPERATURE'), 24) === true, 'Solltemperatur 24 °C (vor dem ersten Push, siehe F5)');
+check(RequestAction(World::varId($ac, 'TEMPERATURE_TARGET_TEMPERATURE'), 24) === true, 'Solltemperatur 24 °C');
 check(sameJson(World::$cloud->calls('POST devices/{id}/control')[0]['body'] ?? [], ['temperature' => ['unit' => 'C', 'targetTemperature' => 24]]), 'Befehl temperature.targetTemperature mit unit C');
 World::quiet();
 check(RequestAction(World::varId($ac, 'OPERATION_AIR_CON_OPERATION_MODE'), 'POWER_ON') === true, 'Einschalten');
 check((World::$cloud->calls('POST devices/{id}/control')[0]['body'] ?? []) === ['operation' => ['airConOperationMode' => 'POWER_ON']], 'Befehl operation.airConOperationMode');
 Kernel::advance(5);
 World::flushMqtt();
-check(World::value($ac, 'OPERATION_AIR_CON_OPERATION_MODE') === 'POWER_ON' && World::value($ac, 'TEMPERATURE_TARGET_TEMPERATURE') === 24, 'DEVICE_STATUS der Cloud bestätigt beide Werte');
+check(World::value($ac, 'OPERATION_AIR_CON_OPERATION_MODE') === 'POWER_ON' && World::value($ac, 'TEMPERATURE_TARGET_TEMPERATURE') === 24.0, 'DEVICE_STATUS der Cloud bestätigt beide Werte (Solltemperatur als Float, 0,5er-Schritte)');
 
 section('Kernelstart');
 World::start();
