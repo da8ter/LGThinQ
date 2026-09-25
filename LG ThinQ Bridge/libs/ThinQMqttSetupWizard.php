@@ -31,8 +31,10 @@ final class ThinQMqttSetupWizard
     {
         try {
             $broker = $this->broker();
-            $cert = $this->certificate();
-            $mqttId = $this->mqttClient($broker['host'], $cert['cn']);
+            // The MQTT Client first: its ClientID becomes the certificate CN, so the order matters.
+            $mqttId = $this->chooseMqttClient();
+            $cert = $this->certificate($this->clientIdFor($mqttId));
+            $mqttId = $this->mqttClient($mqttId, $broker['host'], $cert);
             $ioId = $this->clientSocket($mqttId, $broker['host']);
             $this->configureSocket($ioId, $broker, $cert);
             $this->connectBridge($mqttId);
@@ -86,55 +88,68 @@ final class ThinQMqttSetupWizard
     }
 
     /** @return array{cn:string, cert:string, key:string, public:string, csr:string, subscriptions:mixed} */
-    private function certificate(): array
+    private function certificate(string $cn): array
     {
-        $subjectCN = ThinQClientId::sanitize($this->config->clientId);
-        if ($subjectCN === '') {
-            $subjectCN = ThinQClientId::generate();
-        }
-        $api = new ThinQApi(new ThinQHttpClient($this->ctx, $this->config->withClientId($subjectCN), $this->apiKey));
-        return (new ThinQCertificateManager($this->ctx->instanceId))->requestLGSignedCert($api, $subjectCN);
+        $api = new ThinQApi(new ThinQHttpClient($this->ctx, $this->config->withClientId($cn), $this->apiKey));
+        return (new ThinQCertificateManager($this->ctx->instanceId))->requestLGSignedCert($api, $cn);
     }
 
-    /** The MQTT Client to use (configured, marked by ident, same ClientID, or new), configured for $cn. */
-    private function mqttClient(string $host, string $cn): int
+    /** The configured MQTT Client, else the Bridge's parent, else the one marked for this Bridge; 0 = create one. */
+    private function chooseMqttClient(): int
     {
-        $guid = ThinQMqttInstances::MQTT_CLIENT_GUID;
-        if (!in_array($guid, (array)@IPS_GetModuleList(), true)) {
+        if (!in_array(ThinQMqttInstances::MQTT_CLIENT_GUID, (array)@IPS_GetModuleList(), true)) {
             throw new \RuntimeException($this->ctx->t("Module 'MQTT Client' not found."));
         }
-        $candidates = @IPS_GetInstanceListByModuleID($guid);
-        $id = 0;
-        $configured = $this->ctx->propertyInteger('MQTTClientID');
-        if ($configured > 0 && @IPS_InstanceExists($configured)) {
-            $info = @IPS_GetInstance($configured);
-            if (is_array($info) && isset($info['ModuleID']) && (string)$info['ModuleID'] === $guid) {
-                $id = $configured;
+        foreach ([$this->ctx->propertyInteger('MQTTClientID'), ThinQMqttInstances::connectionOf($this->ctx->instanceId)] as $id) {
+            if (ThinQMqttInstances::isMqttClient($id)) {
+                return $id;
             }
         }
         $iid = (string)$this->ctx->instanceId;
-        if ($id === 0) {
-            $id = ThinQMqttInstances::byIdent($candidates, ['LGThinQMQTT' . $iid, 'LGThinQ.MQTT.' . $iid]);
-        }
-        if ($id === 0) {
-            foreach ($candidates as $candidate) {
-                if ((ThinQMqttInstances::config($candidate)['ClientID'] ?? null) === $cn) {
-                    $id = $candidate;
-                    break;
-                }
+        return ThinQMqttInstances::byIdent(@IPS_GetInstanceListByModuleID(ThinQMqttInstances::MQTT_CLIENT_GUID), ['LGThinQMQTT' . $iid, 'LGThinQ.MQTT.' . $iid]);
+    }
+
+    /**
+     * The client ID for the chosen MQTT Client: its own, else the Bridge's, else a new one; never one
+     * another MQTT Client instance uses (AWS IoT drops a connection when the same ID connects twice).
+     */
+    private function clientIdFor(int $mqttId): string
+    {
+        $taken = [];
+        foreach (@IPS_GetInstanceListByModuleID(ThinQMqttInstances::MQTT_CLIENT_GUID) as $id) {
+            if ($id !== $mqttId) {
+                $taken[] = trim((string)(ThinQMqttInstances::config($id)['ClientID'] ?? ''));
             }
         }
-        if ($id === 0) {
-            $id = IPS_CreateInstance($guid);
-            IPS_SetName($id, 'LGThinQ MQTT Client (' . $host . ')');
-            @IPS_SetIdent($id, 'LGThinQMQTT' . $iid);
+        $own = $mqttId > 0 ? (string)(ThinQMqttInstances::config($mqttId)['ClientID'] ?? '') : '';
+        foreach ([$own, $this->config->clientId] as $candidate) {
+            $cn = ThinQClientId::sanitize($candidate);
+            if ($cn !== '' && !in_array($cn, $taken, true)) {
+                return $cn;
+            }
         }
+        do {
+            $cn = ThinQClientId::generate();
+        } while (in_array($cn, $taken, true));
+        return $cn;
+    }
 
-        ThinQMqttInstances::set($id, 'ClientID', $cn);
+    /**
+     * Creates the MQTT Client if $id is 0 and configures it for the certificate's CN and topics.
+     * @param array{cn: string, subscriptions: mixed} $cert
+     */
+    private function mqttClient(int $id, string $host, array $cert): int
+    {
+        if ($id === 0) {
+            $id = IPS_CreateInstance(ThinQMqttInstances::MQTT_CLIENT_GUID);
+            IPS_SetName($id, 'LGThinQ MQTT Client (' . $host . ')');
+            @IPS_SetIdent($id, 'LGThinQMQTT' . $this->ctx->instanceId);
+        }
+        ThinQMqttInstances::set($id, 'ClientID', $cert['cn']);
         ThinQMqttInstances::setFirst($id, ['UserName', 'Username'], '');
         ThinQMqttInstances::set($id, 'Password', '');
         ThinQMqttInstances::setFirst($id, ['KeepAliveInterval', 'KeepAlive'], 60);
-        $subscriptions = array_map(static fn(string $topic): array => ['Topic' => $topic, 'QoS' => 0], $this->topics($cn));
+        $subscriptions = array_map(static fn(string $topic): array => ['Topic' => $topic, 'QoS' => 0], $this->topics($cert));
         if (!ThinQMqttInstances::setList($id, 'Subscriptions', $subscriptions)) {
             ThinQMqttInstances::setList($id, 'Subscribe', $subscriptions);
         }
@@ -142,14 +157,15 @@ final class ThinQMqttSetupWizard
         return $id;
     }
 
-    /** @return array<int, string> the push topic of $cn, or the configured filter with {ClientID} filled in */
-    private function topics(string $cn): array
+    /**
+     * The topics LG named in the certificate answer (a list of strings), else app/clients/<CN>/push.
+     * @param array{cn: string, subscriptions: mixed} $cert
+     * @return array<int, string>
+     */
+    private function topics(array $cert): array
     {
-        $filter = trim($this->ctx->propertyString('MQTTTopicFilter'));
-        if ($filter === '' || $filter === 'app/clients/*/push' || $filter === 'app/clients/*/#') {
-            return ['app/clients/' . $cn . '/push'];
-        }
-        return [ThinQBridgeConfig::expandTopic($filter, $cn)];
+        $topics = is_array($cert['subscriptions']) ? array_values(array_filter($cert['subscriptions'], static fn($t): bool => is_string($t) && $t !== '')) : [];
+        return $topics !== [] ? $topics : ['app/clients/' . $cert['cn'] . '/push'];
     }
 
     /** The MQTT Client's Client Socket: its parent, a marked one, or a new one. */
@@ -271,6 +287,8 @@ final class ThinQMqttSetupWizard
         IPS_ConnectInstance($this->ctx->instanceId, $mqttId);
         IPS_SetProperty($this->ctx->instanceId, 'UseMQTT', true);
         IPS_SetProperty($this->ctx->instanceId, 'MQTTClientID', $mqttId);
+        // The template follows the client ID; a concrete topic of an earlier client would drop every push.
+        IPS_SetProperty($this->ctx->instanceId, 'MQTTTopicFilter', ThinQBridgeConfig::DEFAULT_TOPIC);
         IPS_ApplyChanges($this->ctx->instanceId);
     }
 

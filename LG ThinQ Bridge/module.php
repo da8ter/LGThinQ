@@ -486,6 +486,9 @@ class LGThinQBridge extends IPSModule
         try {
             $result = (new ThinQMqttSetupWizard($this->moduleContext(), self::API_KEY, $this->config, $this->api,
                 fn() => $this->debugMqttParentInfo()))->run();
+            // Subscriptions belong to a client ID: renew them under the one just set up.
+            $this->bootServices();
+            $this->subscriptions->subscribeDevicesOfBridge();
             echo rtrim($this->t('Done'), '.') . ".\n" . 'Client Socket ID: ' . $result['ioId'] . "\n" . 'MQTT Client ID:   ' . $result['mqttId'] . "\n";
             $this->NotifyUser($this->t('MQTT connection configured') . ' (ClientID=' . $result['clientId'] . ', Host=' . $result['host'] . ':' . $result['port'] . ').');
         } catch (Throwable $e) {

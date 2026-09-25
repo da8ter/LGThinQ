@@ -107,6 +107,12 @@ final class ThinQSubscriptionService
         return ['ok' => $ok, 'total' => count($ids)];
     }
 
+    /** @return array{ok: int, total: int} all devices of the Bridge (and with a stored subscription), subscribed anew */
+    public function subscribeDevicesOfBridge(): array
+    {
+        return $this->subscribeAll(array_values(array_unique(array_merge($this->childDeviceIds(), $this->knownDeviceIds()))));
+    }
+
     /** @return array{ok: int, total: int} event subscriptions renewed now */
     public function renewAll(): array
     {
@@ -231,6 +237,14 @@ final class ThinQSubscriptionService
         if (!$force && is_array($entry) && (string)($entry['clientId'] ?? '') === $this->config->clientId
             && ThinQClock::now() - (int)($entry['at'] ?? 0) < $this->pushCooldownSeconds()) {
             return;
+        }
+        if (is_array($entry) && (string)($entry['clientId'] ?? '') !== $this->config->clientId) {
+            // Made under another client ID; LG would keep delivering it there.
+            try {
+                $this->api->unsubscribePush($deviceId);
+            } catch (Throwable $e) {
+                $this->ctx->debug('Push Subscribe', 'Unsubscribe of the old client failed: ' . $e->getMessage());
+            }
         }
         try {
             $this->api->subscribePush($deviceId);

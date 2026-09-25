@@ -113,17 +113,26 @@ $out = trim((string)ob_get_clean());
 check(preg_match('/Error|Fehler|Call to/', $out) === 0 && str_starts_with($out, 'Fertig.') && !str_starts_with($out, 'Fertig..'), 'Einrichtung endet mit "Fertig." und ohne Fehlermeldung');
 check(World::logLines('/MQTT-Verbindung eingerichtet \(ClientID=/') !== [], 'Abschlussmeldung steht im Meldungsprotokoll');
 
-section('W1 eingestellter MQTT-Client');
+section('W1 eingestellter MQTT-Client (behoben)');
 World::start();
+[$w, $wid] = World::example('washer');
 $other = World::mqttClient('SymconAnders');
 IPS_SetProperty(World::$bridge, 'MQTTClientID', $other);
 IPS_ApplyChanges(World::$bridge);
 ob_start();
 LGTQ_UISetupMqttConnection(World::$bridge);
 ob_end_clean();
-$used = Kernel::$instances[World::$bridge]['connection'];
-befund('W1', $used === $other, 'Assistent nimmt den MQTT-Client aus MQTTClientID',
-    sprintf('eingestellt #%d, verbunden #%d — der Assistent liest IPS_GetInstance()[\'ModuleID\'], Symcon liefert die GUID unter ModuleInfo', $other, $used));
+check(Kernel::$instances[World::$bridge]['connection'] === $other, 'Assistent nimmt den MQTT-Client aus MQTTClientID (ModuleInfo.ModuleID)');
+$ids = array_map(static fn(int $id): string => (string)IPS_GetProperty($id, 'ClientID'), IPS_GetInstanceListByModuleID(FakeMqttClient::MODULE_ID));
+check(IPS_GetProperty($other, 'ClientID') === 'SymconAnders' && count($ids) === count(array_unique($ids)), 'der gewählte Client behält seine ClientID, keine zwei MQTT-Clients mit derselben (' . implode(', ', $ids) . ')');
+check(IPS_GetProperty(World::$bridge, 'MQTTTopicFilter') === ThinQBridgeConfig::DEFAULT_TOPIC && World::attr(World::$bridge, 'ClientID') === 'SymconAnders',
+    'Topicfilter als {ClientID}-Vorlage, die Bridge spricht LG mit der neuen ClientID an');
+check((World::$cloud->eventSubs[$wid]['client'] ?? '') === 'SymconAnders' && (World::$cloud->pushSubs[$wid]['client'] ?? '') === 'SymconAnders',
+    'Event- und Push-Abo des Geräts laufen danach unter der neuen ClientID');
+World::quiet();
+World::$cloud->deviceReports($wid, [['location' => ['locationName' => 'MAIN'], 'runState' => ['currentState' => 'RUNNING']]]);
+World::flushMqtt();
+check(World::value($w, 'RUN_STATE_CURRENT_STATE') === 'RUNNING', 'ein Status-Push über den neuen Client erreicht das Gerät');
 
 section('N1 Ländertabelle (behoben)');
 $sdk = json_decode((string)file_get_contents(__DIR__ . '/fixtures/sdk_regions.json'), true)['regions'];

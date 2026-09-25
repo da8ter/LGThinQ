@@ -53,6 +53,18 @@ final class ThinQMqttInstances
         return is_array($info) ? (int)($info['ConnectionID'] ?? 0) : 0;
     }
 
+    /** Module GUID of an instance; Symcon 9.1 reports it under ModuleInfo, older versions at top level. */
+    public static function moduleIdOf(int $id): string
+    {
+        $info = @IPS_GetInstance($id);
+        return is_array($info) ? (string)($info['ModuleInfo']['ModuleID'] ?? ($info['ModuleID'] ?? '')) : '';
+    }
+
+    public static function isMqttClient(int $id): bool
+    {
+        return $id > 0 && strcasecmp(self::moduleIdOf($id), self::MQTT_CLIENT_GUID) === 0;
+    }
+
     public static function moduleGuidByName(string $name): ?string
     {
         foreach (@IPS_GetModuleList() as $guid) {
