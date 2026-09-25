@@ -7,6 +7,7 @@ require_once __DIR__ . '/libs/ThinQHelpers.php';
 require_once __DIR__ . '/libs/ThinQConfig.php';
 require_once __DIR__ . '/libs/ThinQDeviceRepository.php';
 require_once __DIR__ . '/libs/ThinQEventSubscriptionRepository.php';
+require_once __DIR__ . '/libs/ThinQRedactor.php';
 require_once __DIR__ . '/libs/ThinQHttpClient.php';
 require_once __DIR__ . '/libs/ThinQEventManager.php';
 require_once __DIR__ . '/libs/ThinQEventPipeline.php';
@@ -183,7 +184,6 @@ class LGThinQBridge extends IPSModule
     public function ForwardData($JSONString)
     {
         $this->ensureBooted();
-        $this->SendDebug('ForwardData', (string)$JSONString, 0);
         $json = json_decode((string)$JSONString, true);
         if (!is_array($json)) {
             return json_encode(['success' => false, 'error' => 'invalid payload']);
@@ -197,6 +197,7 @@ class LGThinQBridge extends IPSModule
         }
 
         $action = (string)($buffer['Action'] ?? '');
+        $this->SendDebug('ForwardData', trim($action . ' ' . (string)($buffer['DeviceID'] ?? '')), 0);
         try {
             switch ($action) {
                 case 'GetDevices':
@@ -678,29 +679,34 @@ class LGThinQBridge extends IPSModule
         if (!(bool)$this->ReadPropertyBoolean('Debug')) {
             return;
         }
-        $instInfo = @IPS_GetInstance($this->InstanceID);
-        $parentId = is_array($instInfo) ? (int)($instInfo['ConnectionID'] ?? 0) : 0;
-        $this->SendDebug('MQTT', 'Bridge InstanceID=' . $this->InstanceID . ' ParentID=' . $parentId, 0);
-        if ($parentId > 0) {
-            $parentInfo = @IPS_GetInstance($parentId);
-            $this->SendDebug('MQTT', 'Parent ModuleID=' . ($parentInfo['ModuleID'] ?? ''), 0);
-            $this->SendDebug('MQTT', 'Parent Status=' . ($parentInfo['InstanceStatus'] ?? ''), 0);
-            $parentCfgJson = @IPS_GetConfiguration($parentId);
-            if (is_string($parentCfgJson) && $parentCfgJson !== '') {
-                $this->SendDebug('MQTT', 'Parent Config=' . $parentCfgJson, 0);
-            }
-            $ioId = (int)($parentInfo['ConnectionID'] ?? 0);
-            $this->SendDebug('MQTT', 'IO (Client Socket) ID=' . $ioId, 0);
-            if ($ioId > 0) {
-                $ioInfo = @IPS_GetInstance($ioId);
-                $this->SendDebug('MQTT', 'IO ModuleID=' . ($ioInfo['ModuleID'] ?? ''), 0);
-                $this->SendDebug('MQTT', 'IO Status=' . ($ioInfo['InstanceStatus'] ?? ''), 0);
-                $ioCfgJson = @IPS_GetConfiguration($ioId);
-                if (is_string($ioCfgJson) && $ioCfgJson !== '') {
-                    $this->SendDebug('MQTT', 'IO Config=' . $ioCfgJson, 0);
-                }
+        $parentId = self::connectionOf($this->InstanceID);
+        $ioId = $parentId > 0 ? self::connectionOf($parentId) : 0;
+        $this->SendDebug('MQTT', 'Bridge #' . $this->InstanceID . ', MQTT parent #' . $parentId . ', IO #' . $ioId, 0);
+        foreach (['Parent' => $parentId, 'IO' => $ioId] as $role => $id) {
+            if ($id > 0) {
+                $this->SendDebug('MQTT', $role . ' ' . self::describeInstance($id), 0);
             }
         }
+    }
+
+    private static function connectionOf(int $instanceId): int
+    {
+        $info = @IPS_GetInstance($instanceId);
+        return is_array($info) ? (int)($info['ConnectionID'] ?? 0) : 0;
+    }
+
+    /** Module, status and configuration keys of an instance; values only for keys that never hold a secret. */
+    private static function describeInstance(int $instanceId): string
+    {
+        $info = @IPS_GetInstance($instanceId);
+        $config = json_decode((string)@IPS_GetConfiguration($instanceId), true);
+        $keys = [];
+        foreach (is_array($config) ? $config : [] as $key => $value) {
+            $keys[] = in_array($key, ['ClientID', 'Host', 'Port', 'Open', 'UseSSL', 'KeepAliveInterval', 'Subscriptions'], true)
+                ? $key . '=' . json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : (string)$key;
+        }
+        return sprintf('#%d module=%s status=%s config: %s', $instanceId, is_array($info) ? (string)($info['ModuleInfo']['ModuleID'] ?? '') : '',
+            is_array($info) ? (string)($info['InstanceStatus'] ?? '') : '', implode(', ', $keys));
     }
 
     /**
@@ -783,6 +789,12 @@ class LGThinQBridge extends IPSModule
                 $this->SendDebug('Push', 'Meta event ' . $type . ' for ' . $deviceId, 0);
                 break;
         }
+    }
+
+    /** Every debug line passes the redactor, so no call site can leak the PAT or a key into the debug log. */
+    protected function SendDebug($Message, $Data, $Format)
+    {
+        return parent::SendDebug($Message, ThinQRedactor::text((string)$Data, [trim((string)$this->ReadPropertyString('AccessToken')), self::API_KEY]), $Format);
     }
 
     public function DebugLog(string $tag, string $message): void

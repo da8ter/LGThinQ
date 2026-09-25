@@ -11,21 +11,41 @@ declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
 
-section('F1 Geheimnisse im Protokoll');
+section('F1 Geheimnisse im Protokoll (behoben)');
+// Raw PEM ("-----BEGIN"), base64 PEM as the Client Socket stores it ("LS0tLS1CRUdJTi") and the PAT,
+// anywhere in the message log or in any instance debug.
+$leaks = static function (): array {
+    $text = implode("\n", array_column(Kernel::$log, 'text'));
+    foreach (Kernel::$debug as $lines) {
+        foreach ($lines as [$message, $data]) {
+            $text .= "\n" . $message . ' ' . $data;
+        }
+    }
+    $found = [];
+    foreach (['PAT' => World::$cloud->pat, 'PEM' => '-----BEGIN', 'PEM base64' => 'LS0tLS1CRUdJTi'] as $what => $needle) {
+        if (($n = substr_count($text, $needle)) > 0) {
+            $found[] = $what . ' ' . $n . '×';
+        }
+    }
+    return $found;
+};
 World::start(['Debug' => true]);
 World::quiet();
 LGTQ_GetDevices(World::$bridge);
-$inLog = substr_count(implode("\n", array_column(Kernel::$log, 'text')), World::$cloud->pat);
-$inDebug = substr_count(World::debugText(World::$bridge), World::$cloud->pat);
-$key = base64_encode("-----BEGIN PRIVATE KEY-----\nPRUEFSTANDGEHEIM\n-----END PRIVATE KEY-----\n");
+check($leaks() === [] && substr_count(World::debugText(World::$bridge), 'GET https://') === 1, 'Debug an, GetDevices: Anfrage im Debug, aber kein PAT in Debug oder Meldungsprotokoll');
 $sock = IPS_CreateInstance(CLIENT_SOCKET_GUID);
-IPS_SetProperty($sock, 'PrivateKey', $key);
+IPS_SetProperty($sock, 'PrivateKey', base64_encode("-----BEGIN PRIVATE KEY-----\nPRUEFSTANDGEHEIM\n-----END PRIVATE KEY-----\n"));
 IPS_ApplyChanges($sock);
 IPS_ConnectInstance(World::$mqtt, $sock);
 IPS_ApplyChanges(World::$bridge);
-$keyInDebug = str_contains(World::debugText(World::$bridge), $key);
-befund('F1', $inLog === 0 && $inDebug === 0 && !$keyInDebug, 'Debug schreibt weder den PAT noch den privaten Schlüssel',
-    sprintf('ein GetDevices: PAT %d× im Meldungsprotokoll (Datei), %d× im Debug; PrivateKey des Client Sockets %s', $inLog, $inDebug, $keyInDebug ? 'im Debug' : 'nicht im Debug'));
+check($leaks() === [] && str_contains(World::debugText(World::$bridge), 'PrivateKey'), 'MQTT-Diagnose nennt PrivateKey nur als Schlüsselnamen');
+World::start(['Debug' => true]);
+ob_start();
+LGTQ_UISetupMqttConnection(World::$bridge);
+ob_end_clean();
+check(($l = $leaks()) === [], 'Debug an, MQTT-Einrichtung: kein Schlüssel, Zertifikat oder PAT im Klartext' . ($l === [] ? '' : ' (' . implode(', ', $l) . ')'));
+LGTQ_UIGenerateMQTTClientCerts(World::$bridge);
+check(($l = $leaks()) === [], 'Debug an, Zertifikats-ZIP: kein Schlüssel oder PAT im Klartext' . ($l === [] ? '' : ' (' . implode(', ', $l) . ')'));
 
 section('F2 Topicfilter');
 World::start([], false);
