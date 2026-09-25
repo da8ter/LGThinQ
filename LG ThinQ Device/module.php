@@ -96,46 +96,8 @@ class LGThinQDevice extends IPSModule
         @SetValueString($this->getVarId('INFO'), json_encode($info, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
 
-        // One-time initial status fetch (HTTP) BEFORE creating variables so that
-        // auto-discovery with create=statusHasAny can actually create variables
-        $hasParent = $this->HasActiveParent();
-        if ($hasParent) {
-            try {
-                $this->UpdateStatus();
-            } catch (\Throwable $e) {
-                $this->logThrowable('InitialUpdateStatus', $e);
-            }
-        } else {
-            // Parent not active yet — defer the full initial setup (status + variables)
-            // Use SetTimerInterval on the pre-registered timer (reliable; avoids RegisterOnceTimer race condition)
-            @$this->SetTimerInterval('InitialUpdateStatus', 5000);
-        }
-
-        // Create variables using the latest stored status (only when parent is available)
-        if ($hasParent) {
-            try {
-                $this->SetupDeviceVariables();
-            } catch (\Throwable $e) {
-                $this->logThrowable('SetupDeviceVariables', $e);
-            }
-            // Race-condition guard: if DeviceType is still empty after setup, schedule a retry
-            if (trim((string)$this->ReadAttributeString('DeviceType')) === '') {
-                @$this->SetTimerInterval('InitialUpdateStatus', 10000);
-            }
-        }
-
-        // Subscribe device to LG push/events once if possible; no automatic retries
-        try {
-            $deviceID = trim((string)$this->ReadPropertyString('DeviceID'));
-            if ($deviceID !== '') {
-                $hasParent = $this->HasActiveParent();
-                if ($hasParent) {
-                    $this->doAutoSubscribe($deviceID);
-                }
-            }
-        } catch (\Throwable $e) {
-            $this->logThrowable('AutoSubscribe', $e);
-        }
+        // Status, profile, type, variables, energy, subscription; repeated with backoff until complete
+        $this->setup()->run();
     }
 
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
@@ -193,23 +155,10 @@ class LGThinQDevice extends IPSModule
         }
     }
 
-    /**
-     * Deferred initial setup: fetches status + creates variables once the parent is active.
-     * Called by the InitialUpdateStatus one-shot timer when the parent was not ready at ApplyChanges time.
-     */
+    /** Timer target of InitialUpdateStatus: the next attempt of an incomplete setup. */
     public function InitialSetup(): void
     {
-        @$this->SetTimerInterval('InitialUpdateStatus', 0);
-        try {
-            $this->UpdateStatus();
-        } catch (\Throwable $e) {
-            $this->logThrowable('InitialSetup/UpdateStatus', $e);
-        }
-        try {
-            $this->SetupDeviceVariables();
-        } catch (\Throwable $e) {
-            $this->logThrowable('InitialSetup/SetupDeviceVariables', $e);
-        }
+        $this->setup()->run();
     }
 
     public function ControlDevice(string $JSONPayload): bool
@@ -324,7 +273,7 @@ class LGThinQDevice extends IPSModule
         // time) we re-run the full setup, which re-fetches the profile from the API.
         // Throttled (selfHealCooldownElapsed) so a device stuck in this state does not
         // hammer the API on every push.
-        if ($this->hasOnlyGenericVariables()) {
+        if ($this->hasOnlyGenericVariables() || $profile === [] || $type === '') {
             $this->SendDebug('ReceiveData', sprintf('self-heal check: type=%s profileEmpty=%s cooldown=%s',
                 $type !== '' ? $type : '(empty)', empty($profile) ? 'yes' : 'no',
                 $this->selfHealCooldownElapsed() ? 'elapsed' : 'active'), 0);
@@ -337,7 +286,7 @@ class LGThinQDevice extends IPSModule
                         $this->ensureDeviceVariablesWithPresentations($profile, $merged, $type);
                     } else {
                         $this->SendDebug('ReceiveData', 'Self-heal: profile/type missing -> full setup (re-fetch from API)', 0);
-                        $this->SetupDeviceVariables();
+                        $this->setup()->run();
                     }
                 } catch (\Throwable $e) {
                     $this->logThrowable('SelfHeal', $e);
@@ -445,10 +394,6 @@ class LGThinQDevice extends IPSModule
         }
     }
 
-    private function SetupDeviceVariables(): void
-    {
-        $this->setup()->setupDevice();
-    }
 
     private function ensureDeviceVariablesWithPresentations(array $profile, array $status, string $type): void
     {
@@ -647,7 +592,8 @@ class LGThinQDevice extends IPSModule
         return new ThinQDeviceSetup($this->moduleContext(), $this->getProfileManager(), fn(): CapabilityEngine => $this->getCapabilityEngine(),
             fn(): ThinQEnergyManager => $this->energy(),
             fn(int $vid, string $ident, array $presentation, array $flatProfile, string $type) => $this->applyPresentation($vid, $ident, $presentation, $flatProfile, $type),
-            fn() => $this->UpdateEnergy());
+            fn() => $this->UpdateEnergy(), fn() => $this->UpdateStatus(),
+            fn() => $this->doAutoSubscribe(trim($this->ReadPropertyString('DeviceID'))));
     }
 
     private function cleanup(): ThinQCleanup

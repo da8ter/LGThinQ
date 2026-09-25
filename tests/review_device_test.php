@@ -26,7 +26,7 @@ $zip = static function (string $dataUri, string $name): string {
     return $content;
 };
 
-section('F3 Einrichtung während einer Störung');
+section('F3 Einrichtung während einer Störung (behoben)');
 World::start();
 [$w, $wid] = World::example('washer');
 World::$cloud->down = true;
@@ -43,9 +43,14 @@ IPS_ApplyChanges($w2);
 $n = count(World::idents($w2));
 LGTQD_CleanupVariables($w2, true);
 $lost = $n - count(World::idents($w2));
-befund('F3', $type === 'DEVICE_WASHER' && isset($prof['property']) && $val === 'RUNNING' && $lost === 0, 'Ein Lauf während einer Störung behält Profil und Gerätetyp',
-    sprintf('nach Ausfall: DeviceType "%s", LastProfile %s, Push-Wert "%s"; nur GET profile gestört: Aufräumen löschte %d von %d Variablen',
-        $type, json_encode($prof), $val, $lost, $n));
+check($type === 'DEVICE_WASHER' && isset($prof['property']) && $val === 'RUNNING', 'ein ApplyChanges während eines Cloud-Ausfalls behält Profil und Gerätetyp, der nächste Push kommt an');
+check($lost === 0, sprintf('fällt nur der Profilabruf aus, löscht Aufräumen nichts (%d von %d Variablen gelöscht)', $lost, $n));
+World::start();
+[$w3] = World::example('washer');
+Kernel::$instances[$w3]['attributes']['LastProfile'] = '[]'; // left by an earlier version after an outage
+$before = count(World::idents($w3));
+$out = LGTQD_CleanupVariables($w3, true);
+check(count(World::idents($w3)) === $before && str_contains($out, 'aborting'), 'ohne verwendbares Profil bricht Aufräumen ab: ' . $out);
 
 section('F5 Profil nach einem Push (behoben)');
 World::start();
@@ -136,7 +141,7 @@ for ($i = 0; $i < 5; $i++) {
 $n = count(World::$cloud->calls('GET devices/{id}/profile'));
 check($n === 1 && World::value($ac, 'TEMPERATURE_CURRENT_TEMPERATURE') === 26.0, sprintf('Berichte mit airQualitySensor (steht in keinem Profil): einmal neu geholt, dann gemerkt (%d× GET profile bei 5 Pushes)', $n));
 
-section('F11 Selbstheilung nach Störung beim Anlegen');
+section('F11 Selbstheilung nach Störung beim Anlegen (behoben)');
 World::start();
 $did = World::$cloud->addExampleDevice('washer');
 World::$cloud->fail('GET devices/{id}/profile', 503, '', -1);
@@ -148,8 +153,8 @@ $after = World::idents($w);
 Kernel::advance(400);
 $push($did, $washerRun);
 $healed = in_array('RUN_STATE_CURRENT_STATE', World::idents($w), true);
-befund('F11', $healed, 'Ein Gerät, das bei einer API-Störung angelegt wurde, heilt beim nächsten Push',
-    sprintf('nach dem Anlegen: %s; nach dem Push: %s', implode(', ', $after), $healed ? 'geheilt' : 'unverändert — ERROR_LAST/PUSH_LAST zählen als Gerätevariablen'));
+check($after === ['INFO', 'LASTUPDATE', 'STATUS'], 'eine Einrichtung ohne Profil legt keine Gerätevariablen an: ' . implode(', ', $after));
+check($healed, 'ein Gerät, das bei einer API-Störung angelegt wurde, richtet sich ein, sobald LG wieder antwortet');
 
 section('F12 Variablen, die erst mit dem Status auftauchen (behoben)');
 World::start();
@@ -191,7 +196,7 @@ World::quiet();
 check((World::$cloud->calls('POST devices/{id}/control')[0]['body']['temperature']['targetTemperature'] ?? null) === 25 && World::value($ac, 'TEMPERATURE_TARGET_TEMPERATURE') === 25,
     'bestehende Integer-Variable: 25 geht als 25 raus und bleibt stehen');
 
-section('F15 Nachgeholte Einrichtung meldet an');
+section('F15 Nachgeholte Einrichtung meldet an (behoben)');
 World::start();
 IPS_SetProperty(World::$bridge, 'AccessToken', '');
 IPS_ApplyChanges(World::$bridge);
@@ -199,9 +204,17 @@ IPS_ApplyChanges(World::$bridge);
 IPS_SetProperty(World::$bridge, 'AccessToken', World::$cloud->pat);
 IPS_ApplyChanges(World::$bridge);
 Kernel::advance(6);
-befund('F15', isset(World::$cloud->eventSubs[$wid], World::$cloud->pushSubs[$wid]), 'InitialSetup abonniert Events und Pushes',
-    sprintf('Variablen angelegt: %s; Event-Abo %s, Push-Abo %s', in_array('RUN_STATE_CURRENT_STATE', World::idents($w), true) ? 'ja' : 'nein',
-        isset(World::$cloud->eventSubs[$wid]) ? 'ja' : 'nein', isset(World::$cloud->pushSubs[$wid]) ? 'ja' : 'nein'));
+check(in_array('RUN_STATE_CURRENT_STATE', World::idents($w), true) && isset(World::$cloud->eventSubs[$wid], World::$cloud->pushSubs[$wid]),
+    'die nachgeholte Einrichtung legt Variablen an und abonniert Events und Pushes');
+World::start();
+IPS_SetProperty(World::$bridge, 'AccessToken', '');
+IPS_ApplyChanges(World::$bridge);
+[$w4, $wid4] = World::example('washer');
+Kernel::advance(3600); // the PAT arrives an hour later
+IPS_SetProperty(World::$bridge, 'AccessToken', World::$cloud->pat);
+IPS_ApplyChanges(World::$bridge);
+Kernel::advance(301);
+check(in_array('RUN_STATE_CURRENT_STATE', World::idents($w4), true) && isset(World::$cloud->eventSubs[$wid4]), 'auch wenn der PAT erst eine Stunde später kommt (Wiederholung höchstens alle 5 min)');
 
 section('N2 Timer UNSET setzt Stunden und Minuten zurück (behoben)');
 World::start();

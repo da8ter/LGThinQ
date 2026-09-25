@@ -14,7 +14,7 @@ final class ThinQCleanup
     {
         $candidates = $this->candidates();
         if ($candidates === null) {
-            return $this->ctx->t('No DeviceType set – aborting.');
+            return $this->ctx->t('No device type or profile yet – aborting.');
         }
         if ($candidates === []) {
             return $this->ctx->t('Keine Variablen zum Löschen gefunden.');
@@ -29,7 +29,7 @@ final class ThinQCleanup
     {
         $candidates = $this->candidates();
         if ($candidates === null) {
-            return 'No DeviceType set – aborting.';
+            return 'No device type or profile yet – aborting.';
         }
         $kept = count($this->variables()) - count($candidates);
         $deleted = 0;
@@ -48,11 +48,13 @@ final class ThinQCleanup
     /** @return array<int, array{id: int, ident: string, name: string}>|null variables outside the plan; null without device type */
     private function candidates(): ?array
     {
+        // Without a usable profile the plan would be nearly empty and every variable a candidate
         $type = trim($this->ctx->attributeString('DeviceType'));
-        if ($type === '') {
+        $profile = $this->profiles->readStoredProfile();
+        if ($type === '' || $profile === []) {
             return null;
         }
-        $plan = ($this->engine)()->buildPlan($type, $this->profiles->readStoredProfile(), $this->profiles->readLastStatus());
+        $plan = ($this->engine)()->buildPlan($type, $profile, $this->profiles->readLastStatus());
         $valid = array_fill_keys(array_merge(array_map('strval', array_keys($plan)), ThinQDeviceSetup::GENERIC), true);
         return array_values(array_filter($this->variables(), static fn(array $v): bool => $v['ident'] !== '' && !isset($valid[$v['ident']])));
     }

@@ -11,12 +11,16 @@ final class ThinQDeviceSetup
 {
     /** Variables that exist without a profile; a device with nothing else never finished its setup. */
     public const GENERIC = ['INFO', 'STATUS', 'LASTUPDATE', 'ENERGY_YESTERDAY', 'ENERGY_THIS_MONTH', 'ENERGY_LAST_MONTH'];
+    /** Longest wait between two setup attempts (seconds); they start at 5 s and double. */
+    public const RETRY_MAX = 300;
 
     /**
      * @param Closure $engine fn(): CapabilityEngine
      * @param Closure $energy fn(): ThinQEnergyManager
      * @param Closure $applyPresentation fn(int $vid, string $ident, array $presentation, array $flatProfile, string $type): void
      * @param Closure $updateEnergy fn(): void
+     * @param Closure $updateStatus fn(): void — fetches the status, keeps the old one on failure
+     * @param Closure $subscribe fn(): void — event and push subscription via the Bridge, throws on failure
      */
     public function __construct(
         private ThinQModuleContext $ctx,
@@ -24,31 +28,68 @@ final class ThinQDeviceSetup
         private Closure $engine,
         private Closure $energy,
         private Closure $applyPresentation,
-        private Closure $updateEnergy
+        private Closure $updateEnergy,
+        private Closure $updateStatus,
+        private Closure $subscribe
     ) {
     }
 
-    public function setupDevice(): void
+    /**
+     * The whole setup: status, profile, device type, variables, energy, subscription. A failed
+     * profile or type fetch keeps what is stored instead of overwriting it; without both the setup
+     * is repeated (5 s, 10 s, 20 s … up to RETRY_MAX) until it completes. True when complete.
+     */
+    public function run(): bool
     {
+        $this->ctx->setTimerInterval('InitialUpdateStatus', 0);
         $deviceId = trim($this->ctx->propertyString('DeviceID'));
         if ($deviceId === '') {
-            throw new Exception('DeviceID missing');
+            return false;
+        }
+        if (!$this->ctx->hasActiveParent()) {
+            return $this->retryLater('Bridge not active');
+        }
+        ($this->updateStatus)();
+
+        $fresh = $this->profiles->fetchDeviceProfile($deviceId);
+        if ($fresh !== []) {
+            $this->ctx->writeAttributeString('LastProfile', (string)json_encode($fresh, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        }
+        $profile = $fresh !== [] ? $fresh : $this->profiles->readStoredProfile();
+        $type = $this->profiles->resolveDeviceType($deviceId, $profile);
+        if ($type !== '') {
+            $this->ctx->writeAttributeString('DeviceType', $type);
+        } else {
+            $type = trim($this->ctx->attributeString('DeviceType'));
+        }
+        $this->ctx->debug('Setup', sprintf('profile=%s, type=%s', $fresh !== [] ? 'fresh' : ($profile !== [] ? 'stored' : 'none'), $type !== '' ? $type : '(none)'));
+        if ($profile === [] || $type === '') {
+            return $this->retryLater('no profile or device type from LG yet');
         }
 
-        $profile = $this->profiles->fetchDeviceProfile($deviceId);
-        $status = $this->profiles->readLastStatus();
-        $type = $this->profiles->resolveDeviceType($deviceId, $profile);
-
-        // Diagnostic: an empty profile here is the root cause of "device created but only
-        // generic variables" — GetProfile failed/returned nothing at this moment.
-        $this->ctx->debug('setupDevice', sprintf('profile=%s (keys=%s), type=%s', empty($profile) ? 'EMPTY' : 'ok',
-            implode(',', array_keys($profile)), $type !== '' ? $type : '(empty)'));
-
-        $this->ctx->writeAttributeString('LastProfile', (string)json_encode($profile));
-        $this->ctx->writeAttributeString('DeviceType', $type);
-
-        $this->ensureVariables($profile, $status, $type);
+        $this->ensureVariables($profile, $this->profiles->readLastStatus(), $type);
         $this->setupEnergy($deviceId);
+        try {
+            ($this->subscribe)();
+        } catch (\Throwable $e) {
+            // The Bridge's renewal subscribes devices without a subscription; no need for a full setup again
+            $this->ctx->debug('Setup', 'Subscription failed: ' . $e->getMessage());
+        }
+        $this->ctx->setBuffer('SetupAttempt', '0');
+        $this->ctx->setBuffer('SetupState', 'done');
+        return true;
+    }
+
+    /** Setup incomplete: next attempt after 5 s, doubled per attempt, at most RETRY_MAX. */
+    private function retryLater(string $reason): bool
+    {
+        $attempt = (int)$this->ctx->buffer('SetupAttempt') + 1;
+        $this->ctx->setBuffer('SetupAttempt', (string)$attempt);
+        $this->ctx->setBuffer('SetupState', 'pending');
+        $seconds = min(self::RETRY_MAX, 5 * 2 ** min($attempt - 1, 10));
+        $this->ctx->debug('Setup', sprintf('Incomplete (%s), next attempt in %d s', $reason, $seconds));
+        $this->ctx->setTimerInterval('InitialUpdateStatus', $seconds * 1000);
+        return false;
     }
 
     /** Energy profile, ENERGY_* variables and timer; the first values right away. */
@@ -129,16 +170,20 @@ final class ThinQDeviceSetup
         $engine->applyStatus($status);
     }
 
-    /** True while the instance has only the generic variables: the setup never created the device's own. */
+    /**
+     * True while the instance has none of its device's own variables. ERROR_LAST and PUSH_LAST do
+     * not count: earlier versions created them even from an empty profile during an outage.
+     */
     public function hasOnlyGenericVariables(): bool
     {
+        $notOwn = array_merge(self::GENERIC, ['ERROR_LAST', 'PUSH_LAST']);
         foreach ((array)@IPS_GetChildrenIDs($this->ctx->instanceId) as $cid) {
             if (!is_array(@IPS_GetVariable((int)$cid))) {
                 continue;
             }
             $object = @IPS_GetObject((int)$cid);
             $ident = is_array($object) ? (string)($object['ObjectIdent'] ?? '') : '';
-            if ($ident !== '' && !in_array($ident, self::GENERIC, true)) {
+            if ($ident !== '' && !in_array($ident, $notOwn, true)) {
                 return false;
             }
         }
