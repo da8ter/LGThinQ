@@ -256,13 +256,17 @@ class LGThinQDevice extends IPSModule
                 }
             }
 
+            if ($status === []) {
+                // An empty answer carries no state; keep the last known one instead of wiping it.
+                $this->SendDebug('UpdateStatus', 'Empty status response, keeping the last known status', 0);
+                return;
+            }
+
             $encoded = json_encode($status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             $this->WriteAttributeString('LastStatus', $encoded);
 
             @SetValueString($this->getVarId('STATUS'), $encoded);
             @SetValueInteger($this->getVarId('LASTUPDATE'), ThinQClock::now());
-
-            $this->WriteAttributeString('LastStatus', json_encode($status));
 
             // CapabilityEngine: Werte anwenden
             $engine = $this->prepareEngine();

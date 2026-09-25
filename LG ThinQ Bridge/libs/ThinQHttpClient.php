@@ -79,20 +79,20 @@ final class ThinQHttpClient
         $this->dbg('ResponseStatus', $statusCode . ' HeaderLine: ' . $statusHeader);
         $this->dbg('ResponseBody', ThinQRedactor::snippet((string)$result));
 
-        if ($statusCode === 204 || trim($result) === '') {
-            return [];
-        }
-
+        // The status decides first: an error without a body is still an error, not an empty result.
         $decoded = json_decode($result, true);
         if ($statusCode >= 400) {
             $this->dbg('Error', 'HTTP error status ' . $statusCode . ' for URL: ' . $url);
             if (is_array($decoded) && isset($decoded['error'])) {
-                $code = $decoded['error']['code'] ?? 'unknown';
+                $code = (string)($decoded['error']['code'] ?? 'unknown');
                 $message = $decoded['error']['message'] ?? 'unknown';
-                throw new Exception('HTTP ' . $statusCode . ' API error ' . $code . ': ' . $message . ' (' . $url . ')');
+                throw new ThinQApiException('HTTP ' . $statusCode . ' API error ' . $code . ': ' . $message . ' (' . $url . ')', $statusCode, $code);
             }
-            $snippet = substr(preg_replace('/\s+/', ' ', (string)$result), 0, 300);
-            throw new Exception('HTTP ' . $statusCode . ' error from ' . $url . ': ' . $snippet);
+            $snippet = trim($result) === '' ? '(empty body)' : substr((string)preg_replace('/\s+/', ' ', $result), 0, 300);
+            throw new ThinQApiException('HTTP ' . $statusCode . ' error from ' . $url . ': ' . $snippet, $statusCode);
+        }
+        if ($statusCode === 204 || trim($result) === '') {
+            return [];
         }
 
         if (!is_array($decoded)) {
@@ -102,5 +102,19 @@ final class ThinQHttpClient
         $this->dbg('DecodedKeys', implode(',', array_keys($decoded)));
 
         return $decoded['response'] ?? $decoded;
+    }
+}
+
+/** An HTTP error answer of the LG API: HTTP status plus LG's own error code (e.g. "1207"), if any. */
+final class ThinQApiException extends RuntimeException
+{
+    public int $httpStatus;
+    public string $apiCode;
+
+    public function __construct(string $message, int $httpStatus, string $apiCode = '')
+    {
+        parent::__construct($message);
+        $this->httpStatus = $httpStatus;
+        $this->apiCode = $apiCode;
     }
 }

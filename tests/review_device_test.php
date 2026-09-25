@@ -259,13 +259,21 @@ $fz = World::value($f, 'FREEZER_TEMPERATURE_TARGET_TEMPERATURE');
 befund('N8', $fr === 3 && $fz === -20, 'Elementlisten werden nach locationName zusammengeführt, nicht nach Position',
     sprintf('nach Berichten FREEZER -20, dann FRIDGE 3: FRIDGE %s, FREEZER %s', json_encode($fr), json_encode($fz)));
 
-section('N9 HTTP 500 ohne Rumpf');
+section('N9 HTTP 500 ohne Rumpf (behoben)');
 World::start();
-[$w] = World::example('washer');
+[$w, $wid] = World::example('washer');
 World::$cloud->fail('GET devices/{id}/state', 500, '');
 LGTQD_UpdateStatus($w);
 $st = json_decode((string)World::attr($w, 'LastStatus'), true);
-befund('N9', isset($st['runState']), 'Ein 500 ohne Rumpf überschreibt den Gerätestatus nicht', 'LastStatus danach: ' . World::attr($w, 'LastStatus'));
+check(isset($st['runState']), 'ein 500 ohne Rumpf überschreibt den Gerätestatus nicht');
+World::$cloud->fail('GET devices/{id}/state', 500, '');
+$caught = '';
+try {
+    LGTQ_GetDeviceStatus(World::$bridge, $wid);
+} catch (\Throwable $e) {
+    $caught = $e->getMessage();
+}
+check(str_contains($caught, 'HTTP 500 error from') && str_contains($caught, '(empty body)'), 'LGTQ_GetDeviceStatus: ein 500 ohne Rumpf ist ein Fehler, kein leeres Ergebnis');
 
 section('N10 Selbstheilung ohne das Attribut LastSelfHealTs');
 World::start();
