@@ -6,10 +6,8 @@ declare(strict_types=1);
  * CapabilityControlBuilder
  *
  * Extracted from CapabilityEngine: control payload building for write operations.
- * Handles buildControlPayload and all its private helpers.
- *
- * NOTE: This class exceeds 500 lines because buildControlPayload is a monolithic
- * method with a large firstOf block that cannot be split without semantic changes.
+ * The plan builder produces two write kinds, enumMap and attribute; buildControlPayload
+ * handles exactly these.
  */
 class CapabilityControlBuilder
 {
@@ -51,30 +49,6 @@ class CapabilityControlBuilder
             return null;
         }
         $this->dbg(sprintf('buildControlPayload: Found capability for %s, write config: %s', $ident, json_encode($cap['write'] ?? null)));
-        // Clamp
-        if (isset($cap['write']['clamp']) && is_array($cap['write']['clamp'])) {
-            $min = $cap['write']['clamp']['min'] ?? null;
-            $max = $cap['write']['clamp']['max'] ?? null;
-            if (is_numeric($min)) { $value = max((int)$min, (int)$value); }
-            if (is_numeric($max)) { $value = min((int)$max, (int)$value); }
-        }
-        // Composite decompose
-        if (isset($cap['write']['composite']) && is_array($cap['write']['composite'])) {
-            $comp = $cap['write']['composite'];
-            $fn = strtolower((string)($comp['decompose'] ?? ''));
-            $targets = $comp['targets'] ?? [];
-            $out = [];
-            if ($fn === 'minutes_to_hm' && is_array($targets) && count($targets) >= 2) {
-                $total = (int)$value;
-                $h = intdiv($total, 60);
-                $m = $total % 60;
-                $t0 = (string)($targets[0]['path'] ?? '');
-                $t1 = (string)($targets[1]['path'] ?? '');
-                if ($t0 !== '') $this->setByPath($out, $t0, $h);
-                if ($t1 !== '') $this->setByPath($out, $t1, $m);
-                return $out;
-            }
-        }
         // Enum map (map incoming value to a set of target paths/values)
         if (isset($cap['write']['enumMap']) && is_array($cap['write']['enumMap'])) {
             $map = $cap['write']['enumMap'];
@@ -111,43 +85,6 @@ class CapabilityControlBuilder
                 return $out;
             }
         }
-        // arrayTemplate: choose array element by where and set fields
-        if (isset($cap['write']['arrayTemplate']) && is_array($cap['write']['arrayTemplate'])) {
-            $cfg = $cap['write']['arrayTemplate'];
-            $container = (string)($cfg['container'] ?? '');
-            $path = (string)($cfg['path'] ?? '');
-            $where = is_array($cfg['where'] ?? null) ? $cfg['where'] : [];
-            $set   = is_array($cfg['set'] ?? null) ? $cfg['set'] : [];
-            if ($container !== '' && !empty($set)) {
-                $flatSrc = $this->flatStatus ?: $this->flatProfile;
-                $idx = $this->varManager->findArrayIndex($flatSrc, $container, $where);
-                if ($idx === null) return null;
-                $out = [];
-                foreach ($set as $k => $v) {
-                    $tplVal = $v;
-                    $this->varManager->walkReplace($tplVal, $value);
-                    $p = $container . '.' . $idx . '.' . ($path !== '' ? ($path . '.') : '') . (string)$k;
-                    $this->setByPath($out, $p, $tplVal);
-                }
-                if (isset($out[$container]) && is_array($out[$container])) {
-                    $allNumeric = true;
-                    foreach (array_keys($out[$container]) as $k2) {
-                        if (!is_int($k2)) { $allNumeric = false; break; }
-                    }
-                    if ($allNumeric) {
-                        $out[$container] = array_values($out[$container]);
-                    }
-                }
-                return $out;
-            }
-        }
-        // Template
-        if (isset($cap['write']['template']) && is_array($cap['write']['template'])) {
-            $tpl = $cap['write']['template'];
-            $converted = $this->varManager->convertValueForType($cap, $value);
-            $out = $this->varManager->replaceTemplatePlaceholders($tpl, $converted);
-            return $out;
-        }
         // attribute: generic builder
         if (isset($cap['write']['attribute']) && is_array($cap['write']['attribute'])) {
             $cfg = $cap['write']['attribute'];
@@ -179,13 +116,7 @@ class CapabilityControlBuilder
                         $value = $v;
                     }
                 }
-                if (isset($cfg['valueTemplate'])) {
-                    $node = $cfg['valueTemplate'];
-                    $this->varManager->walkReplace($node, $value);
-                    $converted = $node;
-                } else {
-                    $converted = $this->varManager->convertValueForType($cap, $value);
-                }
+                $converted = $this->varManager->convertValueForType($cap, $value);
                 $resourcePayload = $extras + [$property => $converted];
                 if (is_array($cfg['coSend'] ?? null)) {
                     $resourcePayload = $cfg['coSend'] + $resourcePayload;
@@ -198,172 +129,6 @@ class CapabilityControlBuilder
                 $this->applyCoSendFromStatus($cfg, $payload);
                 $this->applyCoSendConst($cfg, $payload);
                 return $payload;
-            }
-        }
-        // multiAttribute: build a combined payload of multiple attribute entries
-        if (isset($cap['write']['multiAttribute']) && is_array($cap['write']['multiAttribute'])) {
-            $cfg = $cap['write']['multiAttribute'];
-            $items = is_array($cfg['items'] ?? null) ? $cfg['items'] : [];
-            if (!empty($items)) {
-                $payload = [];
-                foreach ($items as $item) {
-                    if (!is_array($item)) continue;
-                    $resource = (string)($item['resource'] ?? '');
-                    $property = (string)($item['property'] ?? '');
-                    if ($resource === '' || $property === '') continue;
-                    $extras = is_array($item['extras'] ?? null) ? $item['extras'] : [];
-                    $useVal = array_key_exists('valueConst', $item) ? $item['valueConst'] : $value;
-                    if (!empty($item['clampFromProfile'])) {
-                        $rng = $this->varManager->findRangeFromProfile($resource, $property);
-                        if (is_array($rng) && is_numeric($useVal)) {
-                            $v = $useVal;
-                            if (isset($rng['min']) && is_numeric($rng['min'])) { $v = max((float)$rng['min'], (float)$v); }
-                            if (isset($rng['max']) && is_numeric($rng['max'])) { $v = min((float)$rng['max'], (float)$v); }
-                            $useVal = $v;
-                        }
-                    }
-                    if (isset($item['valueTemplate'])) {
-                        $node = $item['valueTemplate'];
-                        $this->varManager->walkReplace($node, $useVal);
-                        $converted = $node;
-                    } else {
-                        $converted = $this->varManager->convertValueForType($cap, $useVal);
-                    }
-                    if (!isset($payload[$resource]) || !is_array($payload[$resource])) {
-                        $payload[$resource] = [];
-                    }
-                    $payload[$resource] = $extras + $payload[$resource];
-                    $payload[$resource][$property] = $converted;
-                }
-                if (!empty($payload)) return $payload;
-            }
-        }
-        // firstOf: pick the first matching write option based on profile keys
-        if (isset($cap['write']['firstOf']) && is_array($cap['write']['firstOf'])) {
-            foreach ($cap['write']['firstOf'] as $opt) {
-                if (!is_array($opt)) continue;
-                $writeKeys = $opt['profileWriteableAny'] ?? [];
-                if (is_array($writeKeys) && !empty($writeKeys)) {
-                    $ok = false;
-                    foreach ($writeKeys as $wk) {
-                        $wk = (string)$wk;
-                        if ($wk === '') continue;
-                        if ($this->profileHasWriteAny([$wk])) { $ok = true; break; }
-                        $base = preg_replace('/\.(mode|type)$/i', '', $wk);
-                        if (is_string($base) && $base !== '' && $this->flatProfileIsWriteable($base)) { $ok = true; break; }
-                    }
-                    if (!$ok) continue;
-                } else {
-                    $keys = $opt['profileHasAny'] ?? ($opt['whenProfileHasAny'] ?? []);
-                    $keys = is_array($keys) ? $keys : [];
-                    if (!empty($keys) && !$this->flatProfileHasAny($keys)) {
-                        continue;
-                    }
-                }
-                if (isset($opt['attribute']) && is_array($opt['attribute'])) {
-                    $cfg = $opt['attribute'];
-                    $resource = (string)($cfg['resource'] ?? '');
-                    $property = (string)($cfg['property'] ?? '');
-                    $extras = is_array($cfg['extras'] ?? null) ? $cfg['extras'] : [];
-                    if ($resource !== '' && $property !== '') {
-                        $useVal = $value;
-                        if (!empty($cfg['clampFromProfile'])) {
-                            $rng = $this->varManager->findRangeFromProfile($resource, $property);
-                            if (is_array($rng) && is_numeric($useVal)) {
-                                $v = $useVal;
-                                if (isset($rng['min']) && is_numeric($rng['min'])) { $v = max((float)$rng['min'], (float)$v); }
-                                if (isset($rng['max']) && is_numeric($rng['max'])) { $v = min((float)$rng['max'], (float)$v); }
-                                $useVal = $v;
-                            }
-                        }
-                        if (isset($cfg['valueTemplate'])) {
-                            $node = $cfg['valueTemplate'];
-                            $this->varManager->walkReplace($node, $useVal);
-                            $converted = $node;
-                        } else {
-                            $converted = $this->varManager->convertValueForType($cap, $useVal);
-                        }
-                        $resourcePayload = $extras + [$property => $converted];
-                        if (is_array($cfg['coSend'] ?? null)) {
-                            $resourcePayload = $cfg['coSend'] + $resourcePayload;
-                        }
-                        $payload = [$resource => $resourcePayload];
-                        if (isset($cfg['locationWrap']) && is_string($cfg['locationWrap']) && $cfg['locationWrap'] !== '') {
-                            $payload['location'] = ['locationName' => $cfg['locationWrap']];
-                            unset($payload[$resource]['locationName']);
-                        }
-                        return $payload;
-                    }
-                }
-                if (isset($opt['template']) && is_array($opt['template'])) {
-                    $converted = $this->varManager->convertValueForType($cap, $value);
-                    $out = $this->varManager->replaceTemplatePlaceholders($opt['template'], $converted);
-                    return $out;
-                }
-                if (isset($opt['enumMap']) && is_array($opt['enumMap'])) {
-                    $map = $opt['enumMap'];
-                    $key = (string)$value;
-                    if (array_key_exists($key, $map) && is_array($map[$key])) {
-                        $out = [];
-                        foreach ($map[$key] as $path => $v) {
-                            $this->setByPath($out, (string)$path, $v);
-                        }
-                        return $out;
-                    }
-                }
-                if (isset($opt['composite']) && is_array($opt['composite'])) {
-                    $comp = $opt['composite'];
-                    $fn = strtolower((string)($comp['decompose'] ?? ''));
-                    $targets = $comp['targets'] ?? [];
-                    if ($fn === 'minutes_to_hm' && is_array($targets) && count($targets) >= 2) {
-                        $total = (int)$value;
-                        $h = intdiv($total, 60);
-                        $m = $total % 60;
-                        $t0 = (string)($targets[0]['path'] ?? '');
-                        $t1 = (string)($targets[1]['path'] ?? '');
-                        $out = [];
-                        if ($t0 !== '') $this->setByPath($out, $t0, $h);
-                        if ($t1 !== '') $this->setByPath($out, $t1, $m);
-                        return $out;
-                    }
-                }
-                if (isset($opt['multiAttribute']) && is_array($opt['multiAttribute'])) {
-                    $cfg = $opt['multiAttribute'];
-                    $items = is_array($cfg['items'] ?? null) ? $cfg['items'] : [];
-                    if (!empty($items)) {
-                        $payload = [];
-                        foreach ($items as $item) {
-                            if (!is_array($item)) continue;
-                            $resource = (string)($item['resource'] ?? '');
-                            $property = (string)($item['property'] ?? '');
-                            if ($resource === '' || $property === '') continue;
-                            $extras = is_array($item['extras'] ?? null) ? $item['extras'] : [];
-                            $useVal = array_key_exists('valueConst', $item) ? $item['valueConst'] : $value;
-                            if (!empty($item['clampFromProfile'])) {
-                                $rng = $this->varManager->findRangeFromProfile($resource, $property);
-                                if (is_array($rng) && is_numeric($useVal)) {
-                                    $v = $useVal;
-                                    if (isset($rng['min']) && is_numeric($rng['min'])) { $v = max((float)$rng['min'], (float)$v); }
-                                    if (isset($rng['max']) && is_numeric($rng['max'])) { $v = min((float)$rng['max'], (float)$v); }
-                                    $useVal = $v;
-                                }
-                            }
-                            if (isset($item['valueTemplate'])) {
-                                $node = $item['valueTemplate'];
-                                $this->varManager->walkReplace($node, $useVal);
-                                $converted = $node;
-                            } else {
-                                $converted = $this->varManager->convertValueForType($cap, $useVal);
-                            }
-                            if (!isset($payload[$resource]) || !is_array($payload[$resource])) {
-                                $payload[$resource] = [];
-                            }
-                            $payload[$resource] = $extras + $payload[$resource];
-                            $payload[$resource][$property] = $converted;
-                        }
-                        if (!empty($payload)) return $payload;
-                    }
-                }
             }
         }
         return null;
@@ -573,44 +338,12 @@ class CapabilityControlBuilder
         return false;
     }
 
-    /** @param array<int, string> $keys */
-    public function flatProfileHasAny(array $keys): bool
-    {
-        foreach ($keys as $k) {
-            $k = (string)$k;
-            if ($k === '') continue;
-            if (array_key_exists($k, $this->flatProfile)) return true;
-            foreach ($this->flatProfile as $fk => $_) {
-                if (strpos($fk, $k) !== false) return true;
-            }
-        }
-        return false;
-    }
-
-    public function flatProfileIsWriteable(string $basePath): bool
-    {
-        $basePath = (string)$basePath;
-        if ($basePath === '') return false;
-        $modeKey = $basePath . '.mode';
-        if (array_key_exists($modeKey, $this->flatProfile) && $this->modeHasW($this->flatProfile[$modeKey])) {
-            return true;
-        }
-        $prefix = $basePath . '.';
-        foreach ($this->flatProfile as $k => $_) {
-            if (strpos($k, $prefix) !== 0) continue;
-            if (strpos($k, '.value.w') !== false) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     /** @param array<string, mixed> $cap */
     public function capHasWriteDefinition(array $cap): bool
     {
         $w = $cap['write'] ?? null;
         if (!is_array($w)) return false;
-        foreach (['enumMap','template','composite','arrayTemplate','attribute','multiAttribute','firstOf'] as $k) {
+        foreach (['enumMap', 'attribute'] as $k) {
             if (isset($w[$k]) && is_array($w[$k])) return true;
         }
         return false;
@@ -644,32 +377,6 @@ class CapabilityControlBuilder
         $keys = $create['keys'] ?? [];
         if ($when === 'always') return true;
         if (!is_array($keys) || empty($keys)) return false;
-        if ($when === 'profilehasall') {
-            foreach ($keys as $k) {
-                $k = (string)$k;
-                if ($k === '') return false;
-                $found = array_key_exists($k, $flatProfile);
-                if (!$found) {
-                    foreach ($flatProfile as $fk => $_) {
-                        if (strpos($fk, $k) !== false) { $found = true; break; }
-                    }
-                }
-                if (!$found) return false;
-            }
-            return true;
-        }
-        if ($when === 'profilehasany') {
-            foreach ($keys as $k) { if (array_key_exists($k, $flatProfile)) return true; }
-            foreach ($keys as $k) {
-                foreach ($flatProfile as $fk => $_) {
-                    if (strpos($fk, $k) !== false) return true;
-                }
-            }
-            foreach ($keys as $b) {
-                if ($this->profileHasWriteAny([$b . '.mode'])) return true;
-            }
-            return false;
-        }
         if ($when === 'statushasany') {
             foreach ($keys as $k) { if (array_key_exists($k, $flatStatus)) return true; }
             foreach ($keys as $k) {

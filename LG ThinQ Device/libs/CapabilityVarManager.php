@@ -11,13 +11,13 @@ declare(strict_types=1);
 class CapabilityVarManager
 {
     public function __construct(
-        private array $caps,
         private array $flatProfile,
         private array $flatStatus
     ) {}
 
     /**
-     * Read value using 'read' section from descriptor.
+     * Read value using 'read' section from descriptor: a source path (optionally mapped through
+     * valueMap, case-insensitive) or an element of a list selected by 'where'.
      * @param array<string, mixed> $cap
      * @param array<string, mixed> $flat
      */
@@ -25,31 +25,6 @@ class CapabilityVarManager
     {
         $read = $cap['read'] ?? null;
         if (!is_array($read)) return null;
-        // direct mapped value (support both 'map' and 'valueMap')
-        $mapField = $read['valueMap'] ?? $read['map'] ?? null;
-        if (isset($read['sources']) && is_array($mapField)) {
-            $src = $read['sources'];
-            $map = $mapField;
-            $ci  = (bool)($read['mapCaseInsensitive'] ?? true);
-            if (is_array($src)) {
-                foreach ($src as $p) {
-                    $v = $this->getFromFlat($flat, (string)$p);
-                    if ($v !== null) {
-                        $key = (string)$v;
-                        if ($ci) {
-                            $umap = [];
-                            foreach ($map as $mk => $mv) { $umap[strtoupper((string)$mk)] = $mv; }
-                            $u = strtoupper($key);
-                            if (array_key_exists($u, $umap)) return $umap[$u];
-                        } else {
-                            if (array_key_exists($key, $map)) return $map[$key];
-                        }
-                        return $v;
-                    }
-                }
-            }
-        }
-        // array read: select array element by where and read a path
         if (isset($read['array']) && is_array($read['array'])) {
             $cfg = $read['array'];
             $container = (string)($cfg['container'] ?? '');
@@ -61,61 +36,16 @@ class CapabilityVarManager
                 if ($idx !== null) {
                     $v = $this->getFromFlat($flatSrc, $container . '.' . $idx . '.' . $path);
                     if ($v !== null) {
-                        $map = $read['map'] ?? null;
-                        if (is_array($map)) {
-                            $key = (string)$v;
-                            $ci  = (bool)($read['mapCaseInsensitive'] ?? true);
-                            if ($ci) {
-                                $umap = [];
-                                foreach ($map as $mk => $mv) { $umap[strtoupper((string)$mk)] = $mv; }
-                                $u = strtoupper($key);
-                                if (array_key_exists($u, $umap)) return $umap[$u];
-                            } else {
-                                if (array_key_exists($key, $map)) return $map[$key];
-                            }
-                        }
-                        $trueVals = $read['string_true'] ?? [];
-                        $falseVals = $read['string_false'] ?? [];
-                        if (!empty($trueVals) || !empty($falseVals)) {
-                            $s = strtoupper((string)$v);
-                            if (in_array($s, array_map('strtoupper', $trueVals), true)) return true;
-                            if (in_array($s, array_map('strtoupper', $falseVals), true)) return false;
-                        }
                         return $v;
                     }
                 }
             }
         }
-        // composite
-        if (isset($read['composite']) && is_array($read['composite'])) {
-            $comp = $read['composite'];
-            $fn = strtolower((string)($comp['combine'] ?? ''));
-            $parts = $comp['parts'] ?? [];
-            if ($fn === 'hm_to_minutes' && is_array($parts) && count($parts) >= 2) {
-                $p0 = (string)($parts[0]['path'] ?? '');
-                $p1 = (string)($parts[1]['path'] ?? '');
-                $h = $this->getFromFlat($flat, $p0);
-                $m = $this->getFromFlat($flat, $p1);
-                if ($h !== null || $m !== null) {
-                    return (int)((int)($h ?? 0) * 60 + (int)($m ?? 0));
-                }
-            }
-        }
-        // sources
-        $src = $read['sources'] ?? [];
-        if (is_array($src)) {
-            foreach ($src as $p) {
-                $v = $this->getFromFlat($flat, (string)$p);
-                if ($v !== null) {
-                    $trueVals = $read['string_true'] ?? [];
-                    $falseVals = $read['string_false'] ?? [];
-                    if (!empty($trueVals) || !empty($falseVals)) {
-                        $s = strtoupper((string)$v);
-                        if (in_array($s, array_map('strtoupper', $trueVals), true)) return true;
-                        if (in_array($s, array_map('strtoupper', $falseVals), true)) return false;
-                    }
-                    return $v;
-                }
+        $map = is_array($read['valueMap'] ?? null) ? array_change_key_case($read['valueMap'], CASE_UPPER) : null;
+        foreach (is_array($read['sources'] ?? null) ? $read['sources'] : [] as $p) {
+            $v = $this->getFromFlat($flat, (string)$p);
+            if ($v !== null) {
+                return ($map !== null && array_key_exists(strtoupper((string)$v), $map)) ? $map[strtoupper((string)$v)] : $v;
             }
         }
         return null;
@@ -166,34 +96,6 @@ class CapabilityVarManager
             'FLOAT'   => (float)$value,
             default   => (string)$value
         };
-    }
-
-    public function replaceTemplatePlaceholders(array $tpl, $value): array
-    {
-        $out = $tpl;
-        $this->walkReplace($out, $value);
-        return $out;
-    }
-
-    public function walkReplace(&$node, $value): void
-    {
-        if (is_array($node)) {
-            foreach ($node as $k => &$v) {
-                $this->walkReplace($v, $value);
-            }
-            unset($v);
-        } else {
-            if (is_string($node)) {
-                $s = $node;
-                if (strpos($s, '@bool') !== false) { $node = ((bool)$value) ? true : false; return; }
-                if (strpos($s, '@int') !== false) { $node = (int)$value; return; }
-                if (strpos($s, '@float') !== false) { $node = (float)$value; return; }
-                if (strpos($s, '@string') !== false) { $node = (string)$value; return; }
-                if (strpos($s, '@onoff') !== false) { $node = ((bool)$value) ? 'ON' : 'OFF'; return; }
-                if (strpos($s, '@startstop') !== false) { $node = ((bool)$value) ? 'START' : 'STOP'; return; }
-                if (strpos($s, '@power_on_off') !== false) { $node = ((bool)$value) ? 'POWER_ON' : 'POWER_OFF'; return; }
-            }
-        }
     }
 
     /**

@@ -67,7 +67,7 @@ class CapabilityEngine
      */
     private function getVarManager(): CapabilityVarManager
     {
-        return new CapabilityVarManager($this->caps, $this->flatProfile, $this->flatStatus);
+        return new CapabilityVarManager($this->flatProfile, $this->flatStatus);
     }
 
     /**
