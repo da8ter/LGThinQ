@@ -8,7 +8,8 @@ require_once __DIR__ . '/libs/ThinQConfig.php';
 require_once __DIR__ . '/libs/ThinQRedactor.php';
 require_once __DIR__ . '/libs/ThinQHttpClient.php';
 require_once __DIR__ . '/libs/ThinQApi.php';
-require_once __DIR__ . '/libs/ThinQEventManager.php';
+require_once __DIR__ . '/libs/ThinQSubscriptionService.php';
+require_once __DIR__ . '/libs/ThinQForwardHandler.php';
 require_once __DIR__ . '/libs/ThinQEventPipeline.php';
 require_once __DIR__ . '/libs/ThinQMqttRouter.php';
 require_once __DIR__ . '/libs/ThinQCertificateManager.php';
@@ -21,15 +22,12 @@ class LGThinQBridge extends IPSModule
 
     public const API_KEY = 'v6GFvkweNo7DK7yD3ylIZ9w52aKBU0eJ7wLXkSR3';
     private const CHILD_INTERFACE_GUID = '{5E9D1B64-0F44-4F21-9D74-09C5BB90FB2F}';
-    private const DEVICE_MODULE_GUID = '{B5CF9E2D-7B7C-4A0A-9C0E-7E5A0B8E2E9A}';
 
     private ?ThinQBridgeConfig $config = null;
     private ?ThinQHttpClient $httpClient = null;
     private ?ThinQApi $api = null;
     private ?ThinQJsonAttribute $deviceRepository = null;
-    private ?ThinQJsonAttribute $subscriptionRepository = null;
-    private ?ThinQJsonAttribute $pushRepository = null;
-    private ?ThinQEventManager $eventManager = null;
+    private ?ThinQSubscriptionService $subscriptions = null;
     private ?ThinQEventPipeline $eventPipeline = null;
     private ?ThinQMqttRouter $mqttRouter = null;
 
@@ -169,97 +167,16 @@ class LGThinQBridge extends IPSModule
         if (!is_array($json)) {
             return json_encode(['success' => false, 'error' => 'invalid payload']);
         }
-        $buffer = $json['Buffer'] ?? [];
-        if (is_string($buffer)) {
-            $buffer = json_decode($buffer, true);
-        }
-        if (!is_array($buffer)) {
-            $buffer = [];
-        }
-
-        $action = (string)($buffer['Action'] ?? '');
-        $this->SendDebug('ForwardData', trim($action . ' ' . (string)($buffer['DeviceID'] ?? '')), 0);
+        $buffer = is_string($json['Buffer'] ?? null) ? json_decode($json['Buffer'], true) : ($json['Buffer'] ?? []);
+        $buffer = is_array($buffer) ? $buffer : [];
+        $this->SendDebug('ForwardData', trim((string)($buffer['Action'] ?? '') . ' ' . (string)($buffer['DeviceID'] ?? '')), 0);
         try {
-            switch ($action) {
-                case 'GetDevices':
-                    $devices = $this->fetchDevices();
-                    return json_encode(['success' => true, 'devices' => $devices], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                case 'GetStatus':
-                    $deviceId = (string)($buffer['DeviceID'] ?? '');
-                    if ($deviceId === '') {
-                        throw new Exception('DeviceID missing');
-                    }
-                    $status = $this->fetchDeviceStatus($deviceId);
-                    return json_encode(['success' => true, 'status' => $status], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                case 'GetProfile':
-                    $deviceId = (string)($buffer['DeviceID'] ?? '');
-                    if ($deviceId === '') {
-                        throw new Exception('DeviceID missing');
-                    }
-                    $profile = $this->api->deviceProfile($deviceId);
-                    return json_encode(['success' => true, 'profile' => $profile], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                case 'Control':
-                    $deviceId = (string)($buffer['DeviceID'] ?? '');
-                    $payload = $buffer['Payload'] ?? null;
-                    if ($deviceId === '' || !is_array($payload)) {
-                        throw new Exception('Control payload invalid');
-                    }
-                    $response = $this->api->control($deviceId, $payload);
-                    return json_encode(['success' => true, 'response' => $response], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                case 'SubscribeDevice':
-                    $deviceId = (string)($buffer['DeviceID'] ?? '');
-                    $withPush = (bool)($buffer['Push'] ?? true);
-                    $withEvent = (bool)($buffer['Event'] ?? true);
-                    if ($deviceId === '') {
-                        throw new Exception('DeviceID missing');
-                    }
-                    $res = $this->trySubscribeDevice($deviceId, $withPush, $withEvent);
-                    $payload = ['success' => $res['ok']];
-                    if (!$res['ok'] && !empty($res['errors'])) {
-                        $payload['error'] = implode('; ', $res['errors']);
-                    }
-                    return json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                case 'UnsubscribeDevice':
-                    $deviceId = (string)($buffer['DeviceID'] ?? '');
-                    $fromPush = (bool)($buffer['Push'] ?? true);
-                    $fromEvent = (bool)($buffer['Event'] ?? true);
-                    if ($deviceId === '') {
-                        throw new Exception('DeviceID missing');
-                    }
-                    $ok = $this->UnsubscribeDevice($deviceId, $fromPush, $fromEvent);
-                    return json_encode(['success' => $ok], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                case 'RenewEventForDevice':
-                    $deviceId = (string)($buffer['DeviceID'] ?? '');
-                    if ($deviceId === '') {
-                        throw new Exception('DeviceID missing');
-                    }
-                    $ok = $this->eventManager->subscribe($deviceId, true);
-                    return json_encode(['success' => $ok], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                case 'GetEnergyProfile':
-                    $deviceId = (string)($buffer['DeviceID'] ?? '');
-                    if ($deviceId === '') {
-                        throw new Exception('DeviceID missing');
-                    }
-                    $energyProfile = $this->api->energyProfile($deviceId);
-                    return json_encode(['success' => true, 'energyProfile' => $energyProfile], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                case 'GetEnergyUsage':
-                    $deviceId = (string)($buffer['DeviceID'] ?? '');
-                    $property = (string)($buffer['Property'] ?? '');
-                    $period = (string)($buffer['Period'] ?? '');
-                    $startDate = (string)($buffer['StartDate'] ?? '');
-                    $endDate = (string)($buffer['EndDate'] ?? '');
-                    if ($deviceId === '' || $property === '' || $period === '' || $startDate === '' || $endDate === '') {
-                        throw new Exception('GetEnergyUsage: missing parameters');
-                    }
-                    $energyData = $this->api->energyUsage($deviceId, $property, $period, $startDate, $endDate);
-                    return json_encode(['success' => true, 'energyData' => $energyData], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                default:
-                    return json_encode(['success' => false, 'error' => 'unknown action']);
-            }
+            $reply = (new ThinQForwardHandler($this->api, $this->subscriptions))->handle($buffer);
         } catch (Throwable $e) {
             $this->SendDebug('ForwardData Error', $e->getMessage(), 0);
-            return json_encode(['success' => false, 'error' => $e->getMessage()]);
+            $reply = ['success' => false, 'error' => $e->getMessage()];
         }
+        return json_encode($reply, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
     public function ReceiveData($JSONString)
@@ -272,7 +189,7 @@ class LGThinQBridge extends IPSModule
     {
         $this->ensureBooted();
         try {
-            $devices = $this->fetchDevices();
+            $devices = $this->api->devices();
             $count = count($devices);
             $this->NotifyUser($this->t('Connection OK. Devices') . ': ' . $count);
             $this->SetStatus(102);
@@ -290,7 +207,7 @@ class LGThinQBridge extends IPSModule
     {
         $this->ensureBooted();
         try {
-            $devices = $this->fetchDevices();
+            $devices = $this->api->devices();
             $this->deviceRepository->replace($devices);
             $this->NotifyUser($this->t('Device list updated') . ': ' . count($devices) . ' ' . $this->t('devices') . '.');
         } catch (Throwable $e) {
@@ -303,7 +220,7 @@ class LGThinQBridge extends IPSModule
     {
         $this->ensureBooted();
         try {
-            $devices = $this->fetchDevices();
+            $devices = $this->api->devices();
             $this->deviceRepository->replace($devices);
         } catch (Throwable $e) {
             $this->SendDebug('Update', $e->getMessage(), 0);
@@ -314,22 +231,10 @@ class LGThinQBridge extends IPSModule
     {
         $this->ensureBooted();
         try {
-            $devices = $this->fetchDevices();
+            $devices = $this->api->devices();
             $this->deviceRepository->replace($devices);
-            $ok = 0;
-            $total = 0;
-            foreach ($devices as $device) {
-                $deviceId = (string)($device['deviceId'] ?? ($device['device_id'] ?? ''));
-                if ($deviceId === '') {
-                    continue;
-                }
-                $total++;
-                if ($this->trySubscribeDevice($deviceId, true, true, true)['ok']) {
-                    $ok++;
-                }
-            }
-
-            $this->NotifyUser(sprintf($this->t('SubscribeAll: %d/%d devices subscribed'), $ok, $total));
+            $r = $this->subscriptions->subscribeAll(self::deviceIdsOf($devices));
+            $this->NotifyUser(sprintf($this->t('SubscribeAll: %d/%d devices subscribed'), $r['ok'], $r['total']));
         } catch (Throwable $e) {
             $this->SendDebug('SubscribeAll', $e->getMessage(), 0);
             $this->NotifyUser($this->t('SubscribeAll failed') . ': ' . $e->getMessage());
@@ -340,34 +245,8 @@ class LGThinQBridge extends IPSModule
     {
         $this->ensureBooted();
         try {
-            $ids = [];
-            foreach ($this->subscriptionRepository->all() as $deviceId => $_) {
-                if ($deviceId !== '') {
-                    $ids[$deviceId] = true;
-                }
-            }
-            foreach ($this->deviceRepository->all() as $device) {
-                $deviceId = (string)($device['deviceId'] ?? ($device['device_id'] ?? ''));
-                if ($deviceId !== '') {
-                    $ids[$deviceId] = true;
-                }
-            }
-            $ok = 0;
-            $total = count($ids);
-            foreach (array_keys($ids) as $deviceId) {
-                if ($this->UnsubscribeDevice((string)$deviceId, true, true)) {
-                    $ok++;
-                }
-            }
-            try {
-                $this->api->unregisterPushClient();
-            } catch (Throwable $e) {
-                $this->SendDebug('UnsubscribeAll Push', $e->getMessage(), 0);
-            }
-            $this->subscriptionRepository->replace([]);
-            $this->WriteAttributeInteger('PushRegisteredAt', 0);
-            $this->pushRepository->replace([]);
-            $this->NotifyUser(sprintf($this->t('UnsubscribeAll: %d/%d devices unsubscribed'), $ok, $total));
+            $r = $this->subscriptions->unsubscribeAll(self::deviceIdsOf($this->deviceRepository->all()));
+            $this->NotifyUser(sprintf($this->t('UnsubscribeAll: %d/%d devices unsubscribed'), $r['ok'], $r['total']));
         } catch (Throwable $e) {
             $this->SendDebug('UnsubscribeAll', $e->getMessage(), 0);
             $this->NotifyUser($this->t('UnsubscribeAll failed') . ': ' . $e->getMessage());
@@ -378,18 +257,8 @@ class LGThinQBridge extends IPSModule
     {
         $this->ensureBooted();
         try {
-            $subs = $this->subscriptionRepository->all();
-            $ok = 0;
-            $total = count($subs);
-            foreach (array_keys($subs) as $deviceId) {
-                if ($deviceId === '') {
-                    continue;
-                }
-                if ($this->eventManager->subscribe((string)$deviceId, true)) {
-                    $ok++;
-                }
-            }
-            $this->NotifyUser(sprintf($this->t('RenewAll: %d/%d event subscriptions renewed'), $ok, $total));
+            $r = $this->subscriptions->renewAll();
+            $this->NotifyUser(sprintf($this->t('RenewAll: %d/%d event subscriptions renewed'), $r['ok'], $r['total']));
         } catch (Throwable $e) {
             $this->SendDebug('RenewAll', $e->getMessage(), 0);
             $this->NotifyUser($this->t('RenewAll failed') . ': ' . $e->getMessage());
@@ -399,164 +268,52 @@ class LGThinQBridge extends IPSModule
     public function RenewEvents(): void
     {
         $this->ensureBooted();
-        // Subscriptions follow the Device instances of this Bridge.
-        $deviceIds = $this->childDeviceIds();
         try {
-            $this->eventManager->renewExpiring($deviceIds);
+            $this->subscriptions->tick();
         } catch (Throwable $e) {
             $this->SendDebug('RenewEvents', $e->getMessage(), 0);
         }
-        // A device whose own subscription never succeeded gets one now.
-        foreach (array_diff($deviceIds, array_map('strval', array_keys($this->subscriptionRepository->all()))) as $deviceId) {
-            $this->trySubscribeDevice($deviceId, true, true);
-        }
-
-        // Push subscriptions do not expire; re-assert them once a day as a safety net.
-        if ($deviceIds !== [] && ThinQClock::now() - (int)$this->ReadAttributeInteger('PushRegisteredAt') >= 86400) {
-            $this->registerPushClient(true);
-            foreach ($deviceIds as $deviceId) {
-                try {
-                    $this->subscribePush($deviceId, true);
-                } catch (Throwable $e) {
-                    $this->SendDebug('RenewEvents', 'Push renew failed for ' . $deviceId . ': ' . $e->getMessage(), 0);
-                }
-            }
-        }
-    }
-
-    /** @return array<int, string> DeviceIDs of the LG ThinQ Device instances connected to this Bridge */
-    private function childDeviceIds(): array
-    {
-        $ids = [];
-        foreach (IPS_GetInstanceListByModuleID(self::DEVICE_MODULE_GUID) as $id) {
-            $info = @IPS_GetInstance($id);
-            if (is_array($info) && (int)($info['ConnectionID'] ?? 0) === $this->InstanceID) {
-                $deviceId = trim((string)@IPS_GetProperty($id, 'DeviceID'));
-                if ($deviceId !== '') {
-                    $ids[] = $deviceId;
-                }
-            }
-        }
-        return array_values(array_unique($ids));
     }
 
     public function SubscribeDevice(string $DeviceID, bool $Push = true, bool $Event = true): bool
     {
         $this->ensureBooted();
-        $res = $this->trySubscribeDevice($DeviceID, $Push, $Event);
-        return $res['ok'];
-    }
-
-    /**
-     * @return array{ok: bool, errors: array<int, string>}
-     */
-    private function trySubscribeDevice(string $DeviceID, bool $Push, bool $Event, bool $force = false): array
-    {
-        $ok = true;
-        $errors = [];
-        if ($Event) {
-            $success = $this->eventManager->subscribe($DeviceID, $force);
-            $this->SendDebug('Event Subscribe', ($success ? 'OK' : 'FAILED') . ' for ' . $DeviceID, 0);
-            if (!$success) {
-                $errors[] = 'Event subscription failed';
-                $ok = false;
-            }
-        }
-        if ($Push) {
-            $this->registerPushClient($force);
-            try {
-                $this->subscribePush($DeviceID, $force);
-            } catch (Throwable $e) {
-                $this->SendDebug('Push Subscribe', $e->getMessage(), 0);
-                $errors[] = 'Push subscribe failed: ' . $e->getMessage();
-                $ok = false;
-            }
-        }
-        return ['ok' => $ok, 'errors' => $errors];
-    }
-
-    /** POST push/devices registers this client as push recipient; repeated at most once per cooldown unless forced. */
-    private function registerPushClient(bool $force): void
-    {
-        $at = (int)$this->ReadAttributeInteger('PushRegisteredAt');
-        if (!$force && $at > 0 && ThinQClock::now() - $at < $this->pushCooldownSeconds()) {
-            return;
-        }
-        try {
-            $this->api->registerPushClient();
-            $this->SendDebug('Push Subscribe', 'push/devices OK', 0);
-        } catch (Throwable $e) {
-            if (!self::isAlreadySubscribed($e)) {
-                $this->SendDebug('Push Subscribe', 'push/devices error: ' . $e->getMessage(), 0);
-                return;
-            }
-            $this->SendDebug('Push Subscribe', 'push/devices already registered (OK)', 0);
-        }
-        $this->WriteAttributeInteger('PushRegisteredAt', ThinQClock::now());
-    }
-
-    /** POST push/{id}/subscribe, at most once per cooldown and client ID unless forced; throws on real errors. */
-    private function subscribePush(string $deviceId, bool $force): void
-    {
-        $entry = $this->pushRepository->get($deviceId);
-        if (!$force && is_array($entry) && (string)($entry['clientId'] ?? '') === $this->config->clientId
-            && ThinQClock::now() - (int)($entry['at'] ?? 0) < $this->pushCooldownSeconds()) {
-            return;
-        }
-        try {
-            $this->api->subscribePush($deviceId);
-            $this->SendDebug('Push Subscribe', 'OK for ' . $deviceId, 0);
-        } catch (Throwable $e) {
-            if (!self::isAlreadySubscribed($e)) {
-                throw $e;
-            }
-            $this->SendDebug('Push Subscribe', 'Already subscribed (OK) for ' . $deviceId, 0);
-        }
-        $this->pushRepository->put($deviceId, ['at' => ThinQClock::now(), 'clientId' => $this->config->clientId]);
-    }
-
-    private function pushCooldownSeconds(): int
-    {
-        return max(1, (int)$this->ReadPropertyInteger('PushCooldownMin')) * 60;
-    }
-
-    /** LG answers a repeated push registration with 4001 (push/devices, spelled "Subscirbed") or 1207 (push/{id}/subscribe). */
-    private static function isAlreadySubscribed(Throwable $e): bool
-    {
-        return ($e instanceof ThinQApiException && in_array($e->apiCode, ['4001', '1207'], true))
-            || stripos($e->getMessage(), 'already subscribed') !== false;
+        return $this->subscriptions->subscribe($DeviceID, $Push, $Event)['ok'];
     }
 
     public function UnsubscribeDevice(string $DeviceID, bool $Push = true, bool $Event = true): bool
     {
         $this->ensureBooted();
-        $ok = true;
-        if ($Event) {
-            $ok = $this->eventManager->unsubscribe($DeviceID) && $ok;
-        }
-        if ($Push) {
-            $this->pushRepository->remove($DeviceID);
-            try {
-                $this->api->unsubscribePush($DeviceID);
-            } catch (Throwable $e) {
-                $this->SendDebug('Push Unsubscribe', $e->getMessage(), 0);
-                $ok = false;
+        return $this->subscriptions->unsubscribe($DeviceID, $Push, $Event);
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $devices
+     * @return array<int, string>
+     */
+    private static function deviceIdsOf(array $devices): array
+    {
+        $ids = [];
+        foreach ($devices as $device) {
+            $id = is_array($device) ? (string)($device['deviceId'] ?? ($device['device_id'] ?? '')) : '';
+            if ($id !== '') {
+                $ids[] = $id;
             }
         }
-        return $ok;
+        return array_values(array_unique($ids));
     }
 
     public function GetDevices(): string
     {
         $this->ensureBooted();
-        $devices = $this->fetchDevices();
+        $devices = $this->api->devices();
         return json_encode($devices, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
     public function GetDeviceStatus(string $DeviceID): string
     {
         $this->ensureBooted();
-        $status = $this->fetchDeviceStatus($DeviceID);
+        $status = $this->api->deviceStatus($DeviceID);
         return json_encode($status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
@@ -583,11 +340,9 @@ class LGThinQBridge extends IPSModule
         $this->config = $this->createBridgeConfig();
         $ctx = $this->moduleContext();
         $this->deviceRepository = new ThinQJsonAttribute($ctx, 'Devices');
-        $this->subscriptionRepository = new ThinQJsonAttribute($ctx, 'EventSubscriptions');
-        $this->pushRepository = new ThinQJsonAttribute($ctx, 'PushDeviceSubs');
         $this->httpClient = new ThinQHttpClient($ctx, $this->config, self::API_KEY);
         $this->api = new ThinQApi($this->httpClient);
-        $this->eventManager = new ThinQEventManager($ctx, $this->config, $this->api, $this->subscriptionRepository);
+        $this->subscriptions = new ThinQSubscriptionService($ctx, $this->config, $this->api);
         $this->eventPipeline = new ThinQEventPipeline();
         $this->eventPipeline->onEvent(function (string $deviceId, array $payload): void {
             $this->sendToChildren('Event', $deviceId, ['Event' => $payload]);
@@ -658,16 +413,16 @@ class LGThinQBridge extends IPSModule
 
     private function ensureBooted(): void
     {
-        if ($this->config === null || $this->httpClient === null || $this->eventManager === null || $this->mqttRouter === null) {
+        if ($this->config === null || $this->subscriptions === null || $this->mqttRouter === null) {
             $this->bootServices();
         }
     }
 
     private function configureTimers(): void
     {
-        // A short fixed check period; what is due follows from the stored expiry times (ThinQEventManager).
+        // A short fixed check period; what is due follows from the stored expiry times (ThinQSubscriptionService).
         $errors = $this->config->validate();
-        $this->SetTimerInterval('EventRenewTimer', empty($errors) ? ThinQEventManager::CHECK_PERIOD * 1000 : 0);
+        $this->SetTimerInterval('EventRenewTimer', empty($errors) ? ThinQSubscriptionService::CHECK_PERIOD * 1000 : 0);
     }
 
     private function debugMqttParentInfo(): void
@@ -703,22 +458,6 @@ class LGThinQBridge extends IPSModule
         }
         return sprintf('#%d module=%s status=%s config: %s', $instanceId, is_array($info) ? (string)($info['ModuleInfo']['ModuleID'] ?? '') : '',
             is_array($info) ? (string)($info['InstanceStatus'] ?? '') : '', implode(', ', $keys));
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function fetchDevices(): array
-    {
-        return $this->api->devices();
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function fetchDeviceStatus(string $deviceId): array
-    {
-        return $this->api->deviceStatus($deviceId);
     }
 
     /**
