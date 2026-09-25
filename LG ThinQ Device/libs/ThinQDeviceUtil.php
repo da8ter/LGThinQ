@@ -11,13 +11,18 @@ declare(strict_types=1);
  */
 class ThinQDeviceUtil
 {
+    private int $instanceId;
+
     public function __construct(
-        private IPSModule $module
-    ) {}
+        private IPSModule $module,
+        int $instanceId
+    ) {
+        $this->instanceId = $instanceId;
+    }
 
     public function setValueByVarType(string $ident, mixed $value): void
     {
-        $vid = (int)@IPS_GetObjectIDByIdent($ident, $this->module->InstanceID);
+        $vid = (int)@IPS_GetObjectIDByIdent($ident, $this->instanceId);
         if ($vid <= 0) {
             return;
         }
@@ -81,13 +86,13 @@ class ThinQDeviceUtil
     public function updateReferences(): void
     {
         $references = [];
-        $inst       = @IPS_GetInstance($this->module->InstanceID);
+        $inst       = @IPS_GetInstance($this->instanceId);
         $parentId   = is_array($inst) ? (int)($inst['ConnectionID'] ?? 0) : 0;
         if ($parentId > 0) {
             $references[] = $parentId;
         }
         if (method_exists($this->module, 'MaintainReferences')) {
-            $this->module->MaintainReferences($references);
+            $this->module->publicMaintainReferences($references);
         }
     }
 
@@ -160,7 +165,7 @@ class ThinQDeviceUtil
 
     public function logThrowable(string $context, \Throwable $e): void
     {
-        $this->module->SendDebug($context, $e->getMessage(), 0);
+        $this->module->publicSendDebug($context, $e->getMessage(), 0);
     }
 
     public function deepMerge(array $base, array $patch): array

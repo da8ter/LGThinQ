@@ -42,8 +42,8 @@ class ThinQSupportBundle
             $zipData = $this->buildZip();
             return 'data:application/zip;base64,' . base64_encode($zipData);
         } catch (\Throwable $e) {
-            $this->module->SendDebug('UIExportSupportBundle', $e->getMessage(), 0);
-            return 'data:text/plain,' . rawurlencode($this->module->Translate('Error creating support package') . ': ' . $e->getMessage());
+            $this->module->publicSendDebug('UIExportSupportBundle', $e->getMessage(), 0);
+            return 'data:text/plain,' . rawurlencode($this->module->publicTranslate('Error creating support package') . ': ' . $e->getMessage());
         }
     }
 
@@ -60,7 +60,7 @@ class ThinQSupportBundle
         }
 
         // 00_meta.json
-        $instanceId = $this->module->InstanceID;
+        $instanceId = $this->module->publicGetInstanceId();
         $meta = [
             'module'        => 'LG ThinQ Device',
             'instanceId'    => $instanceId,
@@ -72,7 +72,7 @@ class ThinQSupportBundle
         $zip->addFromString('00_meta.json', json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 
         // Determine DeviceID
-        $deviceId = trim((string)$this->module->ReadPropertyString('DeviceID'));
+        $deviceId = trim((string)$this->module->publicReadPropertyString('DeviceID'));
 
         // 10_device_info.json (from GetDevices, anonymized)
         $devices = [];
@@ -120,7 +120,7 @@ class ThinQSupportBundle
             // ignore, fallback to LastStatus
         }
         if (empty($status)) {
-            $ls = (string)$this->module->ReadAttributeString('LastStatus');
+            $ls = (string)$this->module->publicReadAttributeString('LastStatus');
             $ld = json_decode($ls, true);
             $status = is_array($ld) ? $ld : [];
         }
@@ -156,7 +156,7 @@ class ThinQSupportBundle
         // 50_capabilities_summary.json
         $summary = [];
         try {
-            $type = trim((string)$this->module->ReadAttributeString('DeviceType'));
+            $type = trim((string)$this->module->publicReadAttributeString('DeviceType'));
             if ($type === '' && is_array($profileExtracted)) {
                 $type = (string)($profileExtracted['deviceType'] ?? '');
             }

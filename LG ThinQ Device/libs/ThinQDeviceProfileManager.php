@@ -58,7 +58,7 @@ class ThinQDeviceProfileManager
             }
             return $profile;
         } catch (\Throwable $e) {
-            $this->module->SendDebug('FetchProfile', $e->getMessage(), 0);
+            $this->module->publicSendDebug('FetchProfile', $e->getMessage(), 0);
             return [];
         }
     }
@@ -67,24 +67,24 @@ class ThinQDeviceProfileManager
     {
         // Prefer fresh information from the device list each time
         $did = trim($deviceId);
-        $this->module->SendDebug('ResolveDeviceType', 'Begin: deviceId=' . $did, 0);
+        $this->module->publicSendDebug('ResolveDeviceType', 'Begin: deviceId=' . $did, 0);
         try {
             $listRaw = ($this->sendActionCallback)('GetDevices');
             $list    = json_decode((string)$listRaw, true);
             if (!is_array($list)) {
-                $this->module->SendDebug('ResolveDeviceType', 'GetDevices returned non-array payload', 0);
+                $this->module->publicSendDebug('ResolveDeviceType', 'GetDevices returned non-array payload', 0);
             } else {
-                $this->module->SendDebug('ResolveDeviceType', 'Devices count=' . count($list), 0);
+                $this->module->publicSendDebug('ResolveDeviceType', 'Devices count=' . count($list), 0);
                 foreach ($list as $idx => $entry) {
                     if (!is_array($entry)) {
-                        $this->module->SendDebug('ResolveDeviceType', 'Entry #' . $idx . ' not an object', 0);
+                        $this->module->publicSendDebug('ResolveDeviceType', 'Entry #' . $idx . ' not an object', 0);
                         continue;
                     }
                     $keys   = implode(',', array_keys($entry));
                     // Accept multiple id field variants
                     $candId = (string)($entry['deviceId'] ?? ($entry['device_id'] ?? ($entry['id'] ?? '')));
                     if ($candId === '') {
-                        $this->module->SendDebug('ResolveDeviceType', 'Entry #' . $idx . ' missing id fields; keys=' . $keys, 0);
+                        $this->module->publicSendDebug('ResolveDeviceType', 'Entry #' . $idx . ' missing id fields; keys=' . $keys, 0);
                         continue;
                     }
                     $match = (strcasecmp($candId, $did) === 0);
@@ -103,7 +103,7 @@ class ThinQDeviceProfileManager
                         $typeInfo = (string)($entry['deviceInfo']['deviceType'] ?? '');
                     }
                     $type = $typeDirect !== '' ? $typeDirect : $typeInfo;
-                    $this->module->SendDebug('ResolveDeviceType', sprintf(
+                    $this->module->publicSendDebug('ResolveDeviceType', sprintf(
                         'Match at #%d: id=%s typeDirect=%s typeInfo=%s',
                         $idx,
                         substr($candId, 0, 8) . '…',
@@ -113,21 +113,21 @@ class ThinQDeviceProfileManager
                     if ($type !== '') {
                         return $type;
                     }
-                    $this->module->SendDebug('ResolveDeviceType', 'Matching entry has no deviceType fields; keys=' . $keys, 0);
+                    $this->module->publicSendDebug('ResolveDeviceType', 'Matching entry has no deviceType fields; keys=' . $keys, 0);
                 }
             }
         } catch (\Throwable $e) {
-            $this->module->SendDebug('ResolveDeviceType', $e->getMessage(), 0);
+            $this->module->publicSendDebug('ResolveDeviceType', $e->getMessage(), 0);
         }
 
         // No fallback to profile or AC by request — return empty to surface the issue upstream
-        $this->module->SendDebug('ResolveDeviceType', 'FAILED to resolve device type from device list; returning empty', 0);
+        $this->module->publicSendDebug('ResolveDeviceType', 'FAILED to resolve device type from device list; returning empty', 0);
         return '';
     }
 
     public function readStoredProfile(): array
     {
-        $raw     = (string)$this->module->ReadAttributeString('LastProfile');
+        $raw     = (string)$this->module->publicReadAttributeString('LastProfile');
         $profile = json_decode($raw, true);
         return is_array($profile) ? $profile : [];
     }
@@ -159,7 +159,7 @@ class ThinQDeviceProfileManager
                 }
             }
             if (!$found) {
-                $this->module->SendDebug('statusHasNewProperties', sprintf('New property found in status: %s', $statusKey), 0);
+                $this->module->publicSendDebug('statusHasNewProperties', sprintf('New property found in status: %s', $statusKey), 0);
                 return true;
             }
         }
@@ -174,34 +174,34 @@ class ThinQDeviceProfileManager
     public function fetchProfileFromAPI(): array
     {
         try {
-            $deviceId = trim((string)$this->module->ReadPropertyString('DeviceID'));
+            $deviceId = trim((string)$this->module->publicReadPropertyString('DeviceID'));
             if ($deviceId === '') {
                 return [];
             }
             $response = ($this->sendActionCallback)('GetProfile', ['DeviceID' => $deviceId]);
             $data     = json_decode($response, true);
             if (isset($data['profile']) && is_array($data['profile'])) {
-                $this->module->SendDebug('fetchProfileFromAPI', 'Profile successfully fetched from API (profile)', 0);
+                $this->module->publicSendDebug('fetchProfileFromAPI', 'Profile successfully fetched from API (profile)', 0);
                 return $data['profile'];
             }
             if (isset($data['property']) && is_array($data['property'])) {
-                $this->module->SendDebug('fetchProfileFromAPI', 'Profile successfully fetched from API (property)', 0);
+                $this->module->publicSendDebug('fetchProfileFromAPI', 'Profile successfully fetched from API (property)', 0);
                 return $data['property'];
             }
             if (is_array($data)) {
-                $this->module->SendDebug('fetchProfileFromAPI', 'Profile fetched from API (raw array)', 0);
+                $this->module->publicSendDebug('fetchProfileFromAPI', 'Profile fetched from API (raw array)', 0);
                 return $data;
             }
             return [];
         } catch (\Throwable $e) {
-            $this->module->SendDebug('fetchProfileFromAPI', 'Failed: ' . $e->getMessage(), 0);
+            $this->module->publicSendDebug('fetchProfileFromAPI', 'Failed: ' . $e->getMessage(), 0);
             return [];
         }
     }
 
     public function readLastStatus(): array
     {
-        $raw    = (string)$this->module->ReadAttributeString('LastStatus');
+        $raw    = (string)$this->module->publicReadAttributeString('LastStatus');
         $status = json_decode($raw, true);
         return is_array($status) ? $status : [];
     }

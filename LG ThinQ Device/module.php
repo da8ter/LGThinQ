@@ -38,6 +38,7 @@ class LGThinQDevice extends IPSModule
         $this->RegisterAttributeString('LastProfile', '');
         $this->RegisterAttributeString('LastPlan', '[]');
         $this->RegisterAttributeString('EnergyProfile', '');
+        $this->RegisterAttributeInteger('LastSelfHealTs', 0);
         // Timer registered at 0 (disabled); interval is set in ApplyChanges when needed
         $this->RegisterTimer('InitialUpdateStatus', 0, 'LGTQD_InitialSetup($_IPS[\'TARGET\']);');
         $this->ConnectParent(self::GATEWAY_MODULE_GUID);
@@ -408,23 +409,64 @@ class LGThinQDevice extends IPSModule
         @SetValueString($this->getVarId('STATUS'), $encoded);
         @SetValueInteger($this->getVarId('LASTUPDATE'), time());
 
-        // Rebuild engine with updated status to include new properties (e.g. timer properties)
         $profile = $this->readStoredProfile();
         $type = trim((string)$this->ReadAttributeString('DeviceType'));
-        
-        // Check if status has new properties not in profile → refresh profile from API
+
+        // Self-heal (runs BEFORE the profile guard, so it also covers the case where the
+        // cached profile/type are missing). A device with only the generic
+        // INFO/STATUS/LASTUPDATE variables never got its capability variables created.
+        // If the cached profile is available we rebuild from it (no API call); if it is
+        // missing (the initial GetProfile failed, e.g. the parent was not ready at create
+        // time) we re-run the full setup, which re-fetches the profile from the API.
+        // Throttled (selfHealCooldownElapsed) so a device stuck in this state does not
+        // hammer the API on every push.
+        if ($this->hasOnlyGenericVariables()) {
+            $this->SendDebug('ReceiveData', sprintf('self-heal check: type=%s profileEmpty=%s cooldown=%s',
+                $type !== '' ? $type : '(empty)', empty($profile) ? 'yes' : 'no',
+                $this->selfHealCooldownElapsed() ? 'elapsed' : 'active'), 0);
+            $hasParent = !method_exists($this, 'HasActiveParent') || $this->HasActiveParent();
+            if ($this->selfHealCooldownElapsed() && $hasParent && trim((string)$this->ReadPropertyString('DeviceID')) !== '') {
+                $this->WriteAttributeInteger('LastSelfHealTs', time());
+                try {
+                    if (!empty($profile) && $type !== '') {
+                        $this->SendDebug('ReceiveData', 'Self-heal: recreating variables from cached profile', 0);
+                        $this->ensureDeviceVariablesWithPresentations($profile, $merged, $type);
+                    } else {
+                        $this->SendDebug('ReceiveData', 'Self-heal: profile/type missing -> full setup (re-fetch from API)', 0);
+                        $this->SetupDeviceVariables();
+                    }
+                } catch (\Throwable $e) {
+                    $this->logThrowable('SelfHeal', $e);
+                }
+                // Refresh local copies for the value-apply below
+                $profile = $this->readStoredProfile();
+                $type = trim((string)$this->ReadAttributeString('DeviceType'));
+            }
+        }
+
+        // Check if status has new properties not in profile → full setup required
+        $needsSetup = false;
         if (!empty($profile) && $this->statusHasNewProperties($merged, $profile)) {
             $this->SendDebug('ReceiveData', 'Status has new properties not in cached profile, refreshing from API...', 0);
             $freshProfile = $this->fetchProfileFromAPI();
             if (!empty($freshProfile)) {
                 $profile = $freshProfile;
                 $this->WriteAttributeString('LastProfile', json_encode($profile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+                $needsSetup = true;
             }
         }
-        
+
         if ($type !== '' && !empty($profile)) {
-            // Use central method for consistency
-            $this->ensureDeviceVariablesWithPresentations($profile, $merged, $type);
+            if ($needsSetup) {
+                // New properties discovered: rebuild variables and presentations
+                $this->ensureDeviceVariablesWithPresentations($profile, $merged, $type);
+            } else {
+                // Regular update: only apply values, no presentation work
+                $engine = $this->prepareEngine();
+                if ($engine !== null) {
+                    $engine->applyStatus($merged);
+                }
+            }
         }
 
         return '';
@@ -500,6 +542,14 @@ class LGThinQDevice extends IPSModule
         $profile = $this->fetchDeviceProfile($deviceId);
         $status = $this->readLastStatus();
         $type = $this->resolveDeviceType($deviceId, $profile);
+
+        // Diagnostic: an empty profile here is the root cause of "device created but only
+        // generic variables" — GetProfile failed/returned nothing at this moment.
+        $propCount = (isset($profile['property']) && is_array($profile['property'])) ? count($profile['property']) : 0;
+        $this->SendDebug('setupDevice', sprintf('profile=%s (keys=%s, property entries=%d), type=%s',
+            empty($profile) ? 'EMPTY' : 'ok',
+            is_array($profile) ? implode(',', array_keys($profile)) : 'n/a',
+            $propCount, $type !== '' ? $type : '(empty)'), 0);
 
         $this->WriteAttributeString('LastProfile', json_encode($profile));
         $this->WriteAttributeString('DeviceType', $type);
@@ -595,13 +645,28 @@ class LGThinQDevice extends IPSModule
     private function ensureDeviceVariablesWithPresentations(array $profile, array $status, string $type): void
     {
         $engine = $this->getCapabilityEngine();
-        $plan = $engine->buildPlan($type, $profile, $status);
         // Track which variables exist before creation to apply presentations/actions only once
+        $plan = [];
         $preExisting = [];
-        foreach ($plan as $ident => $_) {
-            $preExisting[(string)$ident] = ((int)@IPS_GetObjectIDByIdent((string)$ident, $this->InstanceID)) > 0;
+        try {
+            $plan = $engine->buildPlan($type, $profile, $status);
+            foreach ($plan as $ident => $_) {
+                $preExisting[(string)$ident] = ((int)@IPS_GetObjectIDByIdent((string)$ident, $this->InstanceID)) > 0;
+            }
+            $engine->ensureVariables($profile, $status, $type);
+            // Surface per-capability creation failures (caught inside ensureVariables so one
+            // bad variable does not abort the rest) in the message log even without Debug.
+            $failures = $engine->getCreateFailures();
+            if (!empty($failures)) {
+                $this->LogMessage(sprintf('%s: %s', $this->t('Variable creation failed'), implode('; ', $failures)), KL_ERROR);
+            }
+        } catch (\Throwable $e) {
+            // Make the failure visible in the Symcon message log even without Debug,
+            // and abort cleanly so presentation/action work is not attempted on a broken plan.
+            $this->LogMessage(sprintf('%s (type=%s): %s', $this->t('Variable setup failed'), $type, $e->getMessage()), KL_ERROR);
+            $this->logThrowable('EnsureDeviceVariables', $e);
+            return;
         }
-        $engine->ensureVariables($profile, $status, $type);
         
         // Apply presentations and enable actions only for newly created variables
         $flatProfile = $this->flatten($profile);
@@ -671,6 +736,44 @@ class LGThinQDevice extends IPSModule
 
         // Apply status values
         $engine->applyStatus($status);
+    }
+
+    /**
+     * True when the instance has only the generic/baseline variables and none of the
+     * capability-derived ones. Used to self-heal devices whose capability variables were
+     * never created (e.g. the initial setup ran before the parent connection was active).
+     * Mirrors the variable-detection pattern used by CleanupVariables().
+     */
+    private function hasOnlyGenericVariables(): bool
+    {
+        $generic = [
+            'INFO' => true, 'STATUS' => true, 'LASTUPDATE' => true,
+            'ENERGY_YESTERDAY' => true, 'ENERGY_THIS_MONTH' => true, 'ENERGY_LAST_MONTH' => true,
+        ];
+        foreach ((array)@IPS_GetChildrenIDs($this->InstanceID) as $cid) {
+            if (!is_array(@IPS_GetVariable((int)$cid))) {
+                continue; // not a variable
+            }
+            $obj = @IPS_GetObject((int)$cid);
+            $ident = is_array($obj) ? (string)($obj['ObjectIdent'] ?? '') : '';
+            if ($ident === '') {
+                continue;
+            }
+            if (!isset($generic[$ident])) {
+                return false; // a capability variable already exists
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Throttle for self-heal: caps repeated recreation/error-logging on every push when
+     * capability variable creation keeps failing. 5-minute cooldown; healing on success is
+     * immediate (the device leaves the only-generic state and stops re-entering this branch).
+     */
+    private function selfHealCooldownElapsed(): bool
+    {
+        return (time() - (int)$this->ReadAttributeInteger('LastSelfHealTs')) >= 300;
     }
 
     private function prepareEngine(): ?CapabilityEngine
@@ -816,7 +919,7 @@ class LGThinQDevice extends IPSModule
 
     private function util(): ThinQDeviceUtil
     {
-        return new ThinQDeviceUtil($this);
+        return new ThinQDeviceUtil($this, $this->InstanceID);
     }
 
     private function setValueByVarType(string $ident, mixed $value): void

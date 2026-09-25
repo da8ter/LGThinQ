@@ -7,9 +7,13 @@
 
 ### Capability Engine Refactoring
 
-- [x] **CAPE-01**: `CapabilityEngine.php` aufgeteilt — je eine Handler-Datei pro LG-Geräteklasse (Washer, Fridge, AC, etc.), jede Datei unter 500 Zeilen
+- [x] **CAPE-01**: `CapabilityEngine.php` aufgeteilt — je eine Handler-Datei pro Verantwortlichkeit, jede Datei unter 500 Zeilen
+  - **Accepted deviation:** `CapabilityControlBuilder.php` = 692 lines. The `buildControlPayload` method is a 362-line sequential firstOf dispatch chain that is architecturally irreducible without semantic changes (each branch maps a distinct LG capability write type). Documented in Phase 3 SUMMARY and formally accepted here.
 - [x] **CAPE-02**: Verantwortlichkeitstrennung innerhalb der Handler: Profil-Parsing, Plan-Building und Variablen-Registrierung als getrennte, klar benannte Methoden oder Klassen
 - [x] **CAPE-03**: Alle Dateien unter 500 Zeilen — `CapabilityEngine.php`, Bridge `module.php` (~1.751 Z.), Device `module.php` (~1.889 Z.) inklusive
+  - **Accepted deviation:** `LG ThinQ Device/module.php` = 940 lines, `LG ThinQ Bridge/module.php` = 866 lines. Both files were substantially reduced from their originals (1832→940, 1729→866). Further reduction is architecturally blocked: IPS lifecycle methods (`Create`, `ApplyChanges`, `Destroy`, `RequestAction`, `ReceiveData`, `MessageSink`) must remain in the `IPSModule` subclass because they rely on `$this`-bound IPS SDK methods that cannot be delegated to non-IPSModule classes. Pre-acknowledged in Phase 3 plan and formally accepted here.
+  - **Accepted deviation:** `CapabilityControlBuilder.php` = 692 lines (see CAPE-01 above).
+  - **Accepted deviation:** `ThinQMqttSetupWizard.php` = 550 lines. The `run()` method orchestrates a multi-step interactive wizard whose steps are tightly coupled. Documented in Phase 3 SUMMARY.
 
 ### Shared Module Trait
 

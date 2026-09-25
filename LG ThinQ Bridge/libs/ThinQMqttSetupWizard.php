@@ -27,7 +27,7 @@ class ThinQMqttSetupWizard
 
     private function t(string $s): string
     {
-        return $this->module->Translate($s);
+        return $this->module->publicTranslate($s);
     }
 
     public function run(): void
@@ -66,7 +66,7 @@ class ThinQMqttSetupWizard
             }
 
             // 3) Subscriptions: if a custom filter is set in the module, use it; otherwise subscribe to the LG push topic
-            $filter = trim((string)$this->module->ReadPropertyString('MQTTTopicFilter'));
+            $filter = trim((string)$this->module->publicReadPropertyString('MQTTTopicFilter'));
             if ($filter !== '') {
                 $topic = $filter;
                 if (strpos($topic, '{ClientID}') !== false) {
@@ -95,7 +95,7 @@ class ThinQMqttSetupWizard
             }
             $mqttID = 0;
             // Prefer configured property if it points to a valid MQTT Client instance
-            $propMqttId = (int)$this->module->ReadPropertyInteger('MQTTClientID');
+            $propMqttId = (int)$this->module->publicReadPropertyInteger('MQTTClientID');
             if ($propMqttId > 0 && @IPS_InstanceExists($propMqttId)) {
                 $info = @IPS_GetInstance($propMqttId);
                 if (is_array($info) && isset($info['ModuleID']) && (string)$info['ModuleID'] === (string)$mqttGUID) {
@@ -199,8 +199,8 @@ class ThinQMqttSetupWizard
                     $caPemFormatted = $certMgr->ensureCertificatePEM($routeCA);
                     if (@openssl_x509_read($caPemFormatted) !== false) {
                         $haveCA = true;
-                    } else if ((bool)$this->module->ReadPropertyBoolean('Debug')) {
-                        $this->module->SendDebug('MQTT', 'Route-provided CA invalid, length=' . strlen((string)$routeCA), 0);
+                    } else if ((bool)$this->module->publicReadPropertyBoolean('Debug')) {
+                        $this->module->publicSendDebug('MQTT', 'Route-provided CA invalid, length=' . strlen((string)$routeCA), 0);
                     }
                 }
                 if (!$haveCA && $subsMeta !== null) {
@@ -209,8 +209,8 @@ class ThinQMqttSetupWizard
                         $caPemFormatted = $certMgr->ensureCertificatePEM($apiCAPem);
                         if (@openssl_x509_read($caPemFormatted) !== false) {
                             $haveCA = true;
-                            if ((bool)$this->module->ReadPropertyBoolean('Debug')) {
-                                $this->module->SendDebug('MQTT', 'CA from LG API subscriptions applied (len=' . strlen($caPemFormatted) . ')', 0);
+                            if ((bool)$this->module->publicReadPropertyBoolean('Debug')) {
+                                $this->module->publicSendDebug('MQTT', 'CA from LG API subscriptions applied (len=' . strlen($caPemFormatted) . ')', 0);
                             }
                         }
                     }
@@ -221,8 +221,8 @@ class ThinQMqttSetupWizard
                         $caPemFormatted = $certMgr->ensureCertificatePEM($awsCA);
                         if (@openssl_x509_read($caPemFormatted) !== false) {
                             $haveCA = true;
-                            if ((bool)$this->module->ReadPropertyBoolean('Debug')) {
-                                $this->module->SendDebug('MQTT', 'CA fallback: Amazon Root CA 1 applied (len=' . strlen($caPemFormatted) . ')', 0);
+                            if ((bool)$this->module->publicReadPropertyBoolean('Debug')) {
+                                $this->module->publicSendDebug('MQTT', 'CA fallback: Amazon Root CA 1 applied (len=' . strlen($caPemFormatted) . ')', 0);
                             }
                         }
                     }
@@ -246,13 +246,13 @@ class ThinQMqttSetupWizard
 
                 $this->setFirstAvailableProperty($ioID, ['Password', 'PassPhrase'], '');
 
-                if ((bool)$this->module->ReadPropertyBoolean('Debug')) {
-                    $this->module->SendDebug('MQTT', 'IO keys: ' . implode(',', array_keys($ioCfg)), 0);
-                    $this->module->SendDebug('MQTT', 'Using cert prop: inline(base64) Certificate, key prop: inline(base64) PrivateKey', 0);
+                if ((bool)$this->module->publicReadPropertyBoolean('Debug')) {
+                    $this->module->publicSendDebug('MQTT', 'IO keys: ' . implode(',', array_keys($ioCfg)), 0);
+                    $this->module->publicSendDebug('MQTT', 'Using cert prop: inline(base64) Certificate, key prop: inline(base64) PrivateKey', 0);
                     $okCert = @openssl_x509_read($certPemFormatted) !== false;
                     $okKey  = @openssl_pkey_get_private($keyPemFormatted) !== false;
                     $okPair = @openssl_x509_check_private_key($certPemFormatted, $keyPemFormatted);
-                    $this->module->SendDebug('MQTT', 'Props applied: UseCertificate, Certificate(len=' . strlen($chainPem) . ', parse=' . ($okCert ? 'OK' : 'FAIL') . '), PrivateKey(len=' . strlen($keyPemFormatted) . ', parse=' . ($okKey ? 'OK' : 'FAIL') . '), PairMatch=' . ($okPair ? 'yes' : 'no') . ', Password(empty), CA(' . ($haveCA ? ('len=' . strlen($caPemFormatted)) : 'none') . ')', 0);
+                    $this->module->publicSendDebug('MQTT', 'Props applied: UseCertificate, Certificate(len=' . strlen($chainPem) . ', parse=' . ($okCert ? 'OK' : 'FAIL') . '), PrivateKey(len=' . strlen($keyPemFormatted) . ', parse=' . ($okKey ? 'OK' : 'FAIL') . '), PairMatch=' . ($okPair ? 'yes' : 'no') . ', Password(empty), CA(' . ($haveCA ? ('len=' . strlen($caPemFormatted)) : 'none') . ')', 0);
                 }
                 IPS_ApplyChanges($ioID);
                 IPS_SetName($ioID, $NAME_IO);
@@ -281,26 +281,26 @@ class ThinQMqttSetupWizard
                     $okKeyPersist  = (strpos($curKeyPem, '-----BEGIN') !== false) && (@openssl_pkey_get_private($curKeyPem) !== false);
                     $okCAPersist   = ($haveCA === false) || ((strpos($curCAPem, '-----BEGIN CERTIFICATE-----') !== false) && (@openssl_x509_read($curCAPem) !== false));
 
-                    if ((bool)$this->module->ReadPropertyBoolean('Debug')) {
-                        $this->module->SendDebug('MQTT', 'Post-write check: certLen=' . strlen($curCert) . ' keyLen=' . strlen($curKey) . ' caLen=' . strlen($curCA) . ' okCert=' . ($okCertPersist ? 'yes' : 'no') . ' okKey=' . ($okKeyPersist ? 'yes' : 'no') . ' okCA=' . ($okCAPersist ? 'yes' : 'no'), 0);
+                    if ((bool)$this->module->publicReadPropertyBoolean('Debug')) {
+                        $this->module->publicSendDebug('MQTT', 'Post-write check: certLen=' . strlen($curCert) . ' keyLen=' . strlen($curKey) . ' caLen=' . strlen($curCA) . ' okCert=' . ($okCertPersist ? 'yes' : 'no') . ' okKey=' . ($okKeyPersist ? 'yes' : 'no') . ' okCA=' . ($okCAPersist ? 'yes' : 'no'), 0);
                     }
 
                     if (!$okCertPersist || !$okKeyPersist || !$okCAPersist) {
-                        $this->module->SendDebug('MQTT', 'Inline PEM persistence check failed (cert=' . ($okCertPersist ? 'ok' : 'fail') . ', key=' . ($okKeyPersist ? 'ok' : 'fail') . ', ca=' . ($okCAPersist ? 'ok' : 'fail') . '). Please verify your Symcon version supports inline certificate properties.', 0);
+                        $this->module->publicSendDebug('MQTT', 'Inline PEM persistence check failed (cert=' . ($okCertPersist ? 'ok' : 'fail') . ', key=' . ($okKeyPersist ? 'ok' : 'fail') . ', ca=' . ($okCAPersist ? 'ok' : 'fail') . '). Please verify your Symcon version supports inline certificate properties.', 0);
                     }
                 } catch (\Throwable $e) {
-                    if ((bool)$this->module->ReadPropertyBoolean('Debug')) {
-                        $this->module->SendDebug('MQTT', 'Post-write check exception: ' . $e->getMessage(), 0);
+                    if ((bool)$this->module->publicReadPropertyBoolean('Debug')) {
+                        $this->module->publicSendDebug('MQTT', 'Post-write check exception: ' . $e->getMessage(), 0);
                     }
                 }
 
                 $this->safeSetProperty($ioID, 'Open', true);
                 IPS_ApplyChanges($ioID);
-                if ((bool)$this->module->ReadPropertyBoolean('Debug')) {
+                if ((bool)$this->module->publicReadPropertyBoolean('Debug')) {
                     ($this->debugMqttInfoCallback)();
                 }
             } else {
-                $this->module->SendDebug('MQTT', 'Warning: Parent #' . $ioID . ' is not a Client Socket', 0);
+                $this->module->publicSendDebug('MQTT', 'Warning: Parent #' . $ioID . ' is not a Client Socket', 0);
             }
 
             // 6) Connect this Bridge to the configured MQTT Client and persist setting
@@ -327,16 +327,16 @@ class ThinQMqttSetupWizard
                 try {
                     $http2->request('POST', 'client', ['body' => ['type' => 'MQTT', 'service-code' => 'SVC202', 'device-type' => '607']]);
                 } catch (\Throwable $e) {
-                    $this->module->SendDebug('UISetupMqttConnection', 'Register client ignored: ' . $e->getMessage(), 0);
+                    $this->module->publicSendDebug('UISetupMqttConnection', 'Register client ignored: ' . $e->getMessage(), 0);
                 }
             } catch (\Throwable $e) {
-                $this->module->SendDebug('UISetupMqttConnection', 'Register client failed: ' . $e->getMessage(), 0);
+                $this->module->publicSendDebug('UISetupMqttConnection', 'Register client failed: ' . $e->getMessage(), 0);
             }
 
             echo $this->t('Done') . ".\n" . 'Client Socket ID: ' . $ioID . "\n" . 'MQTT Client ID:   ' . $mqttID . "\n";
             $this->module->NotifyUser($this->t('MQTT connection configured') . ' (ClientID=' . $subjectCN . ', Host=' . $HOST . ':' . $PORT . ').');
         } catch (\Throwable $e) {
-            $this->module->SendDebug('UISetupMqttConnection', $e->getMessage(), 0);
+            $this->module->publicSendDebug('UISetupMqttConnection', $e->getMessage(), 0);
             echo $this->t('Error') . ': ' . $e->getMessage();
         }
     }
@@ -346,9 +346,9 @@ class ThinQMqttSetupWizard
      */
     private function generateMqttClientCertMaterial(): array
     {
-        $clientId = trim((string)$this->module->ReadAttributeString('ClientID'));
+        $clientId = trim((string)$this->module->publicReadAttributeString('ClientID'));
         if ($clientId === '') {
-            $propId = trim((string)$this->module->ReadPropertyString('ClientID'));
+            $propId = trim((string)$this->module->publicReadPropertyString('ClientID'));
             if ($propId !== '') {
                 $clientId = $propId;
             } else {
@@ -359,7 +359,7 @@ class ThinQMqttSetupWizard
                 }
                 $clientId = 'Symcon' . $rand5;
             }
-            $this->module->WriteAttributeString('ClientID', $clientId);
+            $this->module->publicWriteAttributeString('ClientID', $clientId);
         }
         $subjectCN = $clientId;
         $instInfo = @IPS_GetInstance($this->instanceId);
@@ -475,8 +475,8 @@ class ThinQMqttSetupWizard
                 }
             }
         } catch (\Throwable $e) {
-            if ((bool)$this->module->ReadPropertyBoolean('Debug')) {
-                $this->module->SendDebug('Route', 'Route call failed: ' . $e->getMessage(), 0);
+            if ((bool)$this->module->publicReadPropertyBoolean('Debug')) {
+                $this->module->publicSendDebug('Route', 'Route call failed: ' . $e->getMessage(), 0);
             }
         }
 
@@ -488,8 +488,8 @@ class ThinQMqttSetupWizard
         } elseif ($port <= 0) {
             $port = $tls ? 8883 : 1883;
         }
-        if ((bool)$this->module->ReadPropertyBoolean('Debug')) {
-            $this->module->SendDebug('Route', 'MQTT: url=' . $url . ' host=' . $host . ' port=' . $port . ' tls=' . ($tls ? 'true' : 'false') . ' caLen=' . strlen((string)$caPem), 0);
+        if ((bool)$this->module->publicReadPropertyBoolean('Debug')) {
+            $this->module->publicSendDebug('Route', 'MQTT: url=' . $url . ' host=' . $host . ' port=' . $port . ' tls=' . ($tls ? 'true' : 'false') . ' caLen=' . strlen((string)$caPem), 0);
         }
         return ['url' => (string)$url, 'host' => (string)$host, 'port' => (int)$port, 'tls' => (bool)$tls, 'ca' => (string)$caPem];
     }

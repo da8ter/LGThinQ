@@ -28,7 +28,7 @@ class ThinQMqttCertBuilder
 
     private function t(string $s): string
     {
-        return $this->module->Translate($s);
+        return $this->module->publicTranslate($s);
     }
 
     public function build(): string
@@ -37,9 +37,9 @@ class ThinQMqttCertBuilder
             throw new \RuntimeException($this->t('OpenSSL is not supported (openssl_* functions missing)'));
         }
 
-        $clientId = trim((string)$this->module->ReadAttributeString('ClientID'));
+        $clientId = trim((string)$this->module->publicReadAttributeString('ClientID'));
         if ($clientId === '') {
-            $clientId = trim((string)$this->module->ReadPropertyString('ClientID'));
+            $clientId = trim((string)$this->module->publicReadPropertyString('ClientID'));
             if ($clientId === '') {
                 $clientId = 'client-' . (string)$this->instanceId;
             }
@@ -60,8 +60,8 @@ class ThinQMqttCertBuilder
         if (!is_string($subjectCN) || trim($subjectCN) === '') {
             $subjectCN = 'client-' . (string)$this->instanceId;
         }
-        if ((bool)$this->module->ReadPropertyBoolean('Debug')) {
-            $this->module->SendDebug('CertGen', 'Effective CN=' . $subjectCN . ' (Bridge ClientID=' . $clientId . ')', 0);
+        if ((bool)$this->module->publicReadPropertyBoolean('Debug')) {
+            $this->module->publicSendDebug('CertGen', 'Effective CN=' . $subjectCN . ' (Bridge ClientID=' . $clientId . ')', 0);
             ($this->debugMqttInfoCallback)();
         }
 
@@ -98,8 +98,8 @@ class ThinQMqttCertBuilder
         }
         fwrite($cfgHandle, $strCONFIG);
         fclose($cfgHandle);
-        if ((bool)$this->module->ReadPropertyBoolean('Debug')) {
-            $this->module->SendDebug('CertGen', 'OpenSSL cfg written: ' . $cfgPath, 0);
+        if ((bool)$this->module->publicReadPropertyBoolean('Debug')) {
+            $this->module->publicSendDebug('CertGen', 'OpenSSL cfg written: ' . $cfgPath, 0);
         }
         $dn     = ['commonName' => $subjectCN];
         $config = ['config' => $cfgPath, 'digest_alg' => 'sha256'];
@@ -124,18 +124,16 @@ class ThinQMqttCertBuilder
             throw new \RuntimeException($this->t('openssl_pkey_get_details failed'));
         }
         $pkPublic = (string)$pkDetails['key'];
-        if ((bool)$this->module->ReadPropertyBoolean('Debug')) {
+        if ((bool)$this->module->publicReadPropertyBoolean('Debug')) {
             $typeStr = (($pkDetails['type'] ?? null) === OPENSSL_KEYTYPE_EC) ? 'EC' : 'RSA';
             $bits    = (int)($pkDetails['bits'] ?? 0);
-            $this->module->SendDebug('CertGen', 'Key generated: ' . $typeStr . ' bits=' . $bits, 0);
-            $this->module->SendDebug('CertGen', 'Key PEM lengths: private=' . strlen($pkPrivate) . ' public=' . strlen($pkPublic), 0);
+            $this->module->publicSendDebug('CertGen', 'Key generated: ' . $typeStr . ' bits=' . $bits, 0);
+            $this->module->publicSendDebug('CertGen', 'Key PEM lengths: private=' . strlen($pkPrivate) . ' public=' . strlen($pkPublic), 0);
         }
 
         $csr = openssl_csr_new($dn, $pkGenerate, $config);
         if ($csr === false) {
-            if (method_exists($this->module, 'SendDebug')) {
-                $this->module->SendDebug('CertGen', 'CSR with v3_req failed; retrying without req_extensions', 0);
-            }
+            $this->module->publicSendDebug('CertGen', 'CSR with v3_req failed; retrying without req_extensions', 0);
             $strCONFIG2  = 'default_md = sha256' . $nl;
             $strCONFIG2 .= 'default_days = 3650' . $nl . $nl;
             $strCONFIG2 .= '[ req ]' . $nl;
@@ -187,16 +185,16 @@ class ThinQMqttCertBuilder
 
             $csrPemForApi = '';
             @openssl_csr_export($csr, $csrPemForApi);
-            if ((bool)$this->module->ReadPropertyBoolean('Debug')) {
-                $this->module->SendDebug('CertGen', 'CSR length=' . strlen((string)$csrPemForApi), 0);
-                $this->module->SendDebug('CertGen', 'Register client and request certificate for x-client-id=' . $subjectCN, 0);
+            if ((bool)$this->module->publicReadPropertyBoolean('Debug')) {
+                $this->module->publicSendDebug('CertGen', 'CSR length=' . strlen((string)$csrPemForApi), 0);
+                $this->module->publicSendDebug('CertGen', 'Register client and request certificate for x-client-id=' . $subjectCN, 0);
             }
 
             // 1) Register client (idempotent)
             try {
                 $tmpHttp->request('POST', 'client', ['body' => ['type' => 'MQTT', 'service-code' => 'SVC202', 'device-type' => '607']]);
             } catch (\Throwable $e) {
-                $this->module->SendDebug('CertGen', 'Register client ignored: ' . $e->getMessage(), 0);
+                $this->module->publicSendDebug('CertGen', 'Register client ignored: ' . $e->getMessage(), 0);
             }
 
             // 2) Request certificate
@@ -221,7 +219,7 @@ class ThinQMqttCertBuilder
                 }
             }
         } catch (\Throwable $e) {
-            $this->module->SendDebug('CertGen', 'LG certificate request failed: ' . $e->getMessage(), 0);
+            $this->module->publicSendDebug('CertGen', 'LG certificate request failed: ' . $e->getMessage(), 0);
             $lgCertOut = '';
         }
 
@@ -233,9 +231,9 @@ class ThinQMqttCertBuilder
         if (!openssl_csr_export($csr, $csrOut)) {
             $csrOut = '';
         }
-        if ((bool)$this->module->ReadPropertyBoolean('Debug')) {
+        if ((bool)$this->module->publicReadPropertyBoolean('Debug')) {
             if ($lgSubscriptions !== null) {
-                $this->module->SendDebug('CertGen', 'LG Subscriptions: ' . substr(json_encode($lgSubscriptions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 0, 1000) . (strlen(json_encode($lgSubscriptions)) > 1000 ? ' ...[truncated]' : ''), 0);
+                $this->module->publicSendDebug('CertGen', 'LG Subscriptions: ' . substr(json_encode($lgSubscriptions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 0, 1000) . (strlen(json_encode($lgSubscriptions)) > 1000 ? ' ...[truncated]' : ''), 0);
             }
             $fpSha = hash('sha256', (string)$certOut);
             $x509  = @openssl_x509_read($certOut);
@@ -246,13 +244,13 @@ class ThinQMqttCertBuilder
                     $issuer = $parsed['issuer']['CN'] ?? ($parsed['issuer']['commonName'] ?? '');
                     $eku    = $parsed['extensions']['extendedKeyUsage'] ?? '';
                     $ku     = $parsed['extensions']['keyUsage'] ?? '';
-                    $this->module->SendDebug('CertGen', 'Cert subjectCN=' . $subCN . ' issuer=' . $issuer, 0);
-                    $this->module->SendDebug('CertGen', 'Cert KU=' . $ku . ' EKU=' . $eku, 0);
+                    $this->module->publicSendDebug('CertGen', 'Cert subjectCN=' . $subCN . ' issuer=' . $issuer, 0);
+                    $this->module->publicSendDebug('CertGen', 'Cert KU=' . $ku . ' EKU=' . $eku, 0);
                 }
             }
-            $this->module->SendDebug('CertGen', 'Cert PEM length=' . strlen($certOut) . ' sha256=' . $fpSha, 0);
+            $this->module->publicSendDebug('CertGen', 'Cert PEM length=' . strlen($certOut) . ' sha256=' . $fpSha, 0);
             $matches = @openssl_x509_check_private_key($certOut, $pkPrivate);
-            $this->module->SendDebug('CertGen', 'Cert matches private key: ' . ($matches ? 'yes' : 'no'), 0);
+            $this->module->publicSendDebug('CertGen', 'Cert matches private key: ' . ($matches ? 'yes' : 'no'), 0);
         }
 
         // Create ZIP

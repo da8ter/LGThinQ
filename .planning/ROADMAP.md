@@ -12,7 +12,7 @@ Four phases transform the module library from God-class territory into maintaina
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Shared Trait** - Extract duplicated helper methods into `ThinQModuleTrait` and integrate it into Bridge and Device
+- [x] **Phase 1: Shared Trait** - Extract duplicated helper methods into `ThinQModuleTrait` and integrate it into Bridge and Device (completed 2026-03-27)
 - [x] **Phase 2: Dead Code Removal** - Delete empty placeholders, unused helpers, and the unreferenced error-codes class
 - [x] **Phase 3: CapabilityEngine Split** - Break the 2,585-line God class into per-device-type handler files with clear internal responsibility separation (completed 2026-03-27)
 - [ ] **Phase 4: QA Validation** - Confirm syntax passes `php -l` on every changed file and public interfaces are identical to pre-refactoring
@@ -28,7 +28,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. `LGThinQBridge` uses `ThinQModuleTrait` — its own copies of those helpers are gone
   3. `LGThinQDevice` uses `ThinQModuleTrait` — its own copies of those helpers are gone
   4. `php -l` passes on `ThinQModuleTrait.php`, `LG ThinQ Bridge/module.php`, and `LG ThinQ Device/module.php`
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [x] PLAN.md — Extract ThinQModuleTrait, integrate into Bridge and Device
 
 ### Phase 2: Dead Code Removal
 **Goal**: Every identifiable dead code unit is deleted — no empty placeholders, no unused methods, no unreferenced classes
@@ -74,7 +77,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Shared Trait | 0/TBD | Not started | - |
-| 2. Dead Code Removal | 0/1 | Planned | - |
+| 1. Shared Trait | 1/1 | Complete | 2026-03-27 |
+| 2. Dead Code Removal | 1/1 | Complete | 2026-03-27 |
 | 3. CapabilityEngine Split | 1/1 | Complete   | 2026-03-27 |
 | 4. QA Validation | 0/TBD | Not started | - |

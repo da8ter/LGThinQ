@@ -39,14 +39,14 @@ class ThinQEnergyManager
             }
             return $data;
         } catch (\Throwable $e) {
-            $this->module->SendDebug('FetchEnergyProfile', 'Failed: ' . $e->getMessage(), 0);
+            $this->module->publicSendDebug('FetchEnergyProfile', 'Failed: ' . $e->getMessage(), 0);
             return [];
         }
     }
 
     public function getEnergyProperties(): array
     {
-        $raw = $this->module->ReadAttributeString('EnergyProfile');
+        $raw = $this->module->publicReadAttributeString('EnergyProfile');
         if ($raw === '') {
             return [];
         }
@@ -72,11 +72,11 @@ class ThinQEnergyManager
     {
         $energyProps = $this->getEnergyProperties();
         $hasEnergy = !empty($energyProps);
-        $this->module->SendDebug('Energy', sprintf('Energy properties: %s', $hasEnergy ? implode(', ', $energyProps) : 'none'), 0);
+        $this->module->publicSendDebug('Energy', sprintf('Energy properties: %s', $hasEnergy ? implode(', ', $energyProps) : 'none'), 0);
 
-        $this->module->MaintainVariable('ENERGY_YESTERDAY', $this->module->Translate('Energy Yesterday'), VARIABLETYPE_FLOAT, '', 900, $hasEnergy);
-        $this->module->MaintainVariable('ENERGY_THIS_MONTH', $this->module->Translate('Energy This Month'), VARIABLETYPE_FLOAT, '', 901, $hasEnergy);
-        $this->module->MaintainVariable('ENERGY_LAST_MONTH', $this->module->Translate('Energy Last Month'), VARIABLETYPE_FLOAT, '', 902, $hasEnergy);
+        $this->module->publicMaintainVariable('ENERGY_YESTERDAY', $this->module->publicTranslate('Energy Yesterday'), VARIABLETYPE_FLOAT, '', 900, $hasEnergy);
+        $this->module->publicMaintainVariable('ENERGY_THIS_MONTH', $this->module->publicTranslate('Energy This Month'), VARIABLETYPE_FLOAT, '', 901, $hasEnergy);
+        $this->module->publicMaintainVariable('ENERGY_LAST_MONTH', $this->module->publicTranslate('Energy Last Month'), VARIABLETYPE_FLOAT, '', 902, $hasEnergy);
 
         if ($hasEnergy) {
             foreach (['ENERGY_YESTERDAY', 'ENERGY_THIS_MONTH', 'ENERGY_LAST_MONTH'] as $ident) {
@@ -96,19 +96,15 @@ class ThinQEnergyManager
     {
         $energyProps = $this->getEnergyProperties();
         if (empty($energyProps)) {
-            if (method_exists($this->module, 'SetTimerInterval')) {
-                @$this->module->SetTimerInterval('UpdateEnergy', 0);
-            }
+            $this->module->publicSetTimerInterval('UpdateEnergy', 0);
             return;
         }
-        if (method_exists($this->module, 'RegisterTimer')) {
-            @$this->module->RegisterTimer('UpdateEnergy', 6 * 3600 * 1000, 'LGTQD_UpdateEnergy($_IPS["TARGET"]);');
-        }
+        $this->module->publicRegisterTimer('UpdateEnergy', 6 * 3600 * 1000, 'LGTQD_UpdateEnergy($_IPS["TARGET"]);');
     }
 
     public function execute(): void
     {
-        $deviceId = trim((string)$this->module->ReadPropertyString('DeviceID'));
+        $deviceId = trim((string)$this->module->publicReadPropertyString('DeviceID'));
         if ($deviceId === '') {
             return;
         }
@@ -118,7 +114,7 @@ class ThinQEnergyManager
             return;
         }
 
-        $this->module->SendDebug('Energy', 'Fetching energy usage data...', 0);
+        $this->module->publicSendDebug('Energy', 'Fetching energy usage data...', 0);
 
         $today = new \DateTime('now');
         $yesterday = (clone $today)->modify('-1 day');
@@ -148,7 +144,7 @@ class ThinQEnergyManager
             if ($vid > 0) { @SetValueFloat($vid, $lastMonthWh); }
         }
 
-        $this->module->SendDebug('Energy', sprintf('Updated: yesterday=%.0f Wh, thisMonth=%.0f Wh, lastMonth=%.0f Wh',
+        $this->module->publicSendDebug('Energy', sprintf('Updated: yesterday=%.0f Wh, thisMonth=%.0f Wh, lastMonth=%.0f Wh',
             $yesterdayWh ?? -1, $thisMonthWh ?? -1, $lastMonthWh ?? -1), 0);
     }
 
@@ -176,7 +172,7 @@ class ThinQEnergyManager
             }
             return $total;
         } catch (\Throwable $e) {
-            $this->module->SendDebug('FetchEnergyUsage', sprintf('Failed (%s %s-%s): %s', $period, $startDate, $endDate, $e->getMessage()), 0);
+            $this->module->publicSendDebug('FetchEnergyUsage', sprintf('Failed (%s %s-%s): %s', $period, $startDate, $endDate, $e->getMessage()), 0);
             return null;
         }
     }

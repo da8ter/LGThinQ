@@ -1,0 +1,18 @@
+{
+  "id": "{B5CF9E2D-7B7C-4A0A-9C0E-7E5A0B8E2E9A}",
+  "name": "LG ThinQ Device",
+  "type": 3,
+  "vendor": "LG",
+  "aliases": [
+    "LG ThinQ Device"
+  ],
+  "parentRequirements": [
+    "{A1F438B3-2A68-4A2B-8FDB-7460F1B8B854}"
+  ],
+  "childRequirements": [],
+  "implemented": [
+    "{5E9D1B64-0F44-4F21-9D74-09C5BB90FB2F}"
+  ],
+  "prefix": "LGTQD",
+  "url": ""
+}

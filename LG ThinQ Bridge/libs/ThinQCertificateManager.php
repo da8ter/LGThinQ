@@ -1,0 +1,318 @@
+<?php
+
+declare(strict_types=1);
+
+final class ThinQCertificateManager
+{
+    private int $instanceId;
+
+    public function __construct(int $instanceId)
+    {
+        $this->instanceId = $instanceId;
+    }
+
+    /**
+     * Generate a keypair and CSR for a given subject CN.
+     * Returns ['cn' => string, 'privateKey' => string, 'publicKey' => string, 'csrPem' => string].
+     *
+     * @throws \RuntimeException
+     */
+    public function generateKeyAndCSR(string $subjectCN): array
+    {
+        if (!function_exists('openssl_pkey_new')) {
+            throw new \RuntimeException('OpenSSL is not supported (openssl_* functions missing)');
+        }
+
+        $cfgPath = $this->writeTempConfig($subjectCN);
+
+        try {
+            // Generate key (EC P-256 preferred, RSA 2048 fallback)
+            $configKey = ['config' => $cfgPath, 'private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1'];
+            $pkGenerate = @openssl_pkey_new($configKey);
+            if ($pkGenerate === false) {
+                $configKey = ['config' => $cfgPath, 'private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA];
+                $pkGenerate = openssl_pkey_new($configKey);
+            }
+            if ($pkGenerate === false) {
+                throw new \RuntimeException('openssl_pkey_new failed');
+            }
+
+            $pkPrivate = '';
+            if (!openssl_pkey_export($pkGenerate, $pkPrivate, null, ['config' => $cfgPath, 'digest_alg' => 'sha256'])) {
+                throw new \RuntimeException('openssl_pkey_export failed');
+            }
+            $pkDetails = openssl_pkey_get_details($pkGenerate);
+            if ($pkDetails === false || !isset($pkDetails['key'])) {
+                throw new \RuntimeException('openssl_pkey_get_details failed');
+            }
+            $pkPublic = (string)$pkDetails['key'];
+
+            // CSR (with fallback minimal config)
+            $dn = ['commonName' => $subjectCN];
+            $config = ['config' => $cfgPath, 'digest_alg' => 'sha256'];
+            $csr = openssl_csr_new($dn, $pkGenerate, $config);
+            if ($csr === false) {
+                // Rewrite config with minimal settings and retry
+                $this->writeTempConfig($subjectCN, $cfgPath);
+                $config = ['config' => $cfgPath, 'digest_alg' => 'sha256'];
+                $csr = openssl_csr_new($dn, $pkGenerate, $config);
+                if ($csr === false) {
+                    throw new \RuntimeException('openssl_csr_new failed');
+                }
+            }
+
+            $csrPem = '';
+            @openssl_csr_export($csr, $csrPem);
+
+            return [
+                'cn'         => $subjectCN,
+                'privateKey' => $pkPrivate,
+                'publicKey'  => $pkPublic,
+                'csrPem'     => $csrPem,
+            ];
+        } finally {
+            @unlink($cfgPath);
+        }
+    }
+
+    /**
+     * Request an LG-signed client certificate via the ThinQ API.
+     *
+     * @return array{cn:string, cert:string, key:string, public:string, subscriptions:mixed}
+     * @throws \RuntimeException
+     */
+    public function requestLGSignedCert(ThinQHttpClient $httpClient, string $subjectCN): array
+    {
+        $material = $this->generateKeyAndCSR($subjectCN);
+
+        try {
+            // Idempotent client registration
+            try {
+                $httpClient->request('POST', 'client', ['body' => ['type' => 'MQTT', 'service-code' => 'SVC202', 'device-type' => '607']]);
+            } catch (\Throwable $e) {
+                // Ignore errors (idempotent/register may already exist)
+            }
+            $resp = $httpClient->request('POST', 'client/certificate', ['body' => ['service-code' => 'SVC202', 'csr' => $material['csrPem']]]);
+        } catch (\Throwable $e) {
+            // Fallback without body wrapper
+            $resp = $httpClient->request('POST', 'client/certificate', ['service-code' => 'SVC202', 'csr' => $material['csrPem']]);
+        }
+
+        $resNode = $resp;
+        if (isset($resp['result']) && is_array($resp['result'])) {
+            $resNode = $resp['result'];
+        }
+        $certOut = (string)($resNode['certificatePem'] ?? '');
+        if ($certOut === '') {
+            throw new \RuntimeException('LG certificate request returned no certificatePem');
+        }
+
+        return [
+            'cn'            => $subjectCN,
+            'cert'          => $certOut,
+            'key'           => $material['privateKey'],
+            'public'        => $material['publicKey'],
+            'subscriptions' => $resNode['subscriptions'] ?? null,
+        ];
+    }
+
+    /**
+     * Ensure a valid single CERTIFICATE PEM with proper headers and 64-char wrapping.
+     */
+    public function ensureCertificatePEM(string $input): string
+    {
+        $norm = str_replace(["\r\n", "\r"], "\n", trim($input));
+        if (preg_match('/-----BEGIN CERTIFICATE-----([A-Za-z0-9+\/=`\n\r\s]+)-----END CERTIFICATE-----/m', $norm, $m)) {
+            $b64 = preg_replace('/[^A-Za-z0-9+\/=]/', '', (string)($m[1] ?? ''));
+            $bin = base64_decode((string)$b64, true);
+            if ($bin === false) {
+                return $this->formatPemContent($norm) ?: $norm . "\n";
+            }
+            $wrapped = chunk_split(base64_encode($bin), 64, "\n");
+            return "-----BEGIN CERTIFICATE-----\n" . rtrim($wrapped, "\n") . "\n-----END CERTIFICATE-----\n";
+        }
+        $b64 = preg_replace('/[^A-Za-z0-9+\/=]/', '', $norm);
+        $bin = base64_decode((string)$b64, true);
+        if ($bin === false) {
+            return $this->formatPemContent($norm) ?: $norm . "\n";
+        }
+        $wrapped = chunk_split(base64_encode($bin), 64, "\n");
+        return "-----BEGIN CERTIFICATE-----\n" . rtrim($wrapped, "\n") . "\n-----END CERTIFICATE-----\n";
+    }
+
+    /**
+     * Ensure a valid PRIVATE KEY PEM (EC/RSA/PKCS#8) with proper headers and 64-char wrapping.
+     */
+    public function ensurePrivateKeyPEM(string $input): string
+    {
+        $norm = str_replace(["\r\n", "\r"], "\n", trim($input));
+        if ($norm === '') {
+            return '';
+        }
+        if (preg_match('/-----BEGIN ([A-Z ]*?)PRIVATE KEY-----([A-Za-z0-9+\/=`\n\r\s]+)-----END \1PRIVATE KEY-----/m', $norm, $m)) {
+            $type = trim((string)($m[1] ?? ''));
+            $b64 = preg_replace('/[^A-Za-z0-9+\/=]/', '', (string)($m[2] ?? ''));
+            $bin = base64_decode($b64, true);
+            if ($bin === false) {
+                return $this->formatPemContent($norm) ?: $norm . "\n";
+            }
+            $wrapped = chunk_split(base64_encode($bin), 64, "\n");
+            $hdr = '-----BEGIN ' . ($type !== '' ? ($type . ' ') : '') . 'PRIVATE KEY-----';
+            $ftr = '-----END '   . ($type !== '' ? ($type . ' ') : '') . 'PRIVATE KEY-----';
+            return $hdr . "\n" . rtrim($wrapped, "\n") . "\n" . $ftr . "\n";
+        }
+        $b64 = preg_replace('/[^A-Za-z0-9+\/=]/', '', $norm);
+        $bin = base64_decode($b64, true);
+        if ($bin === false) {
+            return $this->formatPemContent($norm) ?: $norm . "\n";
+        }
+        $wrapped = chunk_split(base64_encode($bin), 64, "\n");
+        return "-----BEGIN PRIVATE KEY-----\n" . rtrim($wrapped, "\n") . "\n-----END PRIVATE KEY-----\n";
+    }
+
+    /**
+     * Try to find a CA certificate within the 'subscriptions' metadata returned by the LG API.
+     * @param mixed $subscriptions
+     */
+    public function extractCAPEMFromSubscriptions($subscriptions): string
+    {
+        $found = '';
+        $scan = function ($node) use (&$scan, &$found): void {
+            if ($found !== '') {
+                return;
+            }
+            if (is_string($node)) {
+                $str = trim($node);
+                if ($str === '') {
+                    return;
+                }
+                if (strpos($str, '-----BEGIN CERTIFICATE-----') !== false) {
+                    if (@openssl_x509_read($str) !== false) {
+                        $found = $str;
+                    }
+                    return;
+                }
+                $b64 = preg_replace('/[^A-Za-z0-9+\/=]/', '', $str);
+                if ($b64 !== '') {
+                    $bin = base64_decode($b64, true);
+                    if ($bin !== false) {
+                        $wrapped = "-----BEGIN CERTIFICATE-----\n" . rtrim(chunk_split(base64_encode($bin), 64, "\n"), "\n") . "\n-----END CERTIFICATE-----\n";
+                        if (@openssl_x509_read($wrapped) !== false) {
+                            $found = $wrapped;
+                        }
+                    }
+                }
+                return;
+            }
+            if (is_array($node)) {
+                foreach (['ca', 'CA', 'certificateAuthority', 'root', 'rootCA', 'cacert', 'cacertificate'] as $k) {
+                    if (isset($node[$k])) {
+                        $scan($node[$k]);
+                        if ($found !== '') {
+                            return;
+                        }
+                    }
+                }
+                foreach ($node as $v) {
+                    $scan($v);
+                    if ($found !== '') {
+                        return;
+                    }
+                }
+            }
+        };
+        $scan($subscriptions);
+        return is_string($found) ? $found : '';
+    }
+
+    /**
+     * Download Amazon Root CA 1 from Amazon's repository for AWS IoT ATS endpoints.
+     */
+    public function downloadAmazonRootCA1(): string
+    {
+        $url = 'https://www.amazontrust.com/repository/AmazonRootCA1.pem';
+        if (function_exists('curl_init')) {
+            $ch = @curl_init($url);
+            if ($ch !== false) {
+                @curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_TIMEOUT => 10,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_SSL_VERIFYHOST => 2,
+                    CURLOPT_USERAGENT => 'LGThinQBridge/1.0 (+Symcon)',
+                ]);
+                $resp = @curl_exec($ch);
+                $code = (int)@curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                @curl_close($ch);
+                if (is_string($resp) && $code === 200 && strpos($resp, '-----BEGIN CERTIFICATE-----') !== false) {
+                    return (string)$resp;
+                }
+            }
+        }
+        $ctx = @stream_context_create([
+            'http'  => ['timeout' => 10, 'method' => 'GET', 'header' => "User-Agent: LGThinQBridge/1.0\r\n"],
+            'https' => ['timeout' => 10],
+        ]);
+        $resp = @file_get_contents($url, false, $ctx);
+        if (is_string($resp) && strpos($resp, '-----BEGIN CERTIFICATE-----') !== false) {
+            return (string)$resp;
+        }
+        return '';
+    }
+
+    /**
+     * Normalize PEM content: remove blank lines, ensure 64-char line wrapping.
+     */
+    public function formatPemContent(string $pem): string
+    {
+        $pem = str_replace(["\r\n", "\r"], "\n", trim($pem));
+        $cleanLines = [];
+        foreach (explode("\n", $pem) as $line) {
+            $trimmed = trim($line);
+            if ($trimmed !== '') {
+                $cleanLines[] = $trimmed;
+            }
+        }
+        return implode("\n", $cleanLines) . "\n";
+    }
+
+    /**
+     * Write a temporary OpenSSL config file for key/CSR generation.
+     */
+    private function writeTempConfig(string $subjectCN, ?string $cfgPath = null): string
+    {
+        if ($cfgPath === null) {
+            $cfgPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'lgtq_mqtt_' . $this->instanceId . '_' . bin2hex(random_bytes(4)) . '.cnf';
+        }
+        $nl = "\r\n";
+        $strCONFIG  = 'default_md = sha256' . $nl;
+        $strCONFIG .= 'default_days = 3650' . $nl;
+        $strCONFIG .= $nl;
+        $strCONFIG .= '[ req ]' . $nl;
+        $strCONFIG .= 'default_bits = 2048' . $nl;
+        $strCONFIG .= 'distinguished_name = req_DN' . $nl;
+        $strCONFIG .= 'string_mask = nombstr' . $nl;
+        $strCONFIG .= 'prompt = no' . $nl;
+        $strCONFIG .= 'x509_extensions = v3_client' . $nl;
+        $strCONFIG .= $nl;
+        $strCONFIG .= '[ req_DN ]' . $nl;
+        $strCONFIG .= 'commonName = "' . addslashes($subjectCN) . '"' . $nl;
+        $strCONFIG .= $nl;
+        $strCONFIG .= '[ v3_client ]' . $nl;
+        $strCONFIG .= 'basicConstraints = critical, CA:FALSE' . $nl;
+        $strCONFIG .= 'keyUsage = critical, digitalSignature' . $nl;
+        $strCONFIG .= 'extendedKeyUsage = clientAuth' . $nl;
+        $strCONFIG .= 'subjectKeyIdentifier = hash' . $nl;
+        $strCONFIG .= 'authorityKeyIdentifier = keyid' . $nl;
+
+        $handle = fopen($cfgPath, 'w');
+        if ($handle === false) {
+            throw new \RuntimeException('Failed to create temporary OpenSSL configuration');
+        }
+        fwrite($handle, $strCONFIG);
+        fclose($handle);
+
+        return $cfgPath;
+    }
+}

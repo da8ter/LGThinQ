@@ -7,7 +7,6 @@ require_once __DIR__ . '/ThinQGenericProperties.php';
 require_once __DIR__ . '/ThinQEnumTranslator.php';
 require_once __DIR__ . '/ThinQProfileParser.php';
 require_once __DIR__ . '/CapabilityProfileExtractor.php';
-require_once __DIR__ . '/CapabilityCatalogLoader.php';
 require_once __DIR__ . '/CapabilityPlanBuilder.php';
 require_once __DIR__ . '/CapabilityVarManager.php';
 require_once __DIR__ . '/CapabilityControlBuilder.php';
@@ -33,6 +32,9 @@ class CapabilityEngine
     private array $flatProfile = [];
     /** @var array<string, mixed> */
     private array $flatStatus = [];
+
+    /** @var array<int, string> idents (with message) that failed creation in the last ensureVariables() run */
+    private array $createFailures = [];
 
     /** @var ThinQProfileParser|null */
     private ?ThinQProfileParser $parser = null;
@@ -137,6 +139,12 @@ class CapabilityEngine
         return array_values($this->caps);
     }
 
+    /** @return array<int, string> idents (with message) that failed to create in the last ensureVariables() run */
+    public function getCreateFailures(): array
+    {
+        return $this->createFailures;
+    }
+
     /** @return array<string, array<string, mixed>> Map of ident => presentation */
     public function getPresentationMap(): array
     {
@@ -155,42 +163,51 @@ class CapabilityEngine
         // Use caps loaded by buildPlan() — do NOT reload here (preserves auto-discovered caps).
         $flatStatus = is_array($status) ? $this->flatten($status) : [];
         $this->flatStatus = $flatStatus;
-        
+        $this->createFailures = [];
+
         foreach ($this->caps as $cap) {
             $ident = (string)($cap['ident'] ?? '');
             if ($ident === '') continue;
-            $should = $this->shouldCreate($cap, $this->flatProfile, $flatStatus);
-            $vid = $this->getVarId($ident);
-            if (!$should && $vid === 0) continue;
-            if ($vid === 0) {
-                $type = strtoupper((string)($cap['type'] ?? 'string'));
-                $ipsType = match ($type) {
-                    'BOOLEAN' => VARIABLETYPE_BOOLEAN,
-                    'INTEGER' => VARIABLETYPE_INTEGER,
-                    'FLOAT'   => VARIABLETYPE_FLOAT,
-                    default   => VARIABLETYPE_STRING
-                };
-                $name = (string)($cap['name'] ?? $ident);
-                if ($this->maintainVariableCallback !== null) {
-                    $vid = call_user_func($this->maintainVariableCallback, $ident, $name, $ipsType, '', 0, true);
-                } else {
-                    $vid = IPS_CreateVariable($ipsType);
-                    IPS_SetParent($vid, $this->instanceId);
-                    IPS_SetIdent($vid, $ident);
-                    IPS_SetName($vid, $name);
+            // Best-effort per capability: a failure on a single variable must not
+            // abort creation of all the others (incl. the always-create ERROR_LAST/PUSH_LAST).
+            try {
+                $should = $this->shouldCreate($cap, $this->flatProfile, $flatStatus);
+                $vid = $this->getVarId($ident);
+                if (!$should && $vid === 0) continue;
+                if ($vid === 0) {
+                    $type = strtoupper((string)($cap['type'] ?? 'string'));
+                    $ipsType = match ($type) {
+                        'BOOLEAN' => VARIABLETYPE_BOOLEAN,
+                        'INTEGER' => VARIABLETYPE_INTEGER,
+                        'FLOAT'   => VARIABLETYPE_FLOAT,
+                        default   => VARIABLETYPE_STRING
+                    };
+                    $name = (string)($cap['name'] ?? $ident);
+                    if ($this->maintainVariableCallback !== null) {
+                        $vid = call_user_func($this->maintainVariableCallback, $ident, $name, $ipsType, '', 0, true);
+                    } else {
+                        $vid = IPS_CreateVariable($ipsType);
+                        IPS_SetParent($vid, $this->instanceId);
+                        IPS_SetIdent($vid, $ident);
+                        IPS_SetName($vid, $name);
+                    }
                 }
-            }
-            $enableWhen = strtolower((string)($cap['action']['enableWhen'] ?? ''));
-            if ($enableWhen === 'always') {
-                $this->enableAction($ident);
-            } elseif ($enableWhen === 'profilewriteableany') {
-                $writeKeys = $cap['action']['writeableKeys'] ?? [];
-                $hasWrite = is_array($writeKeys) && $this->profileHasWriteAny($writeKeys);
-                if ($hasWrite || $this->capHasWriteDefinition($cap)) {
+                $enableWhen = strtolower((string)($cap['action']['enableWhen'] ?? ''));
+                if ($enableWhen === 'always') {
                     $this->enableAction($ident);
+                } elseif ($enableWhen === 'profilewriteableany') {
+                    $writeKeys = $cap['action']['writeableKeys'] ?? [];
+                    $hasWrite = is_array($writeKeys) && $this->profileHasWriteAny($writeKeys);
+                    if ($hasWrite || $this->capHasWriteDefinition($cap)) {
+                        $this->enableAction($ident);
+                    }
+                } else {
+                    $this->dbg(sprintf('NOT enabling action for %s (enableWhen=%s)', $ident, $enableWhen));
                 }
-            } else {
-                $this->dbg(sprintf('NOT enabling action for %s (enableWhen=%s)', $ident, $enableWhen));
+            } catch (\Throwable $e) {
+                $this->createFailures[] = $ident . ': ' . $e->getMessage();
+                $this->dbg(sprintf('ensureVariables: failed for ident=%s: %s', $ident, $e->getMessage()));
+                continue;
             }
         }
     }
