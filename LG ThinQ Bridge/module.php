@@ -900,13 +900,19 @@ class LGThinQBridge extends IPSModule
     public function UISetupMqttConnection(): void
     {
         $this->ensureBooted();
-        (new ThinQMqttSetupWizard(
-            $this,
-            $this->InstanceID,
-            self::API_KEY,
-            $this->config,
-            $this->httpClient,
-            fn() => $this->debugMqttParentInfo()
-        ))->run();
+        try {
+            $result = (new ThinQMqttSetupWizard(
+                $this,
+                $this->InstanceID,
+                self::API_KEY,
+                $this->config,
+                $this->httpClient,
+                fn() => $this->debugMqttParentInfo()
+            ))->run();
+            echo rtrim($this->t('Done'), '.') . ".\n" . 'Client Socket ID: ' . $result['ioId'] . "\n" . 'MQTT Client ID:   ' . $result['mqttId'] . "\n";
+            $this->NotifyUser($this->t('MQTT connection configured') . ' (ClientID=' . $result['clientId'] . ', Host=' . $result['host'] . ':' . $result['port'] . ').');
+        } catch (Throwable $e) {
+            echo $this->t('Error') . ': ' . $e->getMessage();
+        }
     }
 }

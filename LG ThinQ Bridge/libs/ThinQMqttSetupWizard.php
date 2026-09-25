@@ -30,7 +30,11 @@ class ThinQMqttSetupWizard
         return $this->module->publicTranslate($s);
     }
 
-    public function run(): void
+    /**
+     * Runs the whole setup. Returns what was set up; the module reports it to the user.
+     * @return array{clientId: string, host: string, port: int, mqttId: int, ioId: int}
+     */
+    public function run(): array
     {
         try {
             // 1) Determine broker host/port from LG /route endpoint (preferred)
@@ -333,11 +337,10 @@ class ThinQMqttSetupWizard
                 $this->module->publicSendDebug('UISetupMqttConnection', 'Register client failed: ' . $e->getMessage(), 0);
             }
 
-            echo $this->t('Done') . ".\n" . 'Client Socket ID: ' . $ioID . "\n" . 'MQTT Client ID:   ' . $mqttID . "\n";
-            $this->module->NotifyUser($this->t('MQTT connection configured') . ' (ClientID=' . $subjectCN . ', Host=' . $HOST . ':' . $PORT . ').');
+            return ['clientId' => (string)$subjectCN, 'host' => (string)$HOST, 'port' => (int)$PORT, 'mqttId' => (int)$mqttID, 'ioId' => (int)$ioID];
         } catch (\Throwable $e) {
             $this->module->publicSendDebug('UISetupMqttConnection', $e->getMessage(), 0);
-            echo $this->t('Error') . ': ' . $e->getMessage();
+            throw $e;
         }
     }
 

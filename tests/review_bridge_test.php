@@ -105,12 +105,13 @@ World::mqtt(World::topic(), ['push' => ['pushType' => 'DEVICE_PUSH', 'deviceId' 
     'data' => ['runState' => ['currentState' => 'END']]]]);
 check(World::value($w, 'RUN_STATE_CURRENT_STATE') === 'END', 'Statusdaten, die ein Push verschachtelt mitbringt (data), kommen weiterhin an');
 
-section('F14 MQTT-Einrichtung');
+section('F14 MQTT-Einrichtung (behoben)');
 World::start();
 ob_start();
 LGTQ_UISetupMqttConnection(World::$bridge);
 $out = trim((string)ob_get_clean());
-befund('F14', preg_match('/Error|Fehler|Call to/', $out) === 0, 'Einrichtung endet ohne Fehlermeldung', substr($out, (int)strrpos($out, "\n") + 1));
+check(preg_match('/Error|Fehler|Call to/', $out) === 0 && str_starts_with($out, 'Fertig.') && !str_starts_with($out, 'Fertig..'), 'Einrichtung endet mit "Fertig." und ohne Fehlermeldung');
+check(World::logLines('/MQTT-Verbindung eingerichtet \(ClientID=/') !== [], 'Abschlussmeldung steht im Meldungsprotokoll');
 
 section('W1 eingestellter MQTT-Client');
 World::start();
