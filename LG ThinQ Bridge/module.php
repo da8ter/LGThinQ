@@ -7,6 +7,7 @@ require_once __DIR__ . '/libs/ThinQHelpers.php';
 require_once __DIR__ . '/libs/ThinQConfig.php';
 require_once __DIR__ . '/libs/ThinQRedactor.php';
 require_once __DIR__ . '/libs/ThinQHttpClient.php';
+require_once __DIR__ . '/libs/ThinQApi.php';
 require_once __DIR__ . '/libs/ThinQEventManager.php';
 require_once __DIR__ . '/libs/ThinQEventPipeline.php';
 require_once __DIR__ . '/libs/ThinQMqttRouter.php';
@@ -24,6 +25,7 @@ class LGThinQBridge extends IPSModule
 
     private ?ThinQBridgeConfig $config = null;
     private ?ThinQHttpClient $httpClient = null;
+    private ?ThinQApi $api = null;
     private ?ThinQJsonAttribute $deviceRepository = null;
     private ?ThinQJsonAttribute $subscriptionRepository = null;
     private ?ThinQJsonAttribute $pushRepository = null;
@@ -194,7 +196,7 @@ class LGThinQBridge extends IPSModule
                     if ($deviceId === '') {
                         throw new Exception('DeviceID missing');
                     }
-                    $profile = $this->httpClient->request('GET', 'devices/' . rawurlencode($deviceId) . '/profile');
+                    $profile = $this->api->deviceProfile($deviceId);
                     return json_encode(['success' => true, 'profile' => $profile], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 case 'Control':
                     $deviceId = (string)($buffer['DeviceID'] ?? '');
@@ -202,7 +204,7 @@ class LGThinQBridge extends IPSModule
                     if ($deviceId === '' || !is_array($payload)) {
                         throw new Exception('Control payload invalid');
                     }
-                    $response = $this->httpClient->request('POST', 'devices/' . rawurlencode($deviceId) . '/control', $payload, ['x-conditional-control: false']);
+                    $response = $this->api->control($deviceId, $payload);
                     return json_encode(['success' => true, 'response' => $response], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 case 'SubscribeDevice':
                     $deviceId = (string)($buffer['DeviceID'] ?? '');
@@ -238,7 +240,7 @@ class LGThinQBridge extends IPSModule
                     if ($deviceId === '') {
                         throw new Exception('DeviceID missing');
                     }
-                    $energyProfile = $this->httpClient->request('GET', 'devices/energy/' . rawurlencode($deviceId) . '/profile');
+                    $energyProfile = $this->api->energyProfile($deviceId);
                     return json_encode(['success' => true, 'energyProfile' => $energyProfile], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 case 'GetEnergyUsage':
                     $deviceId = (string)($buffer['DeviceID'] ?? '');
@@ -249,8 +251,7 @@ class LGThinQBridge extends IPSModule
                     if ($deviceId === '' || $property === '' || $period === '' || $startDate === '' || $endDate === '') {
                         throw new Exception('GetEnergyUsage: missing parameters');
                     }
-                    $qs = http_build_query(['property' => $property, 'period' => $period, 'startDate' => $startDate, 'endDate' => $endDate]);
-                    $energyData = $this->httpClient->request('GET', 'devices/energy/' . rawurlencode($deviceId) . '/usage?' . $qs);
+                    $energyData = $this->api->energyUsage($deviceId, $property, $period, $startDate, $endDate);
                     return json_encode(['success' => true, 'energyData' => $energyData], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 default:
                     return json_encode(['success' => false, 'error' => 'unknown action']);
@@ -359,7 +360,7 @@ class LGThinQBridge extends IPSModule
                 }
             }
             try {
-                $this->httpClient->request('DELETE', 'push/devices');
+                $this->api->unregisterPushClient();
             } catch (Throwable $e) {
                 $this->SendDebug('UnsubscribeAll Push', $e->getMessage(), 0);
             }
@@ -482,7 +483,7 @@ class LGThinQBridge extends IPSModule
             return;
         }
         try {
-            $this->httpClient->request('POST', 'push/devices');
+            $this->api->registerPushClient();
             $this->SendDebug('Push Subscribe', 'push/devices OK', 0);
         } catch (Throwable $e) {
             if (!self::isAlreadySubscribed($e)) {
@@ -503,7 +504,7 @@ class LGThinQBridge extends IPSModule
             return;
         }
         try {
-            $this->httpClient->request('POST', 'push/' . rawurlencode($deviceId) . '/subscribe');
+            $this->api->subscribePush($deviceId);
             $this->SendDebug('Push Subscribe', 'OK for ' . $deviceId, 0);
         } catch (Throwable $e) {
             if (!self::isAlreadySubscribed($e)) {
@@ -536,7 +537,7 @@ class LGThinQBridge extends IPSModule
         if ($Push) {
             $this->pushRepository->remove($DeviceID);
             try {
-                $this->httpClient->request('DELETE', 'push/' . rawurlencode($DeviceID) . '/unsubscribe');
+                $this->api->unsubscribePush($DeviceID);
             } catch (Throwable $e) {
                 $this->SendDebug('Push Unsubscribe', $e->getMessage(), 0);
                 $ok = false;
@@ -562,7 +563,7 @@ class LGThinQBridge extends IPSModule
     public function GetDeviceProfile(string $DeviceID): string
     {
         $this->ensureBooted();
-        $profile = $this->httpClient->request('GET', 'devices/' . rawurlencode($DeviceID) . '/profile');
+        $profile = $this->api->deviceProfile($DeviceID);
         return json_encode($profile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
@@ -573,7 +574,7 @@ class LGThinQBridge extends IPSModule
         if (!is_array($payload)) {
             throw new Exception('ControlDevice: Invalid JSON payload');
         }
-        $this->httpClient->request('POST', 'devices/' . rawurlencode($DeviceID) . '/control', $payload, ['x-conditional-control: false']);
+        $this->api->control($DeviceID, $payload);
         return true;
     }
 
@@ -585,7 +586,8 @@ class LGThinQBridge extends IPSModule
         $this->subscriptionRepository = new ThinQJsonAttribute($ctx, 'EventSubscriptions');
         $this->pushRepository = new ThinQJsonAttribute($ctx, 'PushDeviceSubs');
         $this->httpClient = new ThinQHttpClient($ctx, $this->config, self::API_KEY);
-        $this->eventManager = new ThinQEventManager($ctx, $this->config, $this->httpClient, $this->subscriptionRepository);
+        $this->api = new ThinQApi($this->httpClient);
+        $this->eventManager = new ThinQEventManager($ctx, $this->config, $this->api, $this->subscriptionRepository);
         $this->eventPipeline = new ThinQEventPipeline();
         $this->eventPipeline->onEvent(function (string $deviceId, array $payload): void {
             $this->sendToChildren('Event', $deviceId, ['Event' => $payload]);
@@ -708,17 +710,7 @@ class LGThinQBridge extends IPSModule
      */
     private function fetchDevices(): array
     {
-        $data = $this->httpClient->request('GET', 'devices');
-        if (isset($data['devices']) && is_array($data['devices'])) {
-            return $data['devices'];
-        }
-        if (empty($data)) {
-            return [];
-        }
-        if (isset($data[0])) {
-            return $data;
-        }
-        return [$data];
+        return $this->api->devices();
     }
 
     /**
@@ -726,7 +718,7 @@ class LGThinQBridge extends IPSModule
      */
     private function fetchDeviceStatus(string $deviceId): array
     {
-        return $this->httpClient->request('GET', 'devices/' . rawurlencode($deviceId) . '/state');
+        return $this->api->deviceStatus($deviceId);
     }
 
     /**

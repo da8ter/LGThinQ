@@ -7,7 +7,7 @@ final class ThinQEventManager
     /** Seconds between two renewal checks of the EventRenewTimer. */
     public const CHECK_PERIOD = 600;
 
-    private ThinQHttpClient $httpClient;
+    private ThinQApi $api;
     /** deviceId => {expiresAt, clientId} or, after a failure, {failedSince, retryAt} */
     private ThinQJsonAttribute $repository;
     private ThinQBridgeConfig $config;
@@ -15,11 +15,11 @@ final class ThinQEventManager
     public function __construct(
         private ThinQModuleContext $ctx,
         ThinQBridgeConfig $config,
-        ThinQHttpClient $httpClient,
+        ThinQApi $api,
         ThinQJsonAttribute $repository
     ) {
         $this->config = $config;
-        $this->httpClient = $httpClient;
+        $this->api = $api;
         $this->repository = $repository;
     }
 
@@ -30,8 +30,7 @@ final class ThinQEventManager
                 return true;
             }
             $ttl = $this->config->normalizedEventTtlHours();
-            $body = ['expire' => ['unit' => 'HOUR', 'timer' => $ttl]];
-            $this->httpClient->request('POST', 'event/' . rawurlencode($deviceId) . '/subscribe', $body);
+            $this->api->subscribeEvents($deviceId, $ttl);
             $this->repository->put($deviceId, ['expiresAt' => ThinQClock::now() + ($ttl * 3600), 'clientId' => $this->config->clientId]);
             return true;
         } catch (Throwable $e) {
@@ -49,7 +48,7 @@ final class ThinQEventManager
     {
         $ok = true;
         try {
-            $this->httpClient->request('DELETE', 'event/' . rawurlencode($deviceId) . '/unsubscribe');
+            $this->api->unsubscribeEvents($deviceId);
         } catch (Throwable $e) {
             $this->ctx->debug('Event', 'Unsubscribe error: ' . $e->getMessage());
             $ok = false;
