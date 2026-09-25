@@ -59,6 +59,20 @@ check(World::value($w, 'RUN_STATE_CURRENT_STATE') === 'RUNNING', 'report als Zon
 check(World::value($w, 'LASTUPDATE') === Kernel::now(), 'LASTUPDATE bekommt die Push-Zeit');
 check(json_decode((string)World::attr($w, 'LastStatus'), true)['runState']['currentState'] === 'RUNNING', 'LastStatus fortgeschrieben');
 
+section('Leere Antwort und Ablehnung');
+World::$cloud->fail('GET devices/{id}/state', 200, '{"messageId":"m","timestamp":"t","response":{}}');
+LGTQD_UpdateStatus($w);
+check(json_decode((string)World::attr($w, 'LastStatus'), true)['runState']['currentState'] === 'RUNNING' && World::value($w, 'RUN_STATE_CURRENT_STATE') === 'RUNNING',
+    'ein leerer Status (HTTP 200 ohne Inhalt) behält den letzten bekannten');
+World::$cloud->fail('POST devices/{id}/control', 400, '{"messageId":"m","timestamp":"t","error":{"code":"2201","message":"Not supported command"}}');
+$caught = '';
+try {
+    LGTQD_ControlDevice($w, '{"operation":{"washerOperationMode":"STOP"}}');
+} catch (\Throwable $e) {
+    $caught = $e->getMessage();
+}
+check(str_contains($caught, 'Not supported command'), 'ControlDevice: LGs Ablehnung kommt als Ausnahme mit LGs Meldung an (' . $caught . ')');
+
 section('Kühlschrank: Temperatur je Fach');
 World::start();
 [$f, $fid] = World::example('refrigerator');
