@@ -44,7 +44,7 @@ final class ThinQHttpClient
         $headers = [
             'Authorization: Bearer ' . $this->config->accessToken,
             'x-country: ' . $this->config->countryCode,
-            'x-message-id: ' . ThinQHelpers::generateMessageId(),
+            'x-message-id: ' . self::messageId(),
             'x-client-id: ' . $this->config->clientId,
             'x-api-key: ' . $this->apiKey,
             'x-service-phase: OP',
@@ -102,6 +102,12 @@ final class ThinQHttpClient
         $this->dbg('DecodedKeys', implode(',', array_keys($decoded)));
 
         return $decoded['response'] ?? $decoded;
+    }
+
+    /** x-message-id: 16 random bytes, base64url without padding */
+    private static function messageId(): string
+    {
+        return rtrim(strtr(base64_encode(random_bytes(16)), '+/', '-_'), '=');
     }
 }
 

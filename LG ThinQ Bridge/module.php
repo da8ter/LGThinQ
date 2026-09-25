@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../libs/ThinQModuleTrait.php';
-require_once __DIR__ . '/libs/ThinQHelpers.php';
 require_once __DIR__ . '/libs/ThinQConfig.php';
 require_once __DIR__ . '/libs/ThinQClientId.php';
 require_once __DIR__ . '/libs/ThinQRedactor.php';
