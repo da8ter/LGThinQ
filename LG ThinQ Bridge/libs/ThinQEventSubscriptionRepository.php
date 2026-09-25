@@ -34,10 +34,10 @@ final class ThinQEventSubscriptionRepository
         }
     }
 
-    public function updateExpiry(string $deviceId, int $expiresAt): void
+    public function updateExpiry(string $deviceId, int $expiresAt, string $clientId): void
     {
         $subs = $this->getAll();
-        $subs[$deviceId]['expiresAt'] = $expiresAt;
+        $subs[$deviceId] = ['expiresAt' => $expiresAt, 'clientId' => $clientId];
         $this->saveAll($subs);
     }
 

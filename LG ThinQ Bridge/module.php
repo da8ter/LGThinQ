@@ -662,11 +662,9 @@ class LGThinQBridge extends IPSModule
 
     private function configureTimers(): void
     {
-        $ttl = $this->config->normalizedEventTtlHours();
-        $lead = $this->config->normalizedEventRenewLeadMinutes();
-        $interval = max(60, $ttl * 3600 - $lead * 60);
+        // A short fixed check period; what is due follows from the stored expiry times (ThinQEventManager).
         $errors = $this->config->validate();
-        $this->SetTimerInterval('EventRenewTimer', empty($errors) ? $interval * 1000 : 0);
+        $this->SetTimerInterval('EventRenewTimer', empty($errors) ? ThinQEventManager::CHECK_PERIOD * 1000 : 0);
     }
 
     private function ensureMqttParent(): void

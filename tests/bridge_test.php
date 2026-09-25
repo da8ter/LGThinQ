@@ -15,7 +15,7 @@ $bridge = static fn(): LGThinQBridge => Kernel::$instances[World::$bridge]['obje
 section('Konfiguration');
 World::start();
 check(Kernel::$instances[World::$bridge]['status'] === IS_ACTIVE, 'Bridge mit PAT und Land ist aktiv (102)');
-check(World::timer(World::$bridge, 'EventRenewTimer')['interval'] === (24 * 3600 - 5 * 60) * 1000, 'Erneuerungs-Timer: TTL 24 h minus 5 min Vorlauf');
+check(World::timer(World::$bridge, 'EventRenewTimer')['interval'] === 600 * 1000, 'Erneuerungs-Timer prüft alle 10 Minuten');
 check(World::attr(World::$bridge, 'ClientID') === World::$clientId, 'ClientID folgt der ClientID des MQTT-Clients');
 check(World::attr(World::$bridge, 'AccessTokenBackup') === '', 'keine Kopie des PAT im Attribut AccessTokenBackup');
 Kernel::$instances[World::$bridge]['attributes']['AccessTokenBackup'] = World::$cloud->pat; // left behind by an earlier version

@@ -66,10 +66,11 @@ $match = [['app/clients/+/push', 'app/clients/Symcon1/push', true], ['app/client
 $wrong = array_filter($match, static fn(array $m): bool => ThinQMqttRouter::topicMatches($m[0], $m[1]) !== $m[2]);
 check($wrong === [], 'MQTT-Platzhalter + und # ebenenweise, * wie +' . ($wrong === [] ? '' : ': ' . json_encode(array_values($wrong))));
 
-section('F4 Erneuerung der Event-Abos');
+section('F4 Erneuerung der Event-Abos (behoben)');
 World::start();
 Kernel::advance(10); // the device subscribes ten seconds after the Bridge armed its timer
 [$dev, $did] = World::example('water_heater');
+World::quiet();
 $gap = 0;
 $first = null;
 for ($t = 60; $t <= 48 * 3600; $t += 60) {
@@ -79,8 +80,17 @@ for ($t = 60; $t <= 48 * 3600; $t += 60) {
         $first ??= $t;
     }
 }
-befund('F4', $gap === 0, 'Event-Abo bleibt 48 h ohne Lücke bestehen',
-    sprintf('%d min ohne Abo in 48 h (erste Lücke nach %.1f h) — Timer alle 23 h 55 min erneuert nur, was in den nächsten 5 min abläuft', $gap / 60, ($first ?? 0) / 3600));
+check($gap === 0, sprintf('Event-Abo bleibt 48 h ohne Lücke bestehen (%d min ohne Abo, erste Lücke nach %.1f h)', $gap / 60, ($first ?? 0) / 3600));
+$renewals = count(World::$cloud->calls('POST event/{id}/subscribe'));
+check($renewals >= 1 && $renewals <= 3, 'erneuert wird kurz vor Ablauf, nicht bei jeder Prüfung (' . $renewals . '× in 48 h)');
+IPS_ApplyChanges(World::$bridge); // re-arms the timer (Symcon 9.1 restarts the countdown)
+for ($t = 0; $t < 30 * 3600; $t += 60) {
+    Kernel::advance(60);
+    if (!isset(World::$cloud->activeEventSubs()[$did])) {
+        $gap += 60;
+    }
+}
+check($gap === 0, 'auch nach erneutem Stellen des Timers keine Lücke');
 
 section('F6 DEVICE_PUSH');
 World::start();

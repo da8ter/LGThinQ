@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 final class ThinQEventManager
 {
+    /** Seconds between two renewal checks of the EventRenewTimer. */
+    public const CHECK_PERIOD = 600;
+
     private ThinQHttpClient $httpClient;
     private ThinQEventSubscriptionRepository $repository;
     private IPSModule $module;
@@ -24,23 +27,13 @@ final class ThinQEventManager
     public function subscribe(string $deviceId, bool $force = false): bool
     {
         try {
-            // Idempotency guard: if a current subscription exists and is not close to expiry, skip re-subscribing
-            $leadSeconds = $this->config->normalizedEventRenewLeadMinutes() * 60;
-            $subs = $this->repository->getAll();
-            $current = $subs[$deviceId] ?? null;
-            if (!$force && is_array($current)) {
-                $expiresAt = (int)($current['expiresAt'] ?? 0);
-                if ($expiresAt > 0 && $expiresAt > (ThinQClock::now() + $leadSeconds)) {
-                    // Still valid beyond renew lead window; no API call needed
-                    return true;
-                }
+            if (!$force && !$this->isDue($this->repository->getAll()[$deviceId] ?? null)) {
+                return true;
             }
-
             $ttl = $this->config->normalizedEventTtlHours();
             $body = ['expire' => ['unit' => 'HOUR', 'timer' => $ttl]];
             $this->httpClient->request('POST', 'event/' . rawurlencode($deviceId) . '/subscribe', $body);
-            $expiresAt = ThinQClock::now() + ($ttl * 3600);
-            $this->repository->updateExpiry($deviceId, $expiresAt);
+            $this->repository->updateExpiry($deviceId, ThinQClock::now() + ($ttl * 3600), $this->config->clientId);
             return true;
         } catch (Throwable $e) {
             @IPS_LogMessage('LG ThinQ Event', 'Subscribe error: ' . $e->getMessage());
@@ -63,19 +56,28 @@ final class ThinQEventManager
 
     public function renewExpiring(): void
     {
-        $subs = $this->repository->getAll();
-        $leadSeconds = $this->config->normalizedEventRenewLeadMinutes() * 60;
-        $now = ThinQClock::now();
-        foreach (array_keys($subs) as $deviceId) {
+        foreach ($this->repository->getAll() as $deviceId => $entry) {
             $deviceId = (string)$deviceId;
-            if ($deviceId === '') {
-                continue;
-            }
-            $expiresAt = (int)($subs[$deviceId]['expiresAt'] ?? 0);
-            if ($expiresAt === 0 || ($expiresAt - $leadSeconds) <= $now) {
-                $this->subscribe($deviceId);
+            if ($deviceId !== '' && $this->isDue(is_array($entry) ? $entry : null)) {
+                $this->subscribe($deviceId, true);
             }
         }
+    }
+
+    /**
+     * Due once the remaining time falls into the renewal window, which always reaches past the next
+     * check, or when the subscription was made under another client ID (LG publishes the events to
+     * that client's topic). Depends only on absolute times, so re-arming the timer cannot cause a gap.
+     *
+     * @param array<string, mixed>|null $entry
+     */
+    private function isDue(?array $entry): bool
+    {
+        if ($entry === null) {
+            return true;
+        }
+        $window = min($this->config->normalizedEventRenewLeadMinutes() * 60 + self::CHECK_PERIOD, intdiv($this->config->normalizedEventTtlHours() * 3600, 2));
+        return (int)($entry['expiresAt'] ?? 0) - ThinQClock::now() <= $window || (string)($entry['clientId'] ?? '') !== $this->config->clientId;
     }
 
     /**
