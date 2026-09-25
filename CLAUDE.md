@@ -25,13 +25,13 @@ Ziel dieser Optimierung: Code-Qualität und Wartbarkeit verbessern — God-Class
 - JSON — configuration forms (`form.json`), locale strings (`locale.json`), module metadata (`module.json`, `library.json`)
 - JavaScript (CommonJS) — GSD tooling in `.claude/get-shit-done/bin/` (development workflow tooling only, not part of module runtime)
 ## Runtime
-- IP-Symcon home automation platform, version compatibility: `7.1` (declared in `library.json`)
+- IP-Symcon home automation platform, version compatibility: `8.1` (declared in `library.json`)
 - PHP is embedded in the IP-Symcon runtime; no standalone PHP installation is managed by this module
 - No composer.json or package.json for module runtime
 - `.claude/package.json` exists for GSD dev tooling only (not module dependencies)
 ## Frameworks
-- IP-Symcon PHP Module SDK — base class `IPSModule`, all IPS_* global functions, KR_READY kernel runlevel, timer registration
-- Module Strict pattern — `declare(strict_types=1)`, typed function signatures throughout
+- IP-Symcon PHP Module SDK — base class `IPSModuleStrict`, all IPS_* global functions, KR_READY kernel runlevel, timer registration
+- Module Strict — `IPSModuleStrict` with `declare(strict_types=1)`; overrides carry the typed signatures of the SDK (`ReceiveData(string $JSONString): string` …)
 - `LGThinQBridge` — type 2 (Splitter), prefix `LGTQ`, GUID `{FCD02091-9189-0B0A-0C70-D607F1941C05}`
 - `LGThinQDevice` — type 3 (Device), prefix `LGTQD`, GUID `{B5CF9E2D-7B7C-4A0A-9C0E-7E5A0B8E2E9A}`
 - `LGThinQConfigurator` — type 4 (Configurator), prefix `LGTQC`, GUID `{7C4B0F16-7E13-4B44-9E2C-1B9C2C6B3B0F}`
@@ -51,9 +51,9 @@ Ziel dieser Optimierung: Code-Qualität und Wartbarkeit verbessern — God-Class
 - Optional properties: `ClientID`, `Debug`, `UseMQTT`, `MQTTClientID`, `MQTTTopicFilter`, `IgnoreRetained`, `EventTTLHrs` (1–24), `EventRenewLeadMin` (1–59), `PushCooldownMin` (default 30)
 - No build configuration files
 ## Platform Requirements
-- IP-Symcon 7.1+
+- IP-Symcon 8.1+
 - PHP with `openssl` extension enabled
-- IP-Symcon 7.1+ runtime
+- IP-Symcon 8.1+ runtime
 - Outbound HTTPS access to `api-eic.lgthinq.com`, `api-aic.lgthinq.com`, or `api-kic.lgthinq.com` (region-resolved from country code)
 - Outbound HTTPS access to `https://www.amazontrust.com/repository/AmazonRootCA1.pem` (for MQTT TLS CA download)
 - IP-Symcon MQTT Client module configured for LG ThinQ AWS IoT MQTT broker (mTLS with LG-signed client certificate)
@@ -64,7 +64,7 @@ Ziel dieser Optimierung: Code-Qualität und Wartbarkeit verbessern — God-Class
 
 ## Language Standards
 - PHP with `declare(strict_types=1)` in every file
-- Return types used on most public functions (some older methods without due to IPS compatibility)
+- Typed parameters and return types on all methods, including the overrides of `IPSModuleStrict`
 - Nullable types (`?ClassName`) used for optional dependencies
 - `\Throwable` catch blocks (not just `\Exception`)
 ## Naming Conventions

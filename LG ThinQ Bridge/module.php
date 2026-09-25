@@ -17,7 +17,7 @@ require_once __DIR__ . '/libs/ThinQMqttInstances.php';
 require_once __DIR__ . '/libs/ThinQMqttSetupWizard.php';
 require_once __DIR__ . '/libs/ThinQMqttCertBuilder.php';
 
-class LGThinQBridge extends IPSModule
+class LGThinQBridge extends IPSModuleStrict
 {
     use ThinQModuleTrait;
 
@@ -32,7 +32,7 @@ class LGThinQBridge extends IPSModule
     private ?ThinQEventPipeline $eventPipeline = null;
     private ?ThinQMqttRouter $mqttRouter = null;
 
-    public function Create()
+    public function Create(): void
     {
         parent::Create();
 
@@ -59,7 +59,7 @@ class LGThinQBridge extends IPSModule
         $this->RegisterTimer('EventRenewTimer', 0, 'LGTQ_RenewEvents($_IPS[\'TARGET\']);');
     }
 
-    public function ApplyChanges()
+    public function ApplyChanges(): void
     {
         parent::ApplyChanges();
         // Best Practice: Avoid heavy work before KR_READY. Re-run on IPS_KERNELSTARTED
@@ -93,7 +93,7 @@ class LGThinQBridge extends IPSModule
         }
     }
 
-    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
+    public function MessageSink(int $TimeStamp, int $SenderID, int $Message, array $Data): void
     {
         if ($Message === IPS_KERNELSTARTED) {
             // Kernel is ready now. Apply changes again to finish initialization
@@ -129,15 +129,15 @@ class LGThinQBridge extends IPSModule
             unset($el);
         }
 
-        return json_encode($form, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        return (string)json_encode($form, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
-    public function ForwardData($JSONString)
+    public function ForwardData(string $JSONString): string
     {
         $this->ensureBooted();
-        $json = json_decode((string)$JSONString, true);
+        $json = json_decode($JSONString, true);
         if (!is_array($json)) {
-            return json_encode(['success' => false, 'error' => 'invalid payload']);
+            return (string)json_encode(['success' => false, 'error' => 'invalid payload']);
         }
         $buffer = is_string($json['Buffer'] ?? null) ? json_decode($json['Buffer'], true) : ($json['Buffer'] ?? []);
         $buffer = is_array($buffer) ? $buffer : [];
@@ -148,13 +148,14 @@ class LGThinQBridge extends IPSModule
             $this->SendDebug('ForwardData Error', $e->getMessage(), 0);
             $reply = ['success' => false, 'error' => $e->getMessage()];
         }
-        return json_encode($reply, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        return (string)json_encode($reply, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
-    public function ReceiveData($JSONString)
+    public function ReceiveData(string $JSONString): string
     {
         $this->ensureBooted();
-        $this->mqttRouter->handle((string)$JSONString);
+        $this->mqttRouter->handle($JSONString);
+        return '';
     }
 
     public function TestConnection(): void
@@ -422,9 +423,9 @@ class LGThinQBridge extends IPSModule
     }
 
     /** Every debug line passes the redactor, so no call site can leak the PAT or a key into the debug log. */
-    protected function SendDebug($Message, $Data, $Format)
+    protected function SendDebug(string $Message, string $Data, int $Format): bool
     {
-        return parent::SendDebug($Message, ThinQRedactor::text((string)$Data, [trim((string)$this->ReadPropertyString('AccessToken')), self::API_KEY]), $Format);
+        return parent::SendDebug($Message, ThinQRedactor::text($Data, [trim($this->ReadPropertyString('AccessToken')), self::API_KEY]), $Format);
     }
 
     /** @param array<string, mixed> $fields */

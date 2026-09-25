@@ -14,7 +14,7 @@ require_once __DIR__ . '/libs/ThinQDeviceSetup.php';
 require_once __DIR__ . '/libs/ThinQDeviceStatus.php';
 require_once __DIR__ . '/libs/ThinQCleanup.php';
 
-class LGThinQDevice extends IPSModule
+class LGThinQDevice extends IPSModuleStrict
 {
     use ThinQModuleTrait;
 
@@ -22,7 +22,7 @@ class LGThinQDevice extends IPSModule
     private const DATA_FLOW_GUID      = '{A1F438B3-2A68-4A2B-8FDB-7460F1B8B854}';
 
 
-    public function Create()
+    public function Create(): void
     {
         parent::Create();
 
@@ -60,12 +60,12 @@ class LGThinQDevice extends IPSModule
         }
     }
 
-    public function Destroy()
+    public function Destroy(): void
     {
         parent::Destroy();
     }
 
-    public function ApplyChanges()
+    public function ApplyChanges(): void
     {
         parent::ApplyChanges();
         // Best Practice: Avoid heavy work before KR_READY. Re-run on IPS_KERNELSTARTED
@@ -120,7 +120,7 @@ class LGThinQDevice extends IPSModule
         $this->SetBuffer('WatchedParent', (string)$parent);
     }
 
-    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
+    public function MessageSink(int $TimeStamp, int $SenderID, int $Message, array $Data): void
     {
         switch ($Message) {
             case IPS_KERNELSTARTED:
@@ -179,7 +179,7 @@ class LGThinQDevice extends IPSModule
         return true;
     }
 
-    public function RequestAction($ident, $value)
+    public function RequestAction(string $Ident, mixed $Value): void
     {
         $deviceId = trim((string)$this->ReadPropertyString('DeviceID'));
         if ($deviceId === '') {
@@ -192,23 +192,23 @@ class LGThinQDevice extends IPSModule
             throw new Exception($this->t('Unknown action'));
         }
 
-        $this->SendDebug('RequestAction', sprintf('Calling buildControlPayload for ident=%s, value=%s', $ident, json_encode($value)), 0);
-        $payload = $engine->buildControlPayload((string)$ident, $value);
+        $this->SendDebug('RequestAction', sprintf('Calling buildControlPayload for ident=%s, value=%s', $Ident, json_encode($Value)), 0);
+        $payload = $engine->buildControlPayload($Ident, $Value);
         $this->SendDebug('RequestAction', sprintf('buildControlPayload returned: %s', $payload === null ? 'NULL' : 'array'), 0);
         if (!is_array($payload)) {
-            throw new Exception($this->t('Unknown action') . ': ' . $ident);
+            throw new Exception($this->t('Unknown action') . ': ' . $Ident);
         }
 
-        $payloadJson = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        $this->SendDebug('RequestAction', sprintf('Ident=%s, Value=%s, Payload=%s', $ident, json_encode($value), $payloadJson), 0);
+        $payloadJson = (string)json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->SendDebug('RequestAction', sprintf('Ident=%s, Value=%s, Payload=%s', $Ident, json_encode($Value), $payloadJson), 0);
         
         $ok = $this->ControlDevice($payloadJson);
         if ($ok) {
-            $this->setValueByVarType((string)$ident, $value);
+            $this->setValueByVarType($Ident, $Value);
         }
     }
 
-    public function ReceiveData($JSONString)
+    public function ReceiveData(string $JSONString): string
     {
         $this->SendDebug('ReceiveData', 'Called', 0);
         
@@ -263,7 +263,7 @@ class LGThinQDevice extends IPSModule
         ];
         
         // Suppress warning if parent has no active interface
-        return ThinQDeviceUtil::bridgeResult(@$this->SendDataToParent(json_encode($packet)));
+        return ThinQDeviceUtil::bridgeResult(@$this->SendDataToParent((string)json_encode($packet)));
     }
 
 

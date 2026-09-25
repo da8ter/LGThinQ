@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-class LGThinQConfigurator extends IPSModule
+class LGThinQConfigurator extends IPSModuleStrict
 {
     private const GATEWAY_MODULE_GUID = '{FCD02091-9189-0B0A-0C70-D607F1941C05}';
     private const DEVICE_MODULE_GUID  = '{B5CF9E2D-7B7C-4A0A-9C0E-7E5A0B8E2E9A}';
     private const DATA_FLOW_TX_GUID   = '{7F7632D9-FA40-4F38-8DEA-C83CD4325A32}';
 
-    public function Create()
+    public function Create(): void
     {
         parent::Create();
         $this->ConnectParent(self::GATEWAY_MODULE_GUID);
     }
 
-    public function ApplyChanges()
+    public function ApplyChanges(): void
     {
         parent::ApplyChanges();
         if (function_exists('IPS_GetKernelRunlevel') && IPS_GetKernelRunlevel() !== KR_READY) {
@@ -25,14 +25,14 @@ class LGThinQConfigurator extends IPSModule
         }
     }
 
-    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
+    public function MessageSink(int $TimeStamp, int $SenderID, int $Message, array $Data): void
     {
         if ($Message === IPS_KERNELSTARTED) {
             $this->ApplyChanges();
         }
     }
 
-    public function GetConfigurationForm()
+    public function GetConfigurationForm(): string
     {
         $gatewayID = $this->getGatewayID();
         $values = [];
@@ -104,7 +104,7 @@ class LGThinQConfigurator extends IPSModule
             ]
         ];
 
-        return json_encode($form);
+        return (string)json_encode($form);
     }
 
     private function getGatewayID(): int
