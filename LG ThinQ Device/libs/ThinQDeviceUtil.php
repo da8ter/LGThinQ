@@ -6,8 +6,7 @@ declare(strict_types=1);
  * ThinQDeviceUtil
  *
  * Extracted from LG ThinQ Device/module.php.
- * Pure utility methods: value setting, array flattening, anonymization, deep merging, and
- * throwable logging.
+ * Pure utility methods: value setting, array flattening, anonymization and throwable logging.
  */
 class ThinQDeviceUtil
 {
@@ -111,17 +110,5 @@ class ThinQDeviceUtil
     public function logThrowable(string $context, \Throwable $e): void
     {
         $this->ctx->debug($context, $e->getMessage());
-    }
-
-    public function deepMerge(array $base, array $patch): array
-    {
-        foreach ($patch as $key => $value) {
-            if (is_array($value) && isset($base[$key]) && is_array($base[$key])) {
-                $base[$key] = $this->deepMerge($base[$key], $value);
-            } else {
-                $base[$key] = $value;
-            }
-        }
-        return $base;
     }
 }

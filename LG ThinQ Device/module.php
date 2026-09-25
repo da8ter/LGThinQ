@@ -228,15 +228,7 @@ class LGThinQDevice extends IPSModule
                 throw new Exception($this->t('Invalid status response'));
             }
 
-            // Normalize shapes: { state: {...} } and [ { ... } ] -> { ... }
-            if (isset($status['state']) && is_array($status['state'])) {
-                $status = $status['state'];
-            } else {
-                $isNumericList = array_keys($status) === range(0, count($status) - 1);
-                if ($isNumericList && count($status) === 1 && is_array($status[0])) {
-                    $status = $status[0];
-                }
-            }
+            $status = ThinQShape::status($status);
 
             if ($status === []) {
                 // An empty answer carries no state; keep the last known one instead of wiping it.
@@ -377,18 +369,9 @@ class LGThinQDevice extends IPSModule
             return '';
         }
 
-        // Normalize shapes: { state: {...} } and [ { ... } ]
-        if (isset($event['state']) && is_array($event['state'])) {
-            $event = $event['state'];
-        } else {
-            $isNumericList = array_keys($event) === range(0, count($event) - 1);
-            if ($isNumericList && count($event) === 1 && is_array($event[0])) {
-                $event = $event[0];
-            }
-        }
-
-        $current = $this->readLastStatus();
-        $merged = $this->deepMerge($current, $event);
+        // Zones by location, element lists by selector (a report may carry just one compartment)
+        $event = ThinQShape::status($event);
+        $merged = ThinQShape::merge($this->readLastStatus(), $event);
         $encoded = json_encode($merged, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $this->WriteAttributeString('LastStatus', $encoded);
         @SetValueString($this->getVarId('STATUS'), $encoded);
@@ -931,10 +914,6 @@ class LGThinQDevice extends IPSModule
 
     
 
-    private function deepMerge(array $base, array $patch): array
-    {
-        return $this->util()->deepMerge($base, $patch);
-    }
 
     // ── Energy API ──────────────────────────────────────────────────────
 

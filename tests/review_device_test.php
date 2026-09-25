@@ -242,15 +242,16 @@ foreach ([$w, $ac] as $inst) {
 }
 befund('N7d', $names === [], 'Englisches Symcon zeigt englische Variablennamen', count($names) . ' deutsche Namen, u. a. ' . implode(', ', array_slice($names, 0, 4)));
 
-section('N8 Teilberichte je Fach');
+section('N8 Teilberichte je Fach (behoben)');
 World::start();
 [$f, $fid] = World::example('refrigerator');
 $push($fid, ['temperature' => [['locationName' => 'FREEZER', 'targetTemperature' => -20, 'unit' => 'C']]]);
 $push($fid, ['temperature' => [['locationName' => 'FRIDGE', 'targetTemperature' => 3, 'unit' => 'C']]]);
 $fr = World::value($f, 'FRIDGE_TEMPERATURE_TARGET_TEMPERATURE');
 $fz = World::value($f, 'FREEZER_TEMPERATURE_TARGET_TEMPERATURE');
-befund('N8', $fr === 3 && $fz === -20, 'Elementlisten werden nach locationName zusammengeführt, nicht nach Position',
-    sprintf('nach Berichten FREEZER -20, dann FRIDGE 3: FRIDGE %s, FREEZER %s', json_encode($fr), json_encode($fz)));
+check($fr === 3 && $fz === -20, sprintf('Teilberichte je Fach nach locationName zusammengeführt (FREEZER -20, dann FRIDGE 3: FRIDGE %s, FREEZER %s)', json_encode($fr), json_encode($fz)));
+$push($fid, ['temperature' => ['locationName' => 'FREEZER', 'targetTemperature' => -18, 'unit' => 'C']]);
+check(World::value($f, 'FREEZER_TEMPERATURE_TARGET_TEMPERATURE') === -18 && World::value($f, 'FRIDGE_TEMPERATURE_TARGET_TEMPERATURE') === 3, 'auch ein einzelnes Fach als Objekt statt Liste');
 
 section('N9 HTTP 500 ohne Rumpf (behoben)');
 World::start();
