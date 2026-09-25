@@ -429,28 +429,29 @@ class LGThinQDevice extends IPSModule
             }
         }
 
-        // Check if status has new properties not in profile → full setup required
+        // Keys of this report the profile does not list: one fresh profile; keys LG reports but never
+        // lists (AC airQualitySensor) are remembered, so they do not cost a profile call per push.
         $needsSetup = false;
-        if (!empty($profile) && $this->statusHasNewProperties($merged, $profile)) {
-            $this->SendDebug('ReceiveData', 'Status has new properties not in cached profile, refreshing from API...', 0);
+        $unknown = !empty($profile) ? $this->unknownReportKeys($event, $profile) : [];
+        if ($unknown !== []) {
+            $this->SendDebug('ReceiveData', 'Report has keys the profile does not list (' . implode(', ', $unknown) . '), refreshing it', 0);
             $freshProfile = $this->fetchProfileFromAPI();
             if (!empty($freshProfile)) {
                 $profile = $freshProfile;
                 $this->WriteAttributeString('LastProfile', json_encode($profile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
                 $needsSetup = true;
+                $this->rememberUnprofiledKeys(array_keys(array_diff_key(array_flip($unknown), ThinQShape::profileKeys($profile))));
             }
         }
 
         if ($type !== '' && !empty($profile)) {
-            if ($needsSetup) {
-                // New properties discovered: rebuild variables and presentations
+            $engine = $this->getCapabilityEngine();
+            $engine->buildPlan($type, $profile, $merged);
+            if ($needsSetup || $engine->missingStatusVariables() !== []) {
+                // New properties, or variables that only appear with a status value (timer SET)
                 $this->ensureDeviceVariablesWithPresentations($profile, $merged, $type);
             } else {
-                // Regular update: only apply values, no presentation work
-                $engine = $this->prepareEngine();
-                if ($engine !== null) {
-                    $engine->applyStatus($merged);
-                }
+                $engine->applyStatus($merged);
             }
         }
 
@@ -858,9 +859,26 @@ class LGThinQDevice extends IPSModule
         return $this->getProfileManager()->readStoredProfile();
     }
 
-    private function statusHasNewProperties(array $status, array $profile): bool
+    /** @return array<int, string> "resource.property" keys of a report that neither the profile nor the remembered list knows */
+    private function unknownReportKeys(array $report, array $profile): array
     {
-        return $this->getProfileManager()->statusHasNewProperties($status, $profile);
+        $known = ThinQShape::profileKeys($profile) + array_fill_keys($this->unprofiledKeys(), true);
+        return array_keys(array_diff_key(ThinQShape::statusKeys($report), $known));
+    }
+
+    /** @return array<int, string> keys LG reports without listing them in the profile (kept until the next kernel start) */
+    private function unprofiledKeys(): array
+    {
+        $keys = json_decode((string)$this->GetBuffer('UnprofiledKeys'), true);
+        return is_array($keys) ? $keys : [];
+    }
+
+    /** @param array<int, string> $keys */
+    private function rememberUnprofiledKeys(array $keys): void
+    {
+        if ($keys !== []) {
+            $this->SetBuffer('UnprofiledKeys', (string)json_encode(array_values(array_unique(array_merge($this->unprofiledKeys(), $keys)))));
+        }
     }
 
     private function fetchProfileFromAPI(): array

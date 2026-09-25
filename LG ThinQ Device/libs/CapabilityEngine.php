@@ -146,6 +146,20 @@ class CapabilityEngine
         return $out;
     }
 
+    /** @return array<int, string> idents that only appear with a status value (create: statusHasAny), have one now, but no variable */
+    public function missingStatusVariables(): array
+    {
+        $out = [];
+        foreach ($this->caps as $cap) {
+            $ident = (string)($cap['ident'] ?? '');
+            if ($ident !== '' && strtolower((string)($cap['create']['when'] ?? '')) === 'statushasany'
+                && $this->getVarId($ident) === 0 && $this->shouldCreate($cap, $this->flatProfile, $this->flatStatus)) {
+                $out[] = $ident;
+            }
+        }
+        return $out;
+    }
+
     /** @return array<int, string> idents (with message) that failed to create in the last ensureVariables() run */
     public function getCreateFailures(): array
     {

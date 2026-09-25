@@ -114,7 +114,7 @@ World::$cloud->fail('GET devices/energy/{id}/profile', 503);
 IPS_ApplyChanges($ac);
 check(count(array_intersect(['ENERGY_YESTERDAY', 'ENERGY_THIS_MONTH', 'ENERGY_LAST_MONTH'], World::idents($ac))) === 3, 'ein Ausfall beim Energieprofil löscht die Energievariablen nicht');
 
-section('F10 Profilabruf je Push');
+section('F10 Profilabruf je Push (behoben)');
 World::start();
 [$ac, $acid] = World::liveAc();
 World::quiet();
@@ -123,7 +123,7 @@ for ($i = 0; $i < 5; $i++) {
     Kernel::advance(60);
 }
 $n = count(World::$cloud->calls('GET devices/{id}/profile'));
-befund('F10', $n <= 1, 'Pushes mit Schlüsseln außerhalb des Profils holen es nicht jedes Mal neu', sprintf('%d× GET profile bei 5 Pushes (Klimaanlage: airQualitySensor fehlt im Profil)', $n));
+check($n <= 1, sprintf('Pushes mit Schlüsseln außerhalb des Profils holen es höchstens einmal neu (%d× GET profile bei 5 Pushes; Klimaanlage: airQualitySensor fehlt im Profil)', $n));
 
 section('F11 Selbstheilung nach Störung beim Anlegen');
 World::start();
@@ -140,7 +140,7 @@ $healed = in_array('RUN_STATE_CURRENT_STATE', World::idents($w), true);
 befund('F11', $healed, 'Ein Gerät, das bei einer API-Störung angelegt wurde, heilt beim nächsten Push',
     sprintf('nach dem Anlegen: %s; nach dem Push: %s', implode(', ', $after), $healed ? 'geheilt' : 'unverändert — ERROR_LAST/PUSH_LAST zählen als Gerätevariablen'));
 
-section('F12 Variablen, die erst mit dem Status auftauchen');
+section('F12 Variablen, die erst mit dem Status auftauchen (behoben)');
 World::start();
 $did = World::$cloud->addExampleDevice('air_purifier');
 World::$cloud->fail('GET devices/{id}/state', 503);
@@ -148,8 +148,8 @@ $i = World::addDevice($did);
 $before = World::idents($i);
 $push($did, ['timer' => ['absoluteStartTimer' => 'SET'], 'sleepTimer' => ['relativeStopTimer' => 'SET']]);
 $new = array_values(array_diff(World::idents($i), $before));
-befund('F12', in_array('TIMER_ABSOLUTE_START_TIMER', $new, true) && in_array('SLEEP_TIMER_RELATIVE_STOP_TIMER', $new, true),
-    'Ein Push legt statusHasAny-Variablen an (Timer SET)', 'nach dem Push neu: ' . ($new === [] ? 'nichts' : implode(', ', $new)));
+check(in_array('TIMER_ABSOLUTE_START_TIMER', $new, true) && in_array('SLEEP_TIMER_RELATIVE_STOP_TIMER', $new, true),
+    'ein Push legt Variablen an, die erst mit einem Statuswert entstehen (Timer SET): ' . implode(', ', $new));
 
 section('F13 Bereich mit Schrittweite 0,5');
 World::start();

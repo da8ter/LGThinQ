@@ -105,40 +105,6 @@ class ThinQDeviceProfileManager
         return ThinQShape::wrapProfile(json_decode((string)$this->ctx->attributeString('LastProfile'), true)) ?? [];
     }
 
-    /**
-     * Check if status contains properties that are not in the cached profile.
-     *
-     * @param array<string, mixed> $status
-     * @param array<string, mixed> $profile
-     */
-    public function statusHasNewProperties(array $status, array $profile): bool
-    {
-        // Flatten both to compare full paths
-        $statusFlat  = ($this->flattenCallback)($status);
-        $profileFlat = ($this->flattenCallback)($profile['property'] ?? $profile);
-
-        foreach ($statusFlat as $statusKey => $statusValue) {
-            if ($statusValue === null) {
-                continue;
-            }
-            $found = false;
-            foreach ($profileFlat as $profileKey => $_) {
-                if (
-                    strpos($profileKey, $statusKey) !== false ||
-                    strpos($statusKey, str_replace('property.', '', explode('.type', $profileKey)[0])) !== false
-                ) {
-                    $found = true;
-                    break;
-                }
-            }
-            if (!$found) {
-                $this->ctx->debug('statusHasNewProperties', sprintf('New property found in status: %s', $statusKey));
-                return true;
-            }
-        }
-        return false;
-    }
-
     /** Fresh profile from the API in the stored form, [] on failure. */
     public function fetchProfileFromAPI(): array
     {
