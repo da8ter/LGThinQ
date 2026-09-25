@@ -138,64 +138,20 @@ class ThinQProfileParser
     }
     
     /**
-     * Normalize different profile structure variants
-     * 
+     * The resources of the profile (ThinQShape): the first zone of a zone list, whose name then
+     * travels as top-level location in the commands (washer, oven: {"location": {…}, …}).
+     *
      * @param array<string, mixed> $profile
      * @return array<string, mixed>
      */
     private function normalizePropertyStructure(array $profile): array
     {
-        $this->topLevelLocation = null;
-
-        // Variant 1: property[0] = { location: {locationName: "MAIN"}, resource: {...} }
-        // Washer/Oven/Cooktop pattern: extract top-level location before unwrapping
-        if (isset($profile['property'][0]) && is_array($profile['property'][0])) {
-            $first = $profile['property'][0];
-            $locObj = $first['location'] ?? null;
-            if (is_array($locObj) && isset($locObj['locationName']) && is_string($locObj['locationName'])) {
-                $this->topLevelLocation = $locObj['locationName'];
-            }
-            return $first;
-        }
-        
-        // Variant 2: property = [{ resource: {...} }]
-        if (isset($profile['property']) && is_array($profile['property'])) {
-            $first = reset($profile['property']);
-            if (is_array($first) && !isset($first['type'])) {
-                // This looks like an array wrapper, unwrap it
-                return $profile['property'];
-            }
-            return $profile['property'];
-        }
-
-        // Variant 2b: Direct property array passed in (numeric array wrapper)
-        // Some callers already pass the contents of profile['property'] directly.
-        // In that case, unwrap the first element so resources become top-level keys
-        // instead of using a numeric index like "0" which would break path matching.
-        if (isset($profile[0]) && is_array($profile[0])) {
-            $first = $profile[0];
-            // Heuristic: treat as property container when any second-level child has a 'type'
-            $hasTypedChild = false;
-            foreach ($first as $v) {
-                if (!is_array($v)) {
-                    continue;
-                }
-                foreach ($v as $v2) {
-                    if (is_array($v2) && isset($v2['type'])) {
-                        $hasTypedChild = true;
-                        break 2;
-                    }
-                }
-            }
-            if ($hasTypedChild) {
-                return $first;
-            }
-        }
-        
-        // Variant 3: Direct structure (for testing)
-        return $profile;
+        $wrapped = ThinQShape::wrapProfile($profile) ?? [];
+        $zones = ThinQShape::zones($wrapped);
+        $this->topLevelLocation = $zones[0] ?? null;
+        return ThinQShape::resources($wrapped);
     }
-    
+
     /**
      * Check if data is an array of location objects
      * 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 // Load auto-discovery classes
 require_once __DIR__ . '/ThinQGenericProperties.php';
 require_once __DIR__ . '/ThinQEnumTranslator.php';
+require_once __DIR__ . '/ThinQShape.php';
 require_once __DIR__ . '/ThinQProfileParser.php';
 require_once __DIR__ . '/CapabilityProfileExtractor.php';
 require_once __DIR__ . '/CapabilityPlanBuilder.php';
