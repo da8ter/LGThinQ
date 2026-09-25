@@ -1,0 +1,3072 @@
+{
+    "air_conditioner": {
+        "AIR_CON_JOB_MODE_CURRENT_JOB_MODE": [
+            "Betriebsmodus",
+            "\"AIR_DRY\"=Entfeuchten",
+            "\"COOL\"=Kühlen",
+            "\"AIR_CLEAN\"=Luftreinigung"
+        ],
+        "AIR_FLOW_WIND_STRENGTH": [
+            "Windstärke",
+            "\"HIGH\"=Hoch",
+            "\"LOW\"=Niedrig",
+            "\"MID\"=Mittel"
+        ],
+        "AIR_FLOW_WIND_STRENGTH_DETAIL": [
+            "Windstärke Detail",
+            "\"LOW\"=Niedrig",
+            "\"LOW_MID\"=Low Mid",
+            "\"MID\"=Mittel",
+            "\"MID_HIGH\"=Mid High",
+            "\"HIGH\"=Hoch",
+            "\"POWER\"=Maximum",
+            "\"AUTO\"=Automatik"
+        ],
+        "AIR_QUALITY_SENSOR_HUMIDITY": [
+            "Luftfeuchte",
+            "SUFFIX= %"
+        ],
+        "AIR_QUALITY_SENSOR_MONITORING_ENABLED": [
+            "Überwachung aktiv",
+            "\"ON_WORKING\"=Bei Betrieb",
+            "\"ALWAYS\"=Immer"
+        ],
+        "AIR_QUALITY_SENSOR_PM1": "Feinstaub PM1",
+        "AIR_QUALITY_SENSOR_PM10": "Feinstaub PM10",
+        "AIR_QUALITY_SENSOR_PM2": "Feinstaub PM2.5",
+        "AIR_QUALITY_SENSOR_TOTAL_POLLUTION": "Gesamtverschmutzung",
+        "AIR_QUALITY_SENSOR_TOTAL_POLLUTION_LEVEL": [
+            "Verschmutzungsstufe",
+            "\"INVALID\"=Ungültig",
+            "\"GOOD\"=Gut",
+            "\"NORMAL\"=Normal",
+            "\"BAD\"=Schlecht",
+            "\"VERY_BAD\"=Sehr schlecht"
+        ],
+        "DISPLAY_LIGHT": [
+            "Licht",
+            "\"ON\"=An",
+            "\"OFF\"=Aus"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "FILTER_INFO_FILTER_LIFETIME": "Filter-Lebensdauer",
+        "FILTER_INFO_FILTER_REMAIN_PERCENT": [
+            "Filter-Restlaufzeit",
+            "SUFFIX= %"
+        ],
+        "FILTER_INFO_USED_TIME": "Nutzungszeit",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_AIR_CLEAN_OPERATION_MODE": [
+            "Air Clean Operation Mode",
+            "\"ON\"=An",
+            "\"OFF\"=Aus",
+            "\"START\"=Starten",
+            "\"STOP\"=Stoppen"
+        ],
+        "OPERATION_AIR_CON_OPERATION_MODE": [
+            "Power",
+            "\"POWER_OFF\"=Ausschalten",
+            "\"POWER_ON\"=Einschalten"
+        ],
+        "POWER_SAVE_POWER_SAVE_ENABLED": [
+            "Energiesparmodus",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"WATER_IS_FULL\"=Water Is Full"
+        ],
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"NORMAL\"=Normal",
+            "\"ERROR\"=Fehler"
+        ],
+        "SLEEP_TIMER_RELATIVE_HOUR_TO_STOP": [
+            "Stoppzeit Sleeptimer Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP": [
+            "Stoppzeit Sleeptimer Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleep Timer",
+        "STATUS": "Status",
+        "TEMPERATURE_CURRENT_TEMPERATURE": [
+            "Ist-Temperatur",
+            "SUFFIX= °C"
+        ],
+        "TEMPERATURE_TARGET_TEMPERATURE": [
+            "Zieltemperatur",
+            "SUFFIX= °C"
+        ],
+        "TIMER_RELATIVE_HOUR_TO_START": [
+            "Startzeit Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_RELATIVE_HOUR_TO_STOP": [
+            "Stoppzeit Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_RELATIVE_MINUTE_TO_START": [
+            "Startzeit Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_RELATIVE_MINUTE_TO_STOP": [
+            "Stoppzeit Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TWO_SET_TEMPERATURE_COOL_TARGET_TEMPERATURE": [
+            "Kühl-Zieltemperatur",
+            "SUFFIX= °C"
+        ],
+        "TWO_SET_TEMPERATURE_CURRENT_TEMPERATURE": [
+            "Ist-Temperatur",
+            "SUFFIX= °C"
+        ],
+        "TWO_SET_TEMPERATURE_HEAT_TARGET_TEMPERATURE": [
+            "Heiz-Zieltemperatur",
+            "SUFFIX= °C"
+        ],
+        "TWO_SET_TEMPERATURE_TWO_SET_ENABLED": [
+            "Two Set Enabled",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "WIND_DIRECTION_AIR_GUIDE_WIND": [
+            "Luftführung",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "WIND_DIRECTION_AUTO_FIT_WIND": [
+            "Auto-Anpassung",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "WIND_DIRECTION_CONCENTRATION_WIND": [
+            "Konzentrierter Wind",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "WIND_DIRECTION_FOREST_WIND": [
+            "Waldwind",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "WIND_DIRECTION_HIGH_CEILING_WIND": [
+            "Hohe Decke",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "WIND_DIRECTION_SWIRL_WIND": [
+            "Wirbelwind",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ]
+    },
+    "air_purifier": {
+        "AIR_FLOW_WIND_STRENGTH": [
+            "Windstärke",
+            "\"LOW\"=Niedrig",
+            "\"MID\"=Mittel",
+            "\"HIGH\"=Hoch",
+            "\"AUTO\"=Automatik",
+            "\"POWER\"=Maximum"
+        ],
+        "AIR_PURIFIER_JOB_MODE_CURRENT_JOB_MODE": [
+            "Betriebsmodus",
+            "\"CLEAN\"=Clean",
+            "\"AUTO\"=Automatik",
+            "\"CIRCULATOR\"=Circulator",
+            "\"DUAL_CLEAN\"=Dual Clean"
+        ],
+        "AIR_QUALITY_SENSOR_MONITORING_ENABLED": [
+            "Überwachung aktiv",
+            "\"ON_WORKING\"=Bei Betrieb",
+            "\"ALWAYS\"=Immer"
+        ],
+        "AIR_QUALITY_SENSOR_ODER": "Oder",
+        "AIR_QUALITY_SENSOR_ODOR": "Geruch",
+        "AIR_QUALITY_SENSOR_ODOR_LEVEL": [
+            "Geruchsstufe",
+            "\"INVALID\"=Ungültig",
+            "\"WEAK\"=Weak",
+            "\"NORMAL\"=Normal",
+            "\"STRONG\"=Strong",
+            "\"VERY_STRONG\"=Very Strong"
+        ],
+        "AIR_QUALITY_SENSOR_PM1": "Feinstaub PM1",
+        "AIR_QUALITY_SENSOR_PM10": "Feinstaub PM10",
+        "AIR_QUALITY_SENSOR_PM2": "Feinstaub PM2.5",
+        "AIR_QUALITY_SENSOR_TOTAL_POLLUTION": "Gesamtverschmutzung",
+        "AIR_QUALITY_SENSOR_TOTAL_POLLUTION_LEVEL": [
+            "Verschmutzungsstufe",
+            "\"INVALID\"=Ungültig",
+            "\"GOOD\"=Gut",
+            "\"NORMAL\"=Normal",
+            "\"BAD\"=Schlecht",
+            "\"VERY_BAD\"=Sehr schlecht"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_AIR_PURIFIER_OPERATION_MODE": [
+            "Air Purifier Operation Mode",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"TIME_TO_CHANGE_FILTER\"=Time To Change Filter",
+            "\"TIME_TO_CLEAN_FILTER\"=Time To Clean Filter",
+            "\"POLLUTION_IS_HIGH\"=Pollution Is High",
+            "\"LACK_OF_WATER\"=Lack Of Water"
+        ],
+        "SLEEP_TIMER_RELATIVE_HOUR_TO_STOP": [
+            "Stoppzeit Sleeptimer Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP": [
+            "Stoppzeit Sleeptimer Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleep Timer",
+        "STATUS": "Status",
+        "TIMER_ABSOLUTE_HOUR_TO_START": [
+            "Startzeit Absolut (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_ABSOLUTE_HOUR_TO_STOP": [
+            "Stoppzeit Absolut (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_ABSOLUTE_MINUTE_TO_START": [
+            "Startzeit Absolut (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_ABSOLUTE_MINUTE_TO_STOP": [
+            "Stoppzeit Absolut (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_ABSOLUTE_START_TIMER": "Timer Absolut Start",
+        "TIMER_ABSOLUTE_STOP_TIMER": "Timer Absolut Stop"
+    },
+    "air_purifier_fan": {
+        "AIR_FAN_JOB_MODE_CURRENT_JOB_MODE": [
+            "Betriebsmodus",
+            "\"SPOT_CLEAN\"=Spot Clean",
+            "\"SPACE_CLEAN\"=Space Clean",
+            "\"DIRECT_CLEAN\"=Direct Clean"
+        ],
+        "AIR_FLOW_WARM_MODE": [
+            "Warm Mode",
+            "\"WARM_ON\"=Warm On",
+            "\"WARM_OFF\"=Warm Off"
+        ],
+        "AIR_FLOW_WIND_ANGLE": [
+            "Wind Angle",
+            "\"OFF\"=Aus",
+            "\"ANGLE_45\"=Angle 45",
+            "\"ANGLE_60\"=Angle 60",
+            "\"ANGLE_90\"=Angle 90",
+            "\"ANGLE_140\"=Angle 140"
+        ],
+        "AIR_FLOW_WIND_STRENGTH": [
+            "Windstärke",
+            "\"AUTO\"=Automatik",
+            "\"POWER\"=Maximum",
+            "\"WIND_1\"=Stufe 1",
+            "\"WIND_2\"=Stufe 2",
+            "\"WIND_3\"=Stufe 3",
+            "\"WIND_4\"=Stufe 4",
+            "\"WIND_5\"=Stufe 5",
+            "\"WIND_6\"=Stufe 6",
+            "\"WIND_7\"=Stufe 7",
+            "\"WIND_8\"=Stufe 8",
+            "\"WIND_9\"=Stufe 9",
+            "\"WIND_10\"=Stufe 10"
+        ],
+        "AIR_FLOW_WIND_TEMPERATURE": [
+            "Wind Temperature",
+            "SUFFIX= °C"
+        ],
+        "AIR_QUALITY_SENSOR_HUMIDITY": [
+            "Luftfeuchte",
+            "SUFFIX= %"
+        ],
+        "AIR_QUALITY_SENSOR_MONITORING_ENABLED": [
+            "Überwachung aktiv",
+            "\"ON_WORKING\"=Bei Betrieb",
+            "\"ALWAYS\"=Immer"
+        ],
+        "AIR_QUALITY_SENSOR_ODOR": "Geruch",
+        "AIR_QUALITY_SENSOR_ODOR_LEVEL": [
+            "Geruchsstufe",
+            "\"INVALID\"=Ungültig",
+            "\"WEAK\"=Weak",
+            "\"NORMAL\"=Normal",
+            "\"STRONG\"=Strong",
+            "\"VERY_STRONG\"=Very Strong"
+        ],
+        "AIR_QUALITY_SENSOR_PM1": "Feinstaub PM1",
+        "AIR_QUALITY_SENSOR_PM10": "Feinstaub PM10",
+        "AIR_QUALITY_SENSOR_PM2": "Feinstaub PM2.5",
+        "AIR_QUALITY_SENSOR_TEMPERATURE": [
+            "Temperature",
+            "SUFFIX= °C"
+        ],
+        "AIR_QUALITY_SENSOR_TOTAL_POLLUTION": "Gesamtverschmutzung",
+        "AIR_QUALITY_SENSOR_TOTAL_POLLUTION_LEVEL": [
+            "Verschmutzungsstufe",
+            "\"INVALID\"=Ungültig",
+            "\"GOOD\"=Gut",
+            "\"NORMAL\"=Normal",
+            "\"BAD\"=Schlecht",
+            "\"VERY_BAD\"=Sehr schlecht"
+        ],
+        "DISPLAY_LIGHT": [
+            "Licht",
+            "\"OFF\"=Aus",
+            "\"LEVEL_1\"=Level 1",
+            "\"LEVEL_2\"=Level 2",
+            "\"LEVEL_3\"=Level 3"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "MISC_UV_NANO": [
+            "Uv Nano",
+            "\"ON\"=An",
+            "\"OFF\"=Aus"
+        ],
+        "OPERATION_AIR_FAN_OPERATION_MODE": [
+            "Air Fan Operation Mode",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"TIME_TO_CHANGE_FILTER\"=Time To Change Filter"
+        ],
+        "SLEEP_TIMER_RELATIVE_HOUR_TO_STOP": [
+            "Stoppzeit Sleeptimer Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP": [
+            "Stoppzeit Sleeptimer Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleep Timer",
+        "STATUS": "Status",
+        "TIMER_ABSOLUTE_HOUR_TO_START": [
+            "Startzeit Absolut (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_ABSOLUTE_HOUR_TO_STOP": [
+            "Stoppzeit Absolut (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_ABSOLUTE_MINUTE_TO_START": [
+            "Startzeit Absolut (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_ABSOLUTE_MINUTE_TO_STOP": [
+            "Stoppzeit Absolut (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_ABSOLUTE_START_TIMER": "Timer Absolut Start",
+        "TIMER_ABSOLUTE_STOP_TIMER": "Timer Absolut Stop"
+    },
+    "blind_motor": {
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "MOTOR_MOTOR_DIRECTION": [
+            "Motor Direction",
+            "\"FORWARD\"=Forward",
+            "\"BACKWARD\"=Backward"
+        ],
+        "OPEN_CLOSE_STATE_CURRENT_STATE": [
+            "Open Close State",
+            "\"OPEN\"=Offen",
+            "\"CLOSE\"=Close",
+            "\"STOP\"=Stoppen"
+        ],
+        "OPEN_CLOSE_STATE_LEVEL": "Level",
+        "OPERATION_OPERATION_MODE": [
+            "Betriebsmodus",
+            "\"OPEN\"=Offen",
+            "\"CLOSE\"=Close",
+            "\"STOP\"=Stoppen"
+        ],
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "STATUS": "Status"
+    },
+    "bulb_color": {
+        "COLOR_LIGHT_BRIGHTNESS": "Helligkeit",
+        "COLOR_LIGHT_HUE": "Hue",
+        "COLOR_LIGHT_SATURATION": "Saturation",
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "MODE_LIGHT_MODE": [
+            "Light Mode",
+            "\"WHITE\"=White",
+            "\"COLOR\"=Color"
+        ],
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausgeschaltet"
+        ],
+        "STATUS": "Status",
+        "WHITE_LIGHT_BRIGHTNESS": "Helligkeit"
+    },
+    "bulb_white": {
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausgeschaltet"
+        ],
+        "STATUS": "Status",
+        "WHITE_LIGHT_BRIGHTNESS": "Helligkeit",
+        "WHITE_LIGHT_COLOR_TEMPERATURE": [
+            "Color Temperature",
+            "SUFFIX= °C"
+        ]
+    },
+    "button": {
+        "BATTERY_PERCENT": [
+            "Percent",
+            "SUFFIX= %"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"BATTERY_IS_LOW\"=Battery Is Low"
+        ],
+        "STATUS": "Status"
+    },
+    "ceiling_fan": {
+        "AIR_FLOW_WIND_STRENGTH": [
+            "Windstärke",
+            "\"TURBO\"=Turbo",
+            "\"HIGH\"=Hoch",
+            "\"LOW\"=Niedrig",
+            "\"MID\"=Mittel"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_CEILINGFAN_OPERATION_MODE": [
+            "Ceilingfan Operation Mode",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "STATUS": "Status"
+    },
+    "cooktop": {
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "LEFT_FRONT_COOKING_ZONE_CURRENT_STATE": [
+            "Left front Cooking Zone",
+            "\"INITIAL\"=Bereit",
+            "\"COOK\"=Cook",
+            "\"PAUSE\"=Pausiert",
+            "\"LOCK\"=Sperre"
+        ],
+        "LEFT_FRONT_POWER_POWER_LEVEL": "Left front Leistungsstufe",
+        "LEFT_FRONT_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
+            "Left front Fernsteuerung",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "LEFT_FRONT_TIMER_REMAIN_HOUR": [
+            "Left front Verbleibende Stunden",
+            "SUFFIX= h"
+        ],
+        "LEFT_FRONT_TIMER_REMAIN_MINUTE": [
+            "Left front Verbleibende Minuten",
+            "SUFFIX= min"
+        ],
+        "LEFT_REAR_COOKING_ZONE_CURRENT_STATE": [
+            "Left rear Cooking Zone",
+            "\"INITIAL\"=Bereit",
+            "\"COOK\"=Cook",
+            "\"PAUSE\"=Pausiert",
+            "\"LOCK\"=Sperre"
+        ],
+        "LEFT_REAR_POWER_POWER_LEVEL": "Left rear Leistungsstufe",
+        "LEFT_REAR_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
+            "Left rear Fernsteuerung",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "LEFT_REAR_TIMER_REMAIN_HOUR": [
+            "Left rear Verbleibende Stunden",
+            "SUFFIX= h"
+        ],
+        "LEFT_REAR_TIMER_REMAIN_MINUTE": [
+            "Left rear Verbleibende Minuten",
+            "SUFFIX= min"
+        ],
+        "OPERATION_OPERATION_MODE": [
+            "Betriebsmodus",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "RIGHT_FRONT_COOKING_ZONE_CURRENT_STATE": [
+            "Right front Cooking Zone",
+            "\"INITIAL\"=Bereit",
+            "\"COOK\"=Cook",
+            "\"PAUSE\"=Pausiert",
+            "\"LOCK\"=Sperre"
+        ],
+        "RIGHT_FRONT_POWER_POWER_LEVEL": "Right front Leistungsstufe",
+        "RIGHT_FRONT_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
+            "Right front Fernsteuerung",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "RIGHT_FRONT_TIMER_REMAIN_HOUR": [
+            "Right front Verbleibende Stunden",
+            "SUFFIX= h"
+        ],
+        "RIGHT_FRONT_TIMER_REMAIN_MINUTE": [
+            "Right front Verbleibende Minuten",
+            "SUFFIX= min"
+        ],
+        "STATUS": "Status"
+    },
+    "curtain_ctrl": {
+        "CALIBRATION_RAIL_CALIBRATION": [
+            "Rail Calibration",
+            "\"ACTIVATE\"=Activate",
+            "\"DEACTIVATE\"=Deactivate"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "MOTOR_MOTOR_DIRECTION": [
+            "Motor Direction",
+            "\"FORWARD\"=Forward",
+            "\"BACKWARD\"=Backward"
+        ],
+        "OPEN_CLOSE_STATE_CURRENT_STATE": [
+            "Open Close State",
+            "\"OPEN\"=Offen",
+            "\"CLOSE\"=Close",
+            "\"STOP\"=Stoppen"
+        ],
+        "OPEN_CLOSE_STATE_LEVEL": "Level",
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "STATUS": "Status"
+    },
+    "dehumidifier": {
+        "AIR_FLOW_WIND_STRENGTH": [
+            "Windstärke",
+            "\"LOW\"=Niedrig",
+            "\"HIGH\"=Hoch"
+        ],
+        "DEHUMIDIFIER_JOB_MODE_CURRENT_JOB_MODE": [
+            "Betriebsmodus",
+            "\"QUIET_HUMIDITY\"=Quiet Humidity",
+            "\"CLOTHES_DRY\"=Clothes Dry",
+            "\"INTENSIVE_DRY\"=Intensive Dry",
+            "\"SMART_HUMIDITY\"=Smart Humidity",
+            "\"RAPID_HUMIDITY\"=Rapid Humidity",
+            "\"AIR_CLEAN\"=Luftreinigung"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "HUMIDITY_CURRENT_HUMIDITY": [
+            "Aktuelle Luftfeuchtigkeit",
+            "SUFFIX= %"
+        ],
+        "HUMIDITY_TARGET_HUMIDITY": [
+            "Ziel-Luftfeuchtigkeit",
+            "SUFFIX= %"
+        ],
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_DEHUMIDIFIER_OPERATION_MODE": [
+            "Dehumidifier Operation Mode",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"WATER_IS_FULL\"=Water Is Full"
+        ],
+        "STATUS": "Status",
+        "TIMER_ABSOLUTE_HOUR_TO_START": [
+            "Startzeit Absolut (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_ABSOLUTE_HOUR_TO_STOP": [
+            "Stoppzeit Absolut (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_ABSOLUTE_MINUTE_TO_START": [
+            "Startzeit Absolut (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_ABSOLUTE_MINUTE_TO_STOP": [
+            "Stoppzeit Absolut (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_ABSOLUTE_START_TIMER": "Timer Absolut Start",
+        "TIMER_ABSOLUTE_STOP_TIMER": "Timer Absolut Stop"
+    },
+    "dish_washer": {
+        "DISH_WASHING_COURSE_CURRENT_DISH_WASHING_COURSE": [
+            "Current Dish Washing Course",
+            "\"DELICATE\"=Delicate",
+            "\"TURBO\"=Turbo",
+            "\"RINSE\"=Rinse",
+            "\"REFRESH\"=Refresh",
+            "\"HEAVY\"=Heavy",
+            "\"NORMAL\"=Normal",
+            "\"AUTO\"=Auto",
+            "\"EXPRESS\"=Express",
+            "\"MACHINE_CLEAN\"=Machine Clean",
+            "\"DOWNLOAD_CYCLE\"=Download Cycle"
+        ],
+        "DISH_WASHING_STATUS_RINSE_REFILL": [
+            "Rinse Refill",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "DOOR_STATUS_DOOR_STATE": [
+            "Türstatus",
+            "\"CLOSE\"=Geschlossen",
+            "\"OPEN\"=Offen"
+        ],
+        "ERROR_LAST": [
+            "Letzter Fehler",
+            "\"HEATER_CIRCUIT_ERROR\"=Heater Circuit Error",
+            "\"BUBBLE_ERROR\"=Bubble Error",
+            "\"WATER_LEAKAGE_ERROR\"=Water Leakage Error",
+            "\"MOTOR_ERROR\"=Motor Error",
+            "\"WATER_SUPPLY_ERROR\"=Water Supply Error",
+            "\"WATER_DRAIN_ERROR\"=Water Drain Error",
+            "\"TEMPERATURE_SENSOR_ERROR\"=Temperature Sensor Error"
+        ],
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PREFERENCE_CLEAN_LREMINDER": [
+            "Clean Lreminder",
+            "\"CLEANLREMINDER_OFF\"=Cleanlreminder Off",
+            "\"CLEANLREMINDER_ON\"=Cleanlreminder On"
+        ],
+        "PREFERENCE_M_CREMINDER": [
+            "M Creminder",
+            "\"MCREMINDER_ON\"=Mcreminder On",
+            "\"MCREMINDER_OFF\"=Mcreminder Off"
+        ],
+        "PREFERENCE_RINSE_LEVEL": [
+            "Rinse Level",
+            "\"RINSELEVEL_4\"=Rinselevel 4",
+            "\"RINSELEVEL_0\"=Rinselevel 0",
+            "\"RINSELEVEL_1\"=Rinselevel 1",
+            "\"RINSELEVEL_2\"=Rinselevel 2",
+            "\"RINSELEVEL_3\"=Rinselevel 3"
+        ],
+        "PREFERENCE_SIGNAL_LEVEL": [
+            "Signal Level",
+            "\"SIGNALLEVEL_ON\"=Signallevel On",
+            "\"SIGNALLEVEL_OFF\"=Signallevel Off"
+        ],
+        "PREFERENCE_SOFTENING_LEVEL": [
+            "Softening Level",
+            "\"SOFTENINGLEVEL_4\"=Softeninglevel 4",
+            "\"SOFTENINGLEVEL_2\"=Softeninglevel 2",
+            "\"SOFTENINGLEVEL_3\"=Softeninglevel 3",
+            "\"SOFTENINGLEVEL_1\"=Softeninglevel 1",
+            "\"SOFTENINGLEVEL_0\"=Softeninglevel 0"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"RINSE_IS_NOT_ENOUGH\"=Rinse Is Not Enough",
+            "\"ERROR_DURING_CLEANING\"=Error During Cleaning",
+            "\"CLEANING_IS_COMPLETE\"=Cleaning Is Complete",
+            "\"SALT_REFILL_IS_NEEDED\"=Salt Refill Is Needed",
+            "\"WATER_LEAK_HAS_OCCURRED\"=Water Leak Has Occurred"
+        ],
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"POWER_FAIL\"=Power Fail",
+            "\"INITIAL\"=Bereit",
+            "\"CANCEL\"=Cancel",
+            "\"PAUSE\"=Pausiert",
+            "\"RUNNING\"=Läuft",
+            "\"RESERVED\"=Reserviert",
+            "\"POWER_OFF\"=Ausgeschaltet",
+            "\"NIGHT_DRY\"=Night Dry",
+            "\"RINSING\"=Spülen",
+            "\"END\"=Fertig",
+            "\"DRYING\"=Trocknen",
+            "\"ERROR\"=Fehler"
+        ],
+        "STATUS": "Status",
+        "TIMER_RELATIVE_HOUR_TO_START": [
+            "Startzeit Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_RELATIVE_MINUTE_TO_START": [
+            "Startzeit Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_REMAIN_HOUR": [
+            "Verbleibende Stunden",
+            "SUFFIX= h"
+        ],
+        "TIMER_REMAIN_MINUTE": [
+            "Verbleibende Minuten",
+            "SUFFIX= min"
+        ],
+        "TIMER_TOTAL_HOUR": [
+            "Gesamtdauer (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_TOTAL_MINUTE": [
+            "Gesamtdauer (Minuten)",
+            "SUFFIX= min"
+        ]
+    },
+    "door_lock": {
+        "BATTERY_PERCENT": [
+            "Percent",
+            "SUFFIX= %"
+        ],
+        "DOOR_STATE_CURRENT_STATE": [
+            "Türstatus",
+            "\"OPEN\"=Offen"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "STATUS": "Status"
+    },
+    "door_sensor": {
+        "BATTERY_PERCENT": [
+            "Percent",
+            "SUFFIX= %"
+        ],
+        "DOOR_STATE_CURRENT_STATE": [
+            "Türstatus",
+            "\"OPEN\"=Offen",
+            "\"CLOSE\"=Close"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"BATTERY_IS_LOW\"=Battery Is Low",
+            "\"DOOR_WINDOW_IS_OPENED\"=Door Window Is Opened",
+            "\"DOOR_WINDOW_IS_CLOSED\"=Door Window Is Closed"
+        ],
+        "STATUS": "Status"
+    },
+    "doorbell": {
+        "CHIME_VOLUME": "Volume",
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"BATTERY_IS_LOW\"=Battery Is Low",
+            "\"MOTION_IS_DETECTED\"=Motion Is Detected",
+            "\"DOORBELL_RING\"=Doorbell Ring"
+        ],
+        "STATUS": "Status"
+    },
+    "dryer": {
+        "ERROR_LAST": [
+            "Letzter Fehler",
+            "\"DOOR_SENSOR_ERROR\"=Door Sensor Error",
+            "\"COMPRESSOR_ERROR\"=Compressor Error",
+            "\"TEMPERATURE_SENSOR_ERROR\"=Temperature Sensor Error",
+            "\"DRAINMOTOR_ERROR\"=Drainmotor Error",
+            "\"EMPTY_WATER_ALERT_ERROR\"=Empty Water Alert Error",
+            "\"MOTOR_LOCK_ERROR\"=Motor Lock Error",
+            "\"DOOR_OPEN_ERROR\"=Door Open Error",
+            "\"HIGH_TEMPERATURE_DETECTION_ERROR\"=High Temperature Detection Error",
+            "\"DOOR_LOCK_ERROR\"=Door Lock Error",
+            "\"NO_FILTER_ERROR\"=No Filter Error"
+        ],
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_DRYER_OPERATION_MODE": [
+            "Dryer Operation Mode",
+            "\"START\"=Starten",
+            "\"STOP\"=Stoppen",
+            "\"POWER_OFF\"=Ausschalten",
+            "\"WAKE_UP\"=Aufwecken"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"DRYING_IS_COMPLETE\"=Drying Is Complete",
+            "\"DRYING_FAILED\"=Drying Failed"
+        ],
+        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
+            "Fernsteuerung",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"INITIAL\"=Bereit",
+            "\"ERROR\"=Fehler",
+            "\"SLEEP\"=Schlafmodus",
+            "\"DETECTING\"=Erkennung",
+            "\"COOLING\"=Abkühlen",
+            "\"WRINKLE_CARE\"=Knitterschutz",
+            "\"RESERVED\"=Reserviert",
+            "\"POWER_OFF\"=Ausgeschaltet",
+            "\"RUNNING\"=Läuft",
+            "\"PAUSE\"=Pausiert",
+            "\"END\"=Fertig"
+        ],
+        "STATUS": "Status",
+        "TIMER_RELATIVE_HOUR_TO_STOP": [
+            "Stoppzeit Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_RELATIVE_MINUTE_TO_STOP": [
+            "Stoppzeit Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_REMAIN_HOUR": [
+            "Verbleibende Stunden",
+            "SUFFIX= h"
+        ],
+        "TIMER_REMAIN_MINUTE": [
+            "Verbleibende Minuten",
+            "SUFFIX= min"
+        ],
+        "TIMER_TOTAL_HOUR": [
+            "Gesamtdauer (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_TOTAL_MINUTE": [
+            "Gesamtdauer (Minuten)",
+            "SUFFIX= min"
+        ]
+    },
+    "fire_sensor": {
+        "BATTERY_PERCENT": [
+            "Percent",
+            "SUFFIX= %"
+        ],
+        "DETECT_STATE_COVER_STATE": [
+            "Cover State",
+            "\"OPEN\"=Offen",
+            "\"CLOSE\"=Close"
+        ],
+        "DETECT_STATE_SMOKE_STATE": [
+            "Smoke State",
+            "\"ALARM\"=Alarm",
+            "\"NORMAL\"=Normal"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"BATTERY_IS_LOW\"=Battery Is Low",
+            "\"FIRE_IS_DETECTED\"=Fire Is Detected",
+            "\"COVER_IS_SEPARATED\"=Cover Is Separated"
+        ],
+        "STATUS": "Status"
+    },
+    "gas_sensor": {
+        "DETECT_STATE_GAS_STATE": [
+            "Gas State",
+            "\"ALARM\"=Alarm",
+            "\"NORMAL\"=Normal"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"GAS_IS_DETECTED\"=Gas Is Detected"
+        ],
+        "STATUS": "Status"
+    },
+    "home_brew": {
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "RECIPE_BEER_REMAIN": "Beer Remain",
+        "RECIPE_FLAVOR_CAPSULE1": [
+            "Flavor Capsule1",
+            "\"ORANGE\"=Orange",
+            "\"CORIANDER\"=Coriander"
+        ],
+        "RECIPE_FLAVOR_CAPSULE2": [
+            "Flavor Capsule2",
+            "\"ORANGE\"=Orange",
+            "\"CORIANDER_SEED\"=Coriander Seed"
+        ],
+        "RECIPE_FLAVOR_INFO": "Flavor Info",
+        "RECIPE_HOP_OIL_CAPSULE1": [
+            "Hop Oil Capsule1",
+            "\"FUGGLES\"=Fuggles",
+            "\"CASCADE\"=Cascade",
+            "\"HALLERTAU\"=Hallertau",
+            "\"CITRUSSY\"=Citrussy",
+            "\"GOLDINGS\"=Goldings",
+            "\"CHINOOK\"=Chinook"
+        ],
+        "RECIPE_HOP_OIL_CAPSULE2": [
+            "Hop Oil Capsule2",
+            "\"FUGGLES\"=Fuggles",
+            "\"CASCADE\"=Cascade",
+            "\"HALLERTAU\"=Hallertau",
+            "\"CITRUSSY\"=Citrussy",
+            "\"GOLDINGS\"=Goldings",
+            "\"CHINOOK\"=Chinook"
+        ],
+        "RECIPE_HOP_OIL_INFO": "Hop Oil Info",
+        "RECIPE_RECIPE_NAME": [
+            "Recipe Name",
+            "\"PALE_ALE\"=Pale Ale",
+            "\"MY_RECIPE\"=My Recipe",
+            "\"RED_ALE\"=Red Ale",
+            "\"STOUT\"=Stout",
+            "\"WHEAT\"=Wheat",
+            "\"PILSNER\"=Pilsner",
+            "\"IPA\"=Ipa"
+        ],
+        "RECIPE_WORT_INFO": [
+            "Wort Info",
+            "\"DARK\"=Dark",
+            "\"HOPPY\"=Hoppy",
+            "\"WHEAT\"=Wheat",
+            "\"DEEP_GOLD\"=Deep Gold"
+        ],
+        "RECIPE_YEAST_INFO": [
+            "Yeast Info",
+            "\"ENGLISH_ALE\"=English Ale",
+            "\"AMERICAN_ALE\"=American Ale",
+            "\"LAGER\"=Lager",
+            "\"WEIZEN\"=Weizen"
+        ],
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"PREPAREING_FERMENTATION\"=Prepareing Fermentation",
+            "\"STANDBY\"=Standby",
+            "\"DURING_FERMENTATION\"=During Fermentation",
+            "\"TEMPERATURE_STABILIZATION\"=Temperature Stabilization",
+            "\"EXTRACTION_MODE\"=Extraction Mode",
+            "\"DURING_AGING\"=During Aging",
+            "\"EXTRACTING_CAPSULE\"=Extracting Capsule",
+            "\"MELTING\"=Melting",
+            "\"AS_POP_UP\"=As Pop Up",
+            "\"CARBONATION\"=Carbonation"
+        ],
+        "STATUS": "Status",
+        "TIMER_ELAPSED_DAY_STATE": "Elapsed Day State",
+        "TIMER_ELAPSED_DAY_TOTAL": "Elapsed Day Total"
+    },
+    "home_camera": {
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "MODE_PRIVATE_MODE": [
+            "Private Mode",
+            "\"ON\"=An",
+            "\"OFF\"=Aus"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"MOTION_IS_DETECTED\"=Motion Is Detected",
+            "\"SOUND_IS_DETECTED\"=Sound Is Detected"
+        ],
+        "STATUS": "Status"
+    },
+    "hood": {
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LAMP_LAMP_BRIGHTNESS": "Lamp Brightness",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_HOOD_OPERATION_MODE": [
+            "Hood Operation Mode",
+            "\"POWER_OFF\"=Ausschalten",
+            "\"POWER_ON\"=Einschalten"
+        ],
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "STATUS": "Status",
+        "TIMER_REMAIN_MINUTE": [
+            "Verbleibende Minuten",
+            "SUFFIX= min"
+        ],
+        "TIMER_REMAIN_SECOND": [
+            "Verbleibende Sekunden",
+            "SUFFIX= s"
+        ],
+        "VENTILATION_FAN_SPEED": "Windstärke"
+    },
+    "humidifier": {
+        "AIR_FLOW_WIND_STRENGTH": [
+            "Windstärke",
+            "\"POWER\"=Maximum",
+            "\"HIGH\"=Hoch",
+            "\"MID\"=Mittel",
+            "\"LOW\"=Niedrig"
+        ],
+        "AIR_QUALITY_SENSOR_HUMIDITY": [
+            "Luftfeuchte",
+            "SUFFIX= %"
+        ],
+        "AIR_QUALITY_SENSOR_MONITORING_ENABLED": [
+            "Überwachung aktiv",
+            "\"ON_WORKING\"=Bei Betrieb",
+            "\"ALWAYS\"=Immer"
+        ],
+        "AIR_QUALITY_SENSOR_PM1": "Feinstaub PM1",
+        "AIR_QUALITY_SENSOR_PM10": "Feinstaub PM10",
+        "AIR_QUALITY_SENSOR_PM2": "Feinstaub PM2.5",
+        "AIR_QUALITY_SENSOR_TEMPERATURE": [
+            "Temperature",
+            "SUFFIX= °C"
+        ],
+        "AIR_QUALITY_SENSOR_TOTAL_POLLUTION": "Gesamtverschmutzung",
+        "AIR_QUALITY_SENSOR_TOTAL_POLLUTION_LEVEL": [
+            "Verschmutzungsstufe",
+            "\"INVALID\"=Ungültig",
+            "\"GOOD\"=Gut",
+            "\"NORMAL\"=Normal",
+            "\"BAD\"=Schlecht",
+            "\"VERY_BAD\"=Sehr schlecht"
+        ],
+        "DISPLAY_LIGHT": [
+            "Licht",
+            "\"OFF\"=Aus",
+            "\"LEVEL_1\"=Level 1",
+            "\"LEVEL_2\"=Level 2",
+            "\"LEVEL_3\"=Level 3"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "HUMIDIFIER_JOB_MODE_CURRENT_JOB_MODE": [
+            "Betriebsmodus",
+            "\"HUMIDIFY\"=Humidify",
+            "\"HUMIDIFY_AND_AIR_CLEAN\"=Humidify And Air Clean",
+            "\"AIR_CLEAN\"=Luftreinigung"
+        ],
+        "HUMIDITY_TARGET_HUMIDITY": [
+            "Ziel-Luftfeuchtigkeit",
+            "SUFFIX= %"
+        ],
+        "HUMIDITY_WARM_MODE": [
+            "Warm Mode",
+            "\"WARM_ON\"=Warm On",
+            "\"WARM_OFF\"=Warm Off"
+        ],
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "MOOD_LAMP_MOOD_LAMP_STATE": [
+            "Mood Lamp State",
+            "\"ON\"=An",
+            "\"OFF\"=Aus"
+        ],
+        "OPERATION_AUTO_MODE": [
+            "Auto Mode",
+            "\"AUTO_ON\"=Auto On",
+            "\"AUTO_OFF\"=Auto Off"
+        ],
+        "OPERATION_HUMIDIFIER_OPERATION_MODE": [
+            "Humidifier Operation Mode",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "OPERATION_HYGIENE_DRY_MODE": [
+            "Hygiene Dry Mode",
+            "\"FAST\"=Fast",
+            "\"SILENT\"=Silent",
+            "\"OFF\"=Aus",
+            "\"NORMAL\"=Normal"
+        ],
+        "OPERATION_SLEEP_MODE": [
+            "Sleep Mode",
+            "\"SLEEP_ON\"=Sleep On",
+            "\"SLEEP_OFF\"=Sleep Off"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"TIME_TO_CHANGE_FILTER\"=Time To Change Filter",
+            "\"LACK_OF_WATER\"=Lack Of Water"
+        ],
+        "SLEEP_TIMER_RELATIVE_HOUR_TO_STOP": [
+            "Stoppzeit Sleeptimer Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP": [
+            "Stoppzeit Sleeptimer Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleep Timer",
+        "STATUS": "Status",
+        "TIMER_ABSOLUTE_HOUR_TO_START": [
+            "Startzeit Absolut (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_ABSOLUTE_HOUR_TO_STOP": [
+            "Stoppzeit Absolut (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_ABSOLUTE_MINUTE_TO_START": [
+            "Startzeit Absolut (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_ABSOLUTE_MINUTE_TO_STOP": [
+            "Stoppzeit Absolut (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_ABSOLUTE_START_TIMER": "Timer Absolut Start",
+        "TIMER_ABSOLUTE_STOP_TIMER": "Timer Absolut Stop"
+    },
+    "idu": {
+        "AIR_FLOW_WIND_DIRECTION": [
+            "Wind Direction",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "AIR_FLOW_WIND_STRENGTH": [
+            "Windstärke",
+            "\"AUTO\"=Automatik",
+            "\"HIGH\"=Hoch",
+            "\"MED\"=Med",
+            "\"LOW\"=Niedrig"
+        ],
+        "ALARM_FILTER_REPLACEMENT_ALARM": [
+            "Filter Replacement Alarm",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "JOB_MODE_HEATER_JOB_MODE": [
+            "Heater Job Mode",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "JOB_MODE_IDU_JOB_MODE": [
+            "Idu Job Mode",
+            "\"AUTO\"=Auto",
+            "\"COOL\"=Kühlen",
+            "\"AIR_DRY\"=Entfeuchten",
+            "\"FAN\"=Ventilator",
+            "\"HEAT\"=Heizen"
+        ],
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "LOCK_FAN_LOCK": [
+            "Fan Lock",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "LOCK_LOCK": [
+            "Sperre",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "LOCK_MODE_LOCK": [
+            "Mode Lock",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "LOCK_TEMPERATURE_LOCK": [
+            "Temperature Lock",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "OPERATION_HEATER_OPERATION_MODE": [
+            "Heater Operation Mode",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "OPERATION_IDU_OPERATION_MODE": [
+            "Idu Operation Mode",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "OUTDOOR_HEATER_OUTDOOR_HEATER": [
+            "Outdoor Heater",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "OUTDOOR_HEATER_OUTDOOR_HEAT_PUMP": [
+            "Outdoor Heat Pump",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "POWER_SAVE_POWER_SAVE_ENABLED": [
+            "Energiesparmodus",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "POWER_SAVE_POWER_SAVE_STEP": [
+            "Power Save Step",
+            "\"POWERSAVE_LEVEL_1\"=Powersave Level 1",
+            "\"POWERSAVE_LEVEL_2\"=Powersave Level 2",
+            "\"POWERSAVE_LEVEL_3\"=Powersave Level 3"
+        ],
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "STATUS": "Status",
+        "TEMPERATURE_CURRENT_TEMPERATURE": [
+            "Ist-Temperatur",
+            "SUFFIX= °C"
+        ],
+        "TEMPERATURE_TARGET_TEMPERATURE": [
+            "Zieltemperatur",
+            "SUFFIX= °C"
+        ]
+    },
+    "kimchi_refrigerator": {
+        "BOTTOM_TEMPERATURE_TARGET_TEMPERATURE": [
+            "Bottom Zieltemperatur",
+            "\"KIMCHI\"=Kimchi",
+            "\"STORAGE\"=Storage",
+            "\"OFF\"=Aus",
+            "\"VEGETABLE_FRUIT\"=Vegetable Fruit",
+            "\"RICE_GRAIN\"=Rice Grain"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "MIDDLE_TEMPERATURE_TARGET_TEMPERATURE": [
+            "Middle Zieltemperatur",
+            "\"VEGETABLE_FRUIT\"=Vegetable Fruit",
+            "\"KIMCHI\"=Kimchi",
+            "\"MEAT_FISH\"=Meat Fish",
+            "\"OFF\"=Aus"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"DOOR_IS_OPEN\"=Door Is Open"
+        ],
+        "REFRIGERATION_ONE_TOUCH_FILTER": [
+            "One Touch Filter",
+            "\"OFF\"=Aus",
+            "\"ON\"=An"
+        ],
+        "STATUS": "Status",
+        "TOP_TEMPERATURE_TARGET_TEMPERATURE": [
+            "Top Zieltemperatur",
+            "\"FREEZER\"=Freezer",
+            "\"FRIDGE\"=Fridge",
+            "\"KIMCHI\"=Kimchi",
+            "\"OFF\"=Aus"
+        ]
+    },
+    "light_switch": {
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "STATUS": "Status",
+        "SWITCH_1_SWITCH_STATE_CURRENT_SWITCH": [
+            "Switch_1 Current Switch",
+            "\"ON\"=An",
+            "\"OFF\"=Aus"
+        ],
+        "SWITCH_2_SWITCH_STATE_CURRENT_SWITCH": [
+            "Switch_2 Current Switch",
+            "\"ON\"=An",
+            "\"OFF\"=Aus"
+        ],
+        "SWITCH_3_SWITCH_STATE_CURRENT_SWITCH": [
+            "Switch_3 Current Switch",
+            "\"ON\"=An",
+            "\"OFF\"=Aus"
+        ]
+    },
+    "line_led": {
+        "COLOR_LIGHT_BRIGHTNESS": "Helligkeit",
+        "COLOR_LIGHT_HUE": "Hue",
+        "COLOR_LIGHT_SATURATION": "Saturation",
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "MODE_LIGHT_MODE": [
+            "Light Mode",
+            "\"WHITE\"=White",
+            "\"COLOR\"=Color"
+        ],
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausgeschaltet"
+        ],
+        "STATUS": "Status",
+        "WHITE_LIGHT_BRIGHTNESS": "Helligkeit"
+    },
+    "main_washcombo": {
+        "CYCLE_CYCLE_COUNT": "Waschzyklen",
+        "ERROR_LAST": [
+            "Letzter Fehler",
+            "\"TURBIDITY_SENSOR_ERROR\"=Turbidity Sensor Error",
+            "\"DOOR_OPEN_ERROR\"=Door Open Error",
+            "\"WATER_DRAIN_ERROR\"=Water Drain Error",
+            "\"FILTER_CLOGGING_ERROR\"=Filter Clogging Error",
+            "\"FAN_MOTOR_LOCK_ERROR\"=Fan Motor Lock Error",
+            "\"DISPENSING_ERROR\"=Dispensing Error",
+            "\"LOCKED_MOTOR_ERROR\"=Locked Motor Error",
+            "\"WATER_LEVEL_SENSOR_ERROR\"=Water Level Sensor Error",
+            "\"OUT_OF_BALANCE_ERROR\"=Out Of Balance Error",
+            "\"IR_SENSOR_ERROR\"=Ir Sensor Error",
+            "\"DOOR_LOCK_ERROR\"=Door Lock Error",
+            "\"FROZEN_ERROR\"=Frozen Error",
+            "\"NO_FILTER_ERROR\"=No Filter Error",
+            "\"VIBRATION_SENSOR_ERROR\"=Vibration Sensor Error",
+            "\"STEAM_HEAT_ERROR\"=Steam Heat Error",
+            "\"WATER_SUPPLY_ERROR\"=Water Supply Error",
+            "\"OVERFILL_ERROR\"=Overfill Error",
+            "\"TEMPERATURE_SENSOR_ERROR\"=Temperature Sensor Error",
+            "\"COMPRESSOR_ERROR\"=Compressor Error",
+            "\"HIGH_TEMPERATURE_DETECTION_ERROR\"=High Temperature Detection Error"
+        ],
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_WASHER_OPERATION_MODE": [
+            "Washer Operation Mode",
+            "\"START\"=Starten",
+            "\"STOP\"=Stoppen",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"WASHING_IS_COMPLETE\"=Washing Is Complete",
+            "\"DRYING_IS_COMPLETE\"=Drying Is Complete",
+            "\"ERROR_DURING_WASHING\"=Error During Washing",
+            "\"DRYING_FAILED\"=Drying Failed"
+        ],
+        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
+            "Fernsteuerung",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"POWER_OFF\"=Ausgeschaltet",
+            "\"RINSING\"=Spülen",
+            "\"PREWASH\"=Vorwäsche",
+            "\"DISPENSING\"=Dispensing",
+            "\"RESERVED\"=Reserviert",
+            "\"FROZEN_PREVENT_RUNNING\"=Frozen Prevent Running",
+            "\"COOLING\"=Abkühlen",
+            "\"DETECTING\"=Erkennung",
+            "\"INITIAL\"=Bereit",
+            "\"END\"=Fertig",
+            "\"ERROR\"=Fehler",
+            "\"STEAM_SOFTENING\"=Dampferweichen",
+            "\"PAUSE\"=Pausiert",
+            "\"FROZEN_PREVENT_PAUSE\"=Frozen Prevent Pause",
+            "\"DRYING\"=Trocknen",
+            "\"FROZEN_PREVENT_INITIAL\"=Frozen Prevent Initial",
+            "\"ADD_DRAIN\"=Add Drain",
+            "\"SOAKING\"=Einweichen",
+            "\"RINSE_HOLD\"=Spülstopp",
+            "\"SPINNING\"=Schleudern",
+            "\"DETERGENT_AMOUNT\"=Detergent Amount",
+            "\"RUNNING\"=Läuft",
+            "\"REFRESHING\"=Auffrischen"
+        ],
+        "STATUS": "Status",
+        "TIMER_RELATIVE_HOUR_TO_STOP": [
+            "Stoppzeit Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_RELATIVE_MINUTE_TO_STOP": [
+            "Stoppzeit Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_REMAIN_HOUR": [
+            "Verbleibende Stunden",
+            "SUFFIX= h"
+        ],
+        "TIMER_REMAIN_MINUTE": [
+            "Verbleibende Minuten",
+            "SUFFIX= min"
+        ],
+        "TIMER_TOTAL_HOUR": [
+            "Gesamtdauer (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_TOTAL_MINUTE": [
+            "Gesamtdauer (Minuten)",
+            "SUFFIX= min"
+        ]
+    },
+    "microwave_oven": {
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LAMP_LAMP_BRIGHTNESS": "Lamp Brightness",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"PREHEATING_IS_COMPLETE\"=Preheating Is Complete",
+            "\"COOKING_IS_COMPLETE\"=Cooking Is Complete",
+            "\"TIMER_IS_COMPLETE\"=Timer Is Complete"
+        ],
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"INITIAL\"=Bereit",
+            "\"PREHEAT\"=Preheat",
+            "\"COOK\"=Cook",
+            "\"COOK_COMPLETE\"=Cook Complete",
+            "\"PAUSE\"=Pausiert",
+            "\"PREHEAT_COMPLETE\"=Preheat Complete",
+            "\"OVEN_SETTING\"=Oven Setting"
+        ],
+        "STATUS": "Status",
+        "TIMER_REMAIN_MINUTE": [
+            "Verbleibende Minuten",
+            "SUFFIX= min"
+        ],
+        "TIMER_REMAIN_SECOND": [
+            "Verbleibende Sekunden",
+            "SUFFIX= s"
+        ],
+        "VENTILATION_FAN_SPEED": "Windstärke"
+    },
+    "mini_washcombo": {
+        "CYCLE_CYCLE_COUNT": "Waschzyklen",
+        "ERROR_LAST": [
+            "Letzter Fehler",
+            "\"OUT_OF_BALANCE_ERROR\"=Out Of Balance Error",
+            "\"STACK_ERROR\"=Stack Error",
+            "\"DOOR_OPEN_ERROR\"=Door Open Error",
+            "\"LOCKED_MOTOR_ERROR\"=Locked Motor Error",
+            "\"DOOR_SENSOR_ERROR\"=Door Sensor Error",
+            "\"WATER_LEVEL_SENSOR_ERROR\"=Water Level Sensor Error",
+            "\"WATER_SUPPLY_ERROR\"=Water Supply Error",
+            "\"OVERFILL_ERROR\"=Overfill Error",
+            "\"DOOR_LOCK_ERROR\"=Door Lock Error",
+            "\"WATER_DRAIN_ERROR\"=Water Drain Error",
+            "\"INNER_LID_OPEN_ERROR\"=Inner Lid Open Error",
+            "\"TEMPERATURE_SENSOR_ERROR\"=Temperature Sensor Error",
+            "\"FROZEN_ERROR\"=Frozen Error",
+            "\"CLUTCH_ERROR\"=Clutch Error"
+        ],
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_WASHER_OPERATION_MODE": [
+            "Washer Operation Mode",
+            "\"START\"=Starten",
+            "\"STOP\"=Stoppen",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"WASHING_IS_COMPLETE\"=Washing Is Complete",
+            "\"ERROR_DURING_WASHING\"=Error During Washing"
+        ],
+        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
+            "Fernsteuerung",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"END\"=Fertig",
+            "\"POWER_OFF\"=Ausgeschaltet",
+            "\"RINSING\"=Spülen",
+            "\"SOAKING\"=Einweichen",
+            "\"ERROR\"=Fehler",
+            "\"SPINNING\"=Schleudern",
+            "\"RESERVED\"=Reserviert",
+            "\"PAUSE\"=Pausiert",
+            "\"DETECTING\"=Erkennung",
+            "\"FIRMWARE\"=Firmware-Update",
+            "\"INITIAL\"=Bereit",
+            "\"RUNNING\"=Läuft"
+        ],
+        "STATUS": "Status",
+        "TIMER_RELATIVE_HOUR_TO_STOP": [
+            "Stoppzeit Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_RELATIVE_MINUTE_TO_STOP": [
+            "Stoppzeit Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_REMAIN_HOUR": [
+            "Verbleibende Stunden",
+            "SUFFIX= h"
+        ],
+        "TIMER_REMAIN_MINUTE": [
+            "Verbleibende Minuten",
+            "SUFFIX= min"
+        ],
+        "TIMER_TOTAL_HOUR": [
+            "Gesamtdauer (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_TOTAL_MINUTE": [
+            "Gesamtdauer (Minuten)",
+            "SUFFIX= min"
+        ]
+    },
+    "motion_sensor": {
+        "BATTERY_PERCENT": [
+            "Percent",
+            "SUFFIX= %"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"BATTERY_IS_LOW\"=Battery Is Low",
+            "\"MOTION_IS_DETECTED\"=Motion Is Detected"
+        ],
+        "STATUS": "Status"
+    },
+    "odu": {
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "INFO_CAPACITY": "Capacity",
+        "INFO_MODEL_NAME": "Model Name",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_OPERATION_MODE": [
+            "Betriebsmodus",
+            "\"STOP\"=Stoppen",
+            "\"COOL\"=Kühlen",
+            "\"HEAT\"=Heizen"
+        ],
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "STATUS": "Status"
+    },
+    "oven": {
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_OVEN_OPERATION_MODE": [
+            "Oven Operation Mode",
+            "\"STOP\"=Stoppen"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"PREHEATING_IS_COMPLETE\"=Preheating Is Complete",
+            "\"COOKING_IS_COMPLETE\"=Cooking Is Complete",
+            "\"ERROR_HAS_OCCURRED\"=Error Has Occurred",
+            "\"TIME_TO_CLEAN\"=Time To Clean"
+        ],
+        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
+            "Fernsteuerung",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"COOLING\"=Abkühlen",
+            "\"PREHEATING\"=Preheating",
+            "\"INITIAL\"=Bereit",
+            "\"COOKING_IN_PROGRESS\"=Cooking In Progress",
+            "\"DONE\"=Done",
+            "\"CLEANING\"=Cleaning",
+            "\"ERROR\"=Fehler",
+            "\"CLEANING_IS_DONE\"=Cleaning Is Done"
+        ],
+        "STATUS": "Status",
+        "TEMPERATURE_TARGET_TEMPERATURE": [
+            "Zieltemperatur",
+            "SUFFIX= °C"
+        ],
+        "TIMER_REMAIN_HOUR": [
+            "Verbleibende Stunden",
+            "SUFFIX= h"
+        ],
+        "TIMER_REMAIN_MINUTE": [
+            "Verbleibende Minuten",
+            "SUFFIX= min"
+        ],
+        "TIMER_REMAIN_SECOND": [
+            "Verbleibende Sekunden",
+            "SUFFIX= s"
+        ]
+    },
+    "pet_peeder": {
+        "ERROR_LAST": "Letzter Fehler",
+        "FEED_AMOUNT": "Amount",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"MOTION_IS_DETECTED\"=Motion Is Detected",
+            "\"FEEDING_IS_COMPLETE\"=Feeding Is Complete"
+        ],
+        "STATUS": "Status"
+    },
+    "plant_cultivator": {
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "LOWER_LIGHT_BRIGHTNESS": "Lower Helligkeit",
+        "LOWER_LIGHT_DURATION": "Lower Duration",
+        "LOWER_LIGHT_END_HOUR": [
+            "Lower End Hour",
+            "SUFFIX= h"
+        ],
+        "LOWER_LIGHT_END_MINUTE": [
+            "Lower End Minute",
+            "SUFFIX= min"
+        ],
+        "LOWER_LIGHT_START_HOUR": [
+            "Lower Start Hour",
+            "SUFFIX= h"
+        ],
+        "LOWER_LIGHT_START_MINUTE": [
+            "Lower Start Minute",
+            "SUFFIX= min"
+        ],
+        "LOWER_RUN_STATE_CURRENT_STATE": [
+            "Lower Betriebszustand",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausgeschaltet"
+        ],
+        "LOWER_RUN_STATE_GROWTH_MODE": [
+            "Lower Growth Mode",
+            "\"STANDARD\"=Standard",
+            "\"EXT_FLOWER\"=Ext Flower",
+            "\"EXT_HERB\"=Ext Herb",
+            "\"EXT_LEAF\"=Ext Leaf",
+            "\"EXT_EXPERT\"=Ext Expert"
+        ],
+        "LOWER_RUN_STATE_WIND_VOLUME": "Lower Wind Volume",
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "STATUS": "Status",
+        "UPPER_LIGHT_BRIGHTNESS": "Upper Helligkeit",
+        "UPPER_LIGHT_DURATION": "Upper Duration",
+        "UPPER_LIGHT_END_HOUR": [
+            "Upper End Hour",
+            "SUFFIX= h"
+        ],
+        "UPPER_LIGHT_END_MINUTE": [
+            "Upper End Minute",
+            "SUFFIX= min"
+        ],
+        "UPPER_LIGHT_START_HOUR": [
+            "Upper Start Hour",
+            "SUFFIX= h"
+        ],
+        "UPPER_LIGHT_START_MINUTE": [
+            "Upper Start Minute",
+            "SUFFIX= min"
+        ],
+        "UPPER_RUN_STATE_CURRENT_STATE": [
+            "Upper Betriebszustand",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausgeschaltet"
+        ],
+        "UPPER_RUN_STATE_GROWTH_MODE": [
+            "Upper Growth Mode",
+            "\"STANDARD\"=Standard",
+            "\"EXT_FLOWER\"=Ext Flower",
+            "\"EXT_HERB\"=Ext Herb",
+            "\"EXT_LEAF\"=Ext Leaf",
+            "\"EXT_EXPERT\"=Ext Expert"
+        ],
+        "UPPER_RUN_STATE_WIND_VOLUME": "Upper Wind Volume"
+    },
+    "plug": {
+        "ELECTRICITY_CURRENT": "Current",
+        "ELECTRICITY_POWER": "Power",
+        "ELECTRICITY_VOLTAGE": "Voltage",
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"BATTERY_IS_LOW\"=Battery Is Low",
+            "\"POWER_IS_OVERLOADED\"=Power Is Overloaded"
+        ],
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausgeschaltet"
+        ],
+        "STATUS": "Status"
+    },
+    "plug_mini": {
+        "ELECTRICITY_CURRENT": "Current",
+        "ELECTRICITY_POWER": "Power",
+        "ELECTRICITY_VOLTAGE": "Voltage",
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"BATTERY_IS_LOW\"=Battery Is Low",
+            "\"POWER_IS_OVERLOADED\"=Power Is Overloaded"
+        ],
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausgeschaltet"
+        ],
+        "STATUS": "Status",
+        "SWITCH_STATE_CURRENT_SWITCH": [
+            "Current Switch",
+            "\"ON\"=An",
+            "\"OFF\"=Aus",
+            "\"LAST\"=Last"
+        ],
+        "SWITCH_STATE_INDICATE_LIGHT": [
+            "Indicate Light",
+            "\"ON_RELAY\"=On Relay",
+            "\"ON_POS\"=On Pos",
+            "\"OFF\"=Aus"
+        ],
+        "SWITCH_STATE_KID_LOCK": [
+            "Kid Lock",
+            "\"LOCK\"=Sperre",
+            "\"UNLOCK\"=Unlock"
+        ]
+    },
+    "push_pull_door_lock": {
+        "BATTERY_PERCENT": [
+            "Percent",
+            "SUFFIX= %"
+        ],
+        "DOOR_STATE_CURRENT_STATE": [
+            "Türstatus",
+            "\"OPEN\"=Offen"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "STATUS": "Status"
+    },
+    "refrigerator": {
+        "DOOR_STATUS_DOOR_STATE": [
+            "Türstatus",
+            "\"OPEN\"=Offen",
+            "\"CLOSE\"=Geschlossen"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "FREEZER_TEMPERATURE_TARGET_TEMPERATURE": [
+            "Freezer Zieltemperatur",
+            "SUFFIX= °C"
+        ],
+        "FRIDGE_TEMPERATURE_TARGET_TEMPERATURE": [
+            "Fridge Zieltemperatur",
+            "SUFFIX= °C"
+        ],
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"TIME_TO_CHANGE_WATER_FILTER\"=Time To Change Water Filter",
+            "\"TIME_TO_CHANGE_FILTER\"=Time To Change Filter",
+            "\"DOOR_IS_OPEN\"=Door Is Open",
+            "\"FROZEN_IS_COMPLETE\"=Frozen Is Complete"
+        ],
+        "REFRIGERATION_EXPRESS_MODE": [
+            "Express Mode",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "REFRIGERATION_EXPRESS_MODE_NAME": [
+            "Expressmodus-Name",
+            "\"FREEZER\"=Freezer"
+        ],
+        "REFRIGERATION_FRESH_AIR_FILTER": [
+            "Fresh Air Filter",
+            "\"OFF\"=Aus",
+            "\"AUTO\"=Auto"
+        ],
+        "STATUS": "Status",
+        "WATER_FILTER_INFO_USED_TIME": "Nutzungszeit"
+    },
+    "robot_cleaner": {
+        "BATTERY_LEVEL": [
+            "Level",
+            "\"MOVELESS\"=Moveless",
+            "\"DOCK_LEVEL\"=Dock Level",
+            "\"LOW\"=Niedrig",
+            "\"MID\"=Mittel",
+            "\"HIGH\"=Hoch",
+            "\"FULL\"=Full",
+            "\"OVER_CHARGE\"=Over Charge"
+        ],
+        "BATTERY_PERCENT": [
+            "Percent",
+            "SUFFIX= %"
+        ],
+        "ERROR_LAST": [
+            "Letzter Fehler",
+            "\"RIGHT_WHEEL_ERROR\"=Right Wheel Error",
+            "\"MOVE_ERROR\"=Move Error",
+            "\"UNKNOWN_ERROR\"=Unknown Error",
+            "\"NO_DUST_BIN_ERROR\"=No Dust Bin Error",
+            "\"BLOCK_ERROR\"=Block Error",
+            "\"BRUSH_ERROR\"=Brush Error",
+            "\"MOP_ERROR\"=Mop Error",
+            "\"CLIFF_ERROR\"=Cliff Error",
+            "\"SUCTION_BLOCKED_ERROR\"=Suction Blocked Error"
+        ],
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_CLEAN_OPERATION_MODE": [
+            "Clean Operation Mode",
+            "\"HOMING\"=Homing",
+            "\"WAKE_UP\"=Wake Up",
+            "\"PAUSE\"=Pause",
+            "\"START\"=Starten"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"MOTION_IS_DETECTED\"=Motion Is Detected",
+            "\"HOMEGUARD_IS_STOPPED\"=Homeguard Is Stopped",
+            "\"CLEANING_IS_COMPLETED\"=Cleaning Is Completed",
+            "\"SCHEDULED_CLEANING_STARTS\"=Scheduled Cleaning Starts",
+            "\"NEED_TO_CHECK_LOCATION\"=Need To Check Location",
+            "\"CLEANING_IS_FAILED\"=Cleaning Is Failed"
+        ],
+        "ROBOT_CLEANER_JOB_MODE_CURRENT_JOB_MODE": [
+            "Betriebsmodus",
+            "\"ZIGZAG\"=Zigzag",
+            "\"SELECT\"=Select",
+            "\"SECTOR_BASE\"=Sector Base",
+            "\"SPOT\"=Spot",
+            "\"EDGE\"=Edge",
+            "\"MACRO\"=Macro"
+        ],
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"CHARGING\"=Laden",
+            "\"MACROSECTOR\"=Macrosector",
+            "\"WORKING\"=Working",
+            "\"SLEEP\"=Schlafmodus",
+            "\"INITIALIZING\"=Initializing",
+            "\"HOMING\"=Homing",
+            "\"PAUSE\"=Pausiert",
+            "\"RESERVATION\"=Reservation",
+            "\"STANDBY\"=Standby",
+            "\"SETDATE\"=Setdate",
+            "\"DIAGNOSIS\"=Diagnosis",
+            "\"ERROR\"=Fehler"
+        ],
+        "STATUS": "Status",
+        "TIMER_ABSOLUTE_HOUR_TO_START": [
+            "Startzeit Absolut (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_ABSOLUTE_MINUTE_TO_START": [
+            "Startzeit Absolut (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_RUNNING_HOUR": [
+            "Running Hour",
+            "SUFFIX= h"
+        ],
+        "TIMER_RUNNING_MINUTE": [
+            "Running Minute",
+            "SUFFIX= min"
+        ]
+    },
+    "signage": {
+        "AUDIO_SOUND_BALANCE": "Sound Balance",
+        "AUDIO_SOUND_MODE": [
+            "Sound Mode",
+            "1=01",
+            "2=02",
+            "3=03",
+            "4=04",
+            "5=05",
+            "8=08",
+            "9=09"
+        ],
+        "AUDIO_VOLUME": "Volume",
+        "AUDIO_VOLUME_MUTE": [
+            "Volume Mute",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "DISPLAY_BACKLIGHT": "Backlight",
+        "DISPLAY_BRIGHTNESS": "Helligkeit",
+        "DISPLAY_COLOR": "Color",
+        "DISPLAY_CONTRAST": "Contrast",
+        "DISPLAY_INPUT": [
+            "Input",
+            "\"20\"=20",
+            "\"40\"=40",
+            "\"60\"=60",
+            "\"70\"=70",
+            "\"80\"=80",
+            "\"90\"=90",
+            "\"a9\"=A9",
+            "\"91\"=91",
+            "\"a1\"=A1",
+            "\"92\"=92",
+            "\"a2\"=A2",
+            "\"95\"=95",
+            "\"a5\"=A5",
+            "\"96\"=96",
+            "\"a6\"=A6",
+            "\"97\"=97",
+            "\"a7\"=A7",
+            "\"98\"=98",
+            "\"a8\"=A8",
+            "\"99\"=99",
+            "\"a9\"=A9",
+            "\"c0\"=C0",
+            "\"d0\"=D0",
+            "\"c1\"=C1",
+            "\"d1\"=D1",
+            "\"c2\"=C2",
+            "\"d2\"=D2",
+            "\"c3\"=C3",
+            "\"d3\"=D3",
+            "\"e0\"=E0",
+            "\"e1\"=E1",
+            "\"e2\"=E2",
+            "\"e3\"=E3",
+            "\"e8\"=E8",
+            "\"f0\"=F0",
+            "\"f1\"=F1",
+            "\"f2\"=F2",
+            "\"f3\"=F3",
+            "\"f4\"=F4",
+            "\"f5\"=F5",
+            "\"f6\"=F6",
+            "\"f7\"=F7",
+            "\"f8\"=F8",
+            "\"f9\"=F9"
+        ],
+        "DISPLAY_ISM": [
+            "Ism",
+            "2=02",
+            "4=04",
+            "8=08",
+            "90=90",
+            "91=91"
+        ],
+        "DISPLAY_LANGUAGE": [
+            "Language",
+            "0=00",
+            "1=01",
+            "2=02",
+            "3=03",
+            "4=04",
+            "5=05",
+            "6=06",
+            "7=07",
+            "8=08",
+            "9=09",
+            "\"0a\"=0a",
+            "\"0b\"=0b",
+            "\"0c\"=0c",
+            "\"0d\"=0d",
+            "\"0e\"=0e",
+            "\"0f\"=0f",
+            "10=10",
+            "11=11",
+            "12=12",
+            "13=13",
+            "14=14",
+            "15=15"
+        ],
+        "DISPLAY_PICTURE_MODE": [
+            "Picture Mode",
+            "\"00\"=00",
+            "\"01\"=01",
+            "\"02\"=02",
+            "\"03\"=03",
+            "\"04\"=04",
+            "\"05\"=05",
+            "\"08\"=08",
+            "\"11\"=11",
+            "\"12\"=12"
+        ],
+        "DISPLAY_SHARPNESS": "Sharpness",
+        "DISPLAY_TINT": "Tint",
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "INFO_OS_TYPE": [
+            "Os Type",
+            "\"WEBOS\"=Webos",
+            "\"WINDOWS\"=Windows",
+            "\"ANDROID\"=Android",
+            "\"NONE\"=None"
+        ],
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "POWER_ENERGY_SAVING_MODE": [
+            "Energy Saving Mode",
+            "0=00",
+            "1=01",
+            "2=02",
+            "3=03",
+            "4=04"
+        ],
+        "POWER_NO_IR_POWER_OFF": [
+            "No Ir Power Off",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "POWER_NO_SIGNAL_POWER_OFF": [
+            "No Signal Power Off",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "POWER_PM_MODE": [
+            "Pm Mode",
+            "0=00",
+            "1=01",
+            "2=02",
+            "3=03",
+            "4=04",
+            "5=05"
+        ],
+        "POWER_POWER": [
+            "Power",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "POWER_POWER_ON_DELAY": "Power On Delay",
+        "POWER_POWER_ON_STATUS": [
+            "Power On Status",
+            "0=00",
+            "1=01",
+            "2=02"
+        ],
+        "POWER_SCREEN": [
+            "Screen",
+            "\"SCREEN_ON\"=Screen On",
+            "\"SCREEN_OFF\"=Screen Off"
+        ],
+        "POWER_WOL": [
+            "Wol",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "STATUS": "Status"
+    },
+    "siren": {
+        "ALARM_TIME": "Time",
+        "ALARM_VOLUME": [
+            "Volume",
+            "\"MUTE\"=Mute",
+            "\"LOW\"=Niedrig",
+            "\"MID\"=Mittel",
+            "\"HIGH\"=Hoch"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"BATTERY_IS_LOW\"=Battery Is Low",
+            "\"ALARM_IS_DETECTED\"=Alarm Is Detected"
+        ],
+        "STATUS": "Status",
+        "SWITCH_STATE_CURRENT_SWITCH": [
+            "Current Switch",
+            "\"ON\"=An",
+            "\"OFF\"=Aus"
+        ]
+    },
+    "starlight": {
+        "COLOR_LIGHT_BRIGHTNESS": "Helligkeit",
+        "COLOR_LIGHT_HUE": "Hue",
+        "COLOR_LIGHT_SATURATION": "Saturation",
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASER_LIGHT_BRIGHTNESS": "Helligkeit",
+        "LASER_LIGHT_MOTOR_SPEED": "Motor Speed",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "MODE_LIGHT_MODE": [
+            "Light Mode",
+            "\"WHITE\"=White",
+            "\"COLOR\"=Color",
+            "\"SCENE\"=Scene"
+        ],
+        "MODE_SCENE_MODE": [
+            "Scene Mode",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausgeschaltet"
+        ],
+        "STATUS": "Status",
+        "SWITCH_STATE_SWITCH_COLOR": [
+            "Switch Color",
+            "\"ON\"=An",
+            "\"OFF\"=Aus"
+        ],
+        "SWITCH_STATE_SWITCH_LASER": [
+            "Switch Laser",
+            "\"ON\"=An",
+            "\"OFF\"=Aus"
+        ]
+    },
+    "stick_cleaner": {
+        "BATTERY_LEVEL": [
+            "Level",
+            "\"WARNING\"=Warning",
+            "\"HIGH\"=Hoch",
+            "\"LOW\"=Niedrig",
+            "\"MID\"=Mittel"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"TIME_TO_CLEAN_FILTER\"=Time To Clean Filter",
+            "\"CHARGING_IS_COMPLETE\"=Charging Is Complete"
+        ],
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"CHARGING\"=Laden",
+            "\"CHARGING_COMPLETE\"=Charging Complete",
+            "\"WORKING\"=Working",
+            "\"STANDBY\"=Standby"
+        ],
+        "STATUS": "Status",
+        "STICK_CLEANER_JOB_MODE_CURRENT_JOB_MODE": [
+            "Betriebsmodus",
+            "\"OFF\"=Aus",
+            "\"AUTO\"=Automatik",
+            "\"HIGH\"=Hoch",
+            "\"NORMAL\"=Normal",
+            "\"TURBO\"=Turbo",
+            "\"MOP\"=Mop"
+        ]
+    },
+    "styler": {
+        "ERROR_LAST": [
+            "Letzter Fehler",
+            "\"NEED_WATER_DRAIN\"=Need Water Drain",
+            "\"DOOR_CLOSE_ERROR\"=Door Close Error",
+            "\"TEMPERATURE_SENSOR_ERROR\"=Temperature Sensor Error",
+            "\"WATER_LEAKS_ERROR\"=Water Leaks Error",
+            "\"WATER_LEVEL_SENSOR_ERROR\"=Water Level Sensor Error",
+            "\"STEAM_HEAT_ERROR\"=Steam Heat Error",
+            "\"LE_ERROR\"=Le Error",
+            "\"LE2_ERROR\"=Le2 Error",
+            "\"DOOR_OPEN_ERROR\"=Door Open Error",
+            "\"NEED_WATER_REPLENISHMENT\"=Need Water Replenishment"
+        ],
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_STYLER_OPERATION_MODE": [
+            "Styler Operation Mode",
+            "\"POWER_OFF\"=Ausschalten",
+            "\"STOP\"=Stoppen",
+            "\"START\"=Starten",
+            "\"WAKE_UP\"=Wake Up"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"STYLING_IS_COMPLETE\"=Styling Is Complete",
+            "\"ERROR_HAS_OCCURRED\"=Error Has Occurred"
+        ],
+        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
+            "Fernsteuerung",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"SLEEP\"=Schlafmodus",
+            "\"RUNNING\"=Läuft",
+            "\"STAY\"=Stay",
+            "\"RESERVED\"=Reserviert",
+            "\"INITIAL\"=Bereit",
+            "\"POWER_OFF\"=Ausgeschaltet",
+            "\"DRYING\"=Trocknen",
+            "\"COOLING\"=Abkühlen",
+            "\"END_COOLING\"=End Cooling",
+            "\"COMPLETE\"=Abgeschlossen",
+            "\"STERILIZE\"=Sterilisieren",
+            "\"PAUSE\"=Pausiert",
+            "\"NIGHT_DRY\"=Night Dry",
+            "\"RUNNING_END\"=Running End",
+            "\"PREHEAT\"=Preheat",
+            "\"DIAGNOSIS\"=Diagnosis",
+            "\"PRESTEAM\"=Presteam",
+            "\"STEAM\"=Steam",
+            "\"FOTA\"=Fota",
+            "\"ERROR\"=Fehler"
+        ],
+        "STATUS": "Status",
+        "TIMER_RELATIVE_HOUR_TO_STOP": [
+            "Stoppzeit Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_RELATIVE_MINUTE_TO_STOP": [
+            "Stoppzeit Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_REMAIN_HOUR": [
+            "Verbleibende Stunden",
+            "SUFFIX= h"
+        ],
+        "TIMER_REMAIN_MINUTE": [
+            "Verbleibende Minuten",
+            "SUFFIX= min"
+        ],
+        "TIMER_TOTAL_HOUR": [
+            "Gesamtdauer (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_TOTAL_MINUTE": [
+            "Gesamtdauer (Minuten)",
+            "SUFFIX= min"
+        ]
+    },
+    "switch_strip": {
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausgeschaltet"
+        ],
+        "STATUS": "Status",
+        "SWITCH_1_SWITCH_STATE_CURRENT_SWITCH": [
+            "Switch_1 Current Switch",
+            "\"ON\"=An",
+            "\"OFF\"=Aus"
+        ],
+        "SWITCH_2_SWITCH_STATE_CURRENT_SWITCH": [
+            "Switch_2 Current Switch",
+            "\"ON\"=An",
+            "\"OFF\"=Aus"
+        ],
+        "SWITCH_3_SWITCH_STATE_CURRENT_SWITCH": [
+            "Switch_3 Current Switch",
+            "\"ON\"=An",
+            "\"OFF\"=Aus"
+        ],
+        "SWITCH_USB_SWITCH_STATE_CURRENT_SWITCH": [
+            "Switch_usb Current Switch",
+            "\"ON\"=An",
+            "\"OFF\"=Aus"
+        ]
+    },
+    "sync_box": {
+        "COLOR_LIGHT_BRIGHTNESS": "Helligkeit",
+        "COLOR_LIGHT_HUE": "Hue",
+        "COLOR_LIGHT_SATURATION": "Saturation",
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "INPUT_HDMI_SWITCH": "Hdmi Switch",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "LAYOUT_LIGHT_DIRECTION": [
+            "Light Direction",
+            "\"CLOCKWISE\"=Clockwise",
+            "\"COUNTERCLOCKWISE\"=Counterclockwise"
+        ],
+        "LAYOUT_LIGHT_POSITION": [
+            "Light Position",
+            "\"LOW_LEFT\"=Low Left",
+            "\"LOW_RIGHT\"=Low Right"
+        ],
+        "MODE_LIGHT_MODE": [
+            "Light Mode",
+            "\"COLOR\"=Color",
+            "\"MUSIC\"=Music"
+        ],
+        "MODE_MUSIC_MODE": [
+            "Music Mode",
+            "\"ROCK\"=Rock",
+            "\"JAZZ\"=Jazz",
+            "\"CLASSIC\"=Classic",
+            "\"NONE\"=None"
+        ],
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausgeschaltet"
+        ],
+        "STATUS": "Status",
+        "VIDEO_COLOR_MODE": [
+            "Color Mode",
+            "\"MULTIPLE\"=Multiple",
+            "\"SINGLE\"=Single",
+            "\"STOP\"=Stoppen"
+        ],
+        "VIDEO_INTENSITY": [
+            "Intensity",
+            "\"LOW\"=Niedrig",
+            "\"MIDDLE\"=Middle",
+            "\"HIGH\"=Hoch",
+            "\"MUSIC\"=Music"
+        ],
+        "VIDEO_VIDEO_SCENE": [
+            "Video Scene",
+            "\"MOVIE\"=Movie",
+            "\"GAME\"=Game"
+        ]
+    },
+    "sync_box_sub": {
+        "COLOR_LIGHT_BRIGHTNESS": "Helligkeit",
+        "COLOR_LIGHT_HUE": "Hue",
+        "COLOR_LIGHT_SATURATION": "Saturation",
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "MODE_LIGHT_MODE": [
+            "Light Mode",
+            "\"WHITE\"=White",
+            "\"COLOR\"=Color",
+            "\"MUSIC\"=Music"
+        ],
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausgeschaltet"
+        ],
+        "STATUS": "Status",
+        "WHITE_LIGHT_BRIGHTNESS": "Helligkeit",
+        "WHITE_LIGHT_COLOR_TEMPERATURE": [
+            "Color Temperature",
+            "SUFFIX= °C"
+        ]
+    },
+    "system_boiler": {
+        "BOILER_JOB_MODE_CURRENT_JOB_MODE": [
+            "Betriebsmodus",
+            "\"COOL\"=Kühlen",
+            "\"AUTO\"=Automatik",
+            "\"HEAT\"=Heizen"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "HOT_WATER_TEMPERATURE_IN_UNITS_CURRENT_TEMPERATURE": [
+            "Ist-Temperatur",
+            "SUFFIX= °C"
+        ],
+        "HOT_WATER_TEMPERATURE_IN_UNITS_TARGET_TEMPERATURE": [
+            "Zieltemperatur",
+            "SUFFIX= °C"
+        ],
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_BOILER_OPERATION_MODE": [
+            "Boiler Operation Mode",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "OPERATION_HOT_WATER_MODE": [
+            "Hot Water Mode",
+            "\"ON\"=An",
+            "\"OFF\"=Aus"
+        ],
+        "OPERATION_ROOM_TEMP_MODE": [
+            "Room Temp Mode",
+            "\"AIR\"=Air",
+            "\"WATER\"=Water"
+        ],
+        "OPERATION_ROOM_WATER_MODE": [
+            "Room Water Mode",
+            "\"OUT_WATER\"=Out Water",
+            "\"IN_WATER\"=In Water"
+        ],
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "ROOM_TEMPERATURE_IN_UNITS_AIR_COOL_TARGET_TEMPERATURE": [
+            "Air Cool Target Temperature",
+            "SUFFIX= °C"
+        ],
+        "ROOM_TEMPERATURE_IN_UNITS_AIR_CURRENT_TEMPERATURE": [
+            "Air Current Temperature",
+            "SUFFIX= °C"
+        ],
+        "ROOM_TEMPERATURE_IN_UNITS_AIR_HEAT_TARGET_TEMPERATURE": [
+            "Air Heat Target Temperature",
+            "SUFFIX= °C"
+        ],
+        "ROOM_TEMPERATURE_IN_UNITS_CURRENT_TEMPERATURE": [
+            "Ist-Temperatur",
+            "SUFFIX= °C"
+        ],
+        "ROOM_TEMPERATURE_IN_UNITS_IN_WATER_CURRENT_TEMPERATURE": [
+            "In Water Current Temperature",
+            "SUFFIX= °C"
+        ],
+        "ROOM_TEMPERATURE_IN_UNITS_OUT_WATER_CURRENT_TEMPERATURE": [
+            "Out Water Current Temperature",
+            "SUFFIX= °C"
+        ],
+        "ROOM_TEMPERATURE_IN_UNITS_TARGET_TEMPERATURE": [
+            "Zieltemperatur",
+            "SUFFIX= °C"
+        ],
+        "ROOM_TEMPERATURE_IN_UNITS_WATER_COOL_TARGET_TEMPERATURE": [
+            "Water Cool Target Temperature",
+            "SUFFIX= °C"
+        ],
+        "ROOM_TEMPERATURE_IN_UNITS_WATER_HEAT_TARGET_TEMPERATURE": [
+            "Water Heat Target Temperature",
+            "SUFFIX= °C"
+        ],
+        "STATUS": "Status",
+        "TEMPERATURE_CURRENT_TEMPERATURE": [
+            "Ist-Temperatur",
+            "SUFFIX= °C"
+        ],
+        "TEMPERATURE_TARGET_TEMPERATURE": [
+            "Zieltemperatur",
+            "SUFFIX= °C"
+        ]
+    },
+    "temperature_humidity_sensor": {
+        "BATTERY_PERCENT": [
+            "Percent",
+            "SUFFIX= %"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "HUMIDITY_CURRENT_HUMIDITY": [
+            "Aktuelle Luftfeuchtigkeit",
+            "SUFFIX= %"
+        ],
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"BATTERY_IS_LOW\"=Battery Is Low"
+        ],
+        "STATUS": "Status",
+        "TEMPERATURE_CURRENT_TEMPERATURE": [
+            "Ist-Temperatur",
+            "SUFFIX= °C"
+        ]
+    },
+    "thermo_hygrometer": {
+        "BATTERY_PERCENT": [
+            "Percent",
+            "SUFFIX= %"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "HUMIDITY_CURRENT_HUMIDITY": [
+            "Aktuelle Luftfeuchtigkeit",
+            "SUFFIX= %"
+        ],
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"BATTERY_IS_LOW\"=Battery Is Low"
+        ],
+        "STATUS": "Status",
+        "TEMPERATURE_CURRENT_TEMPERATURE": [
+            "Ist-Temperatur",
+            "SUFFIX= °C"
+        ]
+    },
+    "ventilator": {
+        "AIR_FLOW_WIND_STRENGTH": [
+            "Windstärke",
+            "\"AUTO\"=Automatik",
+            "\"HIGH\"=Hoch",
+            "\"POWER\"=Maximum",
+            "\"LOW\"=Niedrig"
+        ],
+        "AIR_QUALITY_SENSOR_CO2": [
+            "Co2",
+            "\"INVALID\"=Ungültig",
+            "\"GOOD\"=Gut",
+            "\"NORMAL\"=Normal",
+            "\"BAD\"=Schlecht",
+            "\"VERY_BAD\"=Sehr schlecht"
+        ],
+        "AIR_QUALITY_SENSOR_PM1": "Feinstaub PM1",
+        "AIR_QUALITY_SENSOR_PM10": "Feinstaub PM10",
+        "AIR_QUALITY_SENSOR_PM2": "Feinstaub PM2.5",
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_VENT_OPERATION_MODE": [
+            "Vent Operation Mode",
+            "\"POWER_ON\"=Einschalten",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"NEED_TO_CHANGE_DUST_FILTER\"=Need To Change Dust Filter",
+            "\"NEED_TO_CHANGE_PRE_FILTER\"=Need To Change Pre Filter"
+        ],
+        "SLEEP_TIMER_RELATIVE_HOUR_TO_STOP": [
+            "Stoppzeit Sleeptimer Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP": [
+            "Stoppzeit Sleeptimer Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleep Timer",
+        "STATUS": "Status",
+        "TEMPERATURE_CURRENT_TEMPERATURE": [
+            "Ist-Temperatur",
+            "SUFFIX= °C"
+        ],
+        "TIMER_ABSOLUTE_HOUR_TO_START": [
+            "Startzeit Absolut (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_ABSOLUTE_HOUR_TO_STOP": [
+            "Stoppzeit Absolut (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_ABSOLUTE_MINUTE_TO_START": [
+            "Startzeit Absolut (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_ABSOLUTE_MINUTE_TO_STOP": [
+            "Stoppzeit Absolut (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_ABSOLUTE_START_TIMER": "Timer Absolut Start",
+        "TIMER_ABSOLUTE_STOP_TIMER": "Timer Absolut Stop",
+        "VENT_JOB_MODE_CURRENT_JOB_MODE": [
+            "Betriebsmodus",
+            "\"VENT_NATURE\"=Vent Nature",
+            "\"VENT_AUTO\"=Vent Auto",
+            "\"VENT_HEAT_EXCHANGE\"=Vent Heat Exchange"
+        ]
+    },
+    "washer": {
+        "CYCLE_CYCLE_COUNT": "Waschzyklen",
+        "ERROR_LAST": [
+            "Letzter Fehler",
+            "\"DOOR_OPEN_ERROR\"=Door Open Error",
+            "\"TEMPERATURE_SENSOR_ERROR\"=Temperature Sensor Error",
+            "\"OUT_OF_BALANCE_ERROR\"=Out Of Balance Error",
+            "\"WATER_LEVEL_SENSOR_ERROR\"=Water Level Sensor Error",
+            "\"LOCKED_MOTOR_ERROR\"=Locked Motor Error",
+            "\"WATER_DRAIN_ERROR\"=Water Drain Error",
+            "\"UNABLE_TO_LOCK_ERROR\"=Unable To Lock Error",
+            "\"OVERFILL_ERROR\"=Overfill Error",
+            "\"WATER_SUPPLY_ERROR\"=Water Supply Error"
+        ],
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_WASHER_OPERATION_MODE": [
+            "Washer Operation Mode",
+            "\"START\"=Starten",
+            "\"STOP\"=Stoppen",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"WASHING_IS_COMPLETE\"=Washing Is Complete",
+            "\"ERROR_DURING_WASHING\"=Error During Washing"
+        ],
+        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
+            "Fernsteuerung",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"RUNNING\"=Läuft",
+            "\"INITIAL\"=Bereit",
+            "\"RINSING\"=Spülen",
+            "\"SPINNING\"=Schleudern",
+            "\"FIRMWARE\"=Firmware-Update",
+            "\"RESERVED\"=Reserviert",
+            "\"PAUSE\"=Pausiert",
+            "\"POWER_OFF\"=Ausgeschaltet",
+            "\"DETECTING\"=Erkennung",
+            "\"END\"=Fertig",
+            "\"SOAKING\"=Einweichen",
+            "\"ERROR\"=Fehler"
+        ],
+        "STATUS": "Status",
+        "TIMER_RELATIVE_HOUR_TO_START": [
+            "Startzeit Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_RELATIVE_MINUTE_TO_START": [
+            "Startzeit Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_REMAIN_HOUR": [
+            "Verbleibende Stunden",
+            "SUFFIX= h"
+        ],
+        "TIMER_REMAIN_MINUTE": [
+            "Verbleibende Minuten",
+            "SUFFIX= min"
+        ],
+        "TIMER_TOTAL_HOUR": [
+            "Gesamtdauer (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_TOTAL_MINUTE": [
+            "Gesamtdauer (Minuten)",
+            "SUFFIX= min"
+        ]
+    },
+    "washtower": {
+        "DRYER_OPERATION_DRYER_OPERATION_MODE": [
+            "Dryer Dryer Operation Mode",
+            "\"START\"=Starten",
+            "\"STOP\"=Stoppen",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "DRYER_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
+            "Dryer Fernsteuerung",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "DRYER_RUN_STATE_CURRENT_STATE": [
+            "Dryer Betriebszustand",
+            "\"DETECTING\"=Erkennung",
+            "\"ERROR\"=Fehler",
+            "\"COOLING\"=Abkühlen",
+            "\"INITIAL\"=Bereit",
+            "\"POWER_OFF\"=Ausgeschaltet",
+            "\"RESERVED\"=Reserviert",
+            "\"PAUSE\"=Pausiert",
+            "\"RUNNING\"=Läuft",
+            "\"WRINKLE_CARE\"=Knitterschutz",
+            "\"END\"=Fertig"
+        ],
+        "DRYER_TIMER_REMAIN_HOUR": [
+            "Dryer Verbleibende Stunden",
+            "SUFFIX= h"
+        ],
+        "DRYER_TIMER_REMAIN_MINUTE": [
+            "Dryer Verbleibende Minuten",
+            "SUFFIX= min"
+        ],
+        "DRYER_TIMER_TOTAL_HOUR": [
+            "Dryer Gesamtdauer (Stunden)",
+            "SUFFIX= h"
+        ],
+        "DRYER_TIMER_TOTAL_MINUTE": [
+            "Dryer Gesamtdauer (Minuten)",
+            "SUFFIX= min"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "STATUS": "Status",
+        "WASHER_CYCLE_CYCLE_COUNT": "Washer Waschzyklen",
+        "WASHER_OPERATION_WASHER_OPERATION_MODE": [
+            "Washer Washer Operation Mode",
+            "\"START\"=Starten",
+            "\"STOP\"=Stoppen",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "WASHER_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
+            "Washer Fernsteuerung",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "WASHER_RUN_STATE_CURRENT_STATE": [
+            "Washer Betriebszustand",
+            "\"FROZEN_PREVENT_PAUSE\"=Frozen Prevent Pause",
+            "\"DETECTING\"=Erkennung",
+            "\"DETERGENT_AMOUNT\"=Detergent Amount",
+            "\"SPINNING\"=Schleudern",
+            "\"PREWASH\"=Vorwäsche",
+            "\"REFRESHING\"=Auffrischen",
+            "\"STEAM_SOFTENING\"=Dampferweichen",
+            "\"DRYING\"=Trocknen",
+            "\"RINSE_HOLD\"=Spülstopp",
+            "\"RESERVED\"=Reserviert",
+            "\"ERROR\"=Fehler",
+            "\"INITIAL\"=Bereit",
+            "\"DISPENSING\"=Dispensing",
+            "\"FROZEN_PREVENT_INITIAL\"=Frozen Prevent Initial",
+            "\"PAUSE\"=Pausiert",
+            "\"RUNNING\"=Läuft",
+            "\"END\"=Fertig",
+            "\"POWER_OFF\"=Ausgeschaltet",
+            "\"RINSING\"=Spülen",
+            "\"FROZEN_PREVENT_RUNNING\"=Frozen Prevent Running",
+            "\"ADD_DRAIN\"=Add Drain",
+            "\"SOAKING\"=Einweichen"
+        ],
+        "WASHER_TIMER_RELATIVE_HOUR_TO_START": [
+            "Washer Startzeit Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "WASHER_TIMER_RELATIVE_MINUTE_TO_START": [
+            "Washer Startzeit Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "WASHER_TIMER_REMAIN_HOUR": [
+            "Washer Verbleibende Stunden",
+            "SUFFIX= h"
+        ],
+        "WASHER_TIMER_REMAIN_MINUTE": [
+            "Washer Verbleibende Minuten",
+            "SUFFIX= min"
+        ],
+        "WASHER_TIMER_TOTAL_HOUR": [
+            "Washer Gesamtdauer (Stunden)",
+            "SUFFIX= h"
+        ],
+        "WASHER_TIMER_TOTAL_MINUTE": [
+            "Washer Gesamtdauer (Minuten)",
+            "SUFFIX= min"
+        ]
+    },
+    "washtower_dryer": {
+        "ERROR_LAST": [
+            "Letzter Fehler",
+            "\"DRAINMOTOR_ERROR\"=Drainmotor Error",
+            "\"COMPRESSOR_ERROR\"=Compressor Error",
+            "\"DOOR_LOCK_ERROR\"=Door Lock Error",
+            "\"MOTOR_LOCK_ERROR\"=Motor Lock Error",
+            "\"HIGH_TEMPERATURE_DETECTION_ERROR\"=High Temperature Detection Error",
+            "\"FAN_MOTOR_ERROR\"=Fan Motor Error",
+            "\"DOOR_SENSOR_ERROR\"=Door Sensor Error",
+            "\"DOOR_OPEN_ERROR\"=Door Open Error",
+            "\"NO_FILTER_ERROR\"=No Filter Error",
+            "\"TEMPERATURE_SENSOR_ERROR\"=Temperature Sensor Error",
+            "\"EMPTY_WATER_ALERT_ERROR\"=Empty Water Alert Error"
+        ],
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_DRYER_OPERATION_MODE": [
+            "Dryer Operation Mode",
+            "\"START\"=Starten",
+            "\"STOP\"=Stoppen",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"DRYING_IS_COMPLETE\"=Drying Is Complete",
+            "\"DRYING_FAILED\"=Drying Failed"
+        ],
+        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
+            "Fernsteuerung",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"INITIAL\"=Bereit",
+            "\"RESERVED\"=Reserviert",
+            "\"ERROR\"=Fehler",
+            "\"END\"=Fertig",
+            "\"PAUSE\"=Pausiert",
+            "\"RUNNING\"=Läuft",
+            "\"DETECTING\"=Erkennung",
+            "\"POWER_OFF\"=Ausgeschaltet",
+            "\"COOLING\"=Abkühlen",
+            "\"WRINKLE_CARE\"=Knitterschutz"
+        ],
+        "STATUS": "Status",
+        "TIMER_RELATIVE_HOUR_TO_STOP": [
+            "Stoppzeit Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_RELATIVE_MINUTE_TO_STOP": [
+            "Stoppzeit Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_REMAIN_HOUR": [
+            "Verbleibende Stunden",
+            "SUFFIX= h"
+        ],
+        "TIMER_REMAIN_MINUTE": [
+            "Verbleibende Minuten",
+            "SUFFIX= min"
+        ],
+        "TIMER_TOTAL_HOUR": [
+            "Gesamtdauer (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_TOTAL_MINUTE": [
+            "Gesamtdauer (Minuten)",
+            "SUFFIX= min"
+        ]
+    },
+    "washtower_washer": {
+        "CYCLE_CYCLE_COUNT": "Waschzyklen",
+        "ERROR_LAST": [
+            "Letzter Fehler",
+            "\"TEMPERATURE_SENSOR_ERROR\"=Temperature Sensor Error",
+            "\"WATER_SUPPLY_ERROR\"=Water Supply Error",
+            "\"LOCKED_MOTOR_ERROR\"=Locked Motor Error",
+            "\"DOOR_OPEN_ERROR\"=Door Open Error",
+            "\"WATER_LEVEL_SENSOR_ERROR\"=Water Level Sensor Error",
+            "\"OUT_OF_BALANCE_ERROR\"=Out Of Balance Error",
+            "\"OVERFILL_ERROR\"=Overfill Error",
+            "\"POWER_FAIL_ERROR\"=Power Fail Error",
+            "\"UNABLE_TO_LOCK_ERROR\"=Unable To Lock Error",
+            "\"WATER_DRAIN_ERROR\"=Water Drain Error"
+        ],
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_WASHER_OPERATION_MODE": [
+            "Washer Operation Mode",
+            "\"START\"=Starten",
+            "\"STOP\"=Stoppen",
+            "\"POWER_OFF\"=Ausschalten"
+        ],
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"WASHING_IS_COMPLETE\"=Washing Is Complete",
+            "\"ERROR_DURING_WASHING\"=Error During Washing"
+        ],
+        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
+            "Fernsteuerung",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"POWER_OFF\"=Ausgeschaltet",
+            "\"INITIAL\"=Bereit",
+            "\"ADD_DRAIN\"=Add Drain",
+            "\"SPINNING\"=Schleudern",
+            "\"FROZEN_PREVENT_RUNNING\"=Frozen Prevent Running",
+            "\"RESERVED\"=Reserviert",
+            "\"PAUSE\"=Pausiert",
+            "\"DRYING\"=Trocknen",
+            "\"REFRESHING\"=Auffrischen",
+            "\"RINSING\"=Spülen",
+            "\"RINSE_HOLD\"=Spülstopp",
+            "\"FROZEN_PREVENT_INITIAL\"=Frozen Prevent Initial",
+            "\"ERROR\"=Fehler",
+            "\"FROZEN_PREVENT_PAUSE\"=Frozen Prevent Pause",
+            "\"DETERGENT_AMOUNT\"=Detergent Amount",
+            "\"END\"=Fertig",
+            "\"DETECTING\"=Erkennung",
+            "\"RUNNING\"=Läuft",
+            "\"PREWASH\"=Vorwäsche"
+        ],
+        "STATUS": "Status",
+        "TIMER_RELATIVE_HOUR_TO_STOP": [
+            "Stoppzeit Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_RELATIVE_MINUTE_TO_STOP": [
+            "Stoppzeit Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_REMAIN_HOUR": [
+            "Verbleibende Stunden",
+            "SUFFIX= h"
+        ],
+        "TIMER_REMAIN_MINUTE": [
+            "Verbleibende Minuten",
+            "SUFFIX= min"
+        ],
+        "TIMER_TOTAL_HOUR": [
+            "Gesamtdauer (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_TOTAL_MINUTE": [
+            "Gesamtdauer (Minuten)",
+            "SUFFIX= min"
+        ]
+    },
+    "water_heater": {
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_WATER_HEATER_OPERATION_MODE": [
+            "Water Heater Operation Mode",
+            "\"POWER_ON\"=Warmwasser Ein",
+            "\"POWER_OFF\"=Warmwasser Aus"
+        ],
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "STATUS": "Status",
+        "TEMPERATURE_CURRENT_TEMPERATURE": [
+            "Ist-Temperatur",
+            "SUFFIX= °C"
+        ],
+        "TEMPERATURE_TARGET_TEMPERATURE": [
+            "Zieltemperatur",
+            "SUFFIX= °C"
+        ],
+        "WATER_HEATER_JOB_MODE_CURRENT_JOB_MODE": [
+            "Betriebsmodus",
+            "\"HEAT_PUMP\"=Wärmepumpe",
+            "\"AUTO\"=Automatik",
+            "\"VACATION\"=Urlaubsmodus",
+            "\"TURBO\"=Turbo"
+        ]
+    },
+    "water_leak_sensor": {
+        "BATTERY_PERCENT": [
+            "Percent",
+            "SUFFIX= %"
+        ],
+        "DETECT_STATE_LEAK_STATE": [
+            "Leak State",
+            "\"ALARM\"=Alarm",
+            "\"NORMAL\"=Normal"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"BATTERY_IS_LOW\"=Battery Is Low",
+            "\"WATER_LEAK_IS_DETECTED\"=Water Leak Is Detected"
+        ],
+        "STATUS": "Status"
+    },
+    "water_purifier": {
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "RUN_STATE_COCK_STATE": [
+            "Cock State",
+            "\"CLEANING\"=Cleaning",
+            "\"NORMAL\"=Normal"
+        ],
+        "STATUS": "Status",
+        "WATER_INFO_WATER_TYPE": "Water Type"
+    },
+    "wine_cellar": {
+        "ERROR_LAST": "Letzter Fehler",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_LIGHT_STATUS": "Light Status",
+        "PUSH_LAST": [
+            "Letzte Push-Nachricht",
+            "\"DOOR_IS_OPEN\"=Door Is Open"
+        ],
+        "STATUS": "Status",
+        "WINE_LOWER_TEMPERATURE_TARGET_TEMPERATURE": [
+            "Wine_lower Zieltemperatur",
+            "SUFFIX= °C"
+        ],
+        "WINE_UPPER_TEMPERATURE_TARGET_TEMPERATURE": [
+            "Wine_upper Zieltemperatur",
+            "SUFFIX= °C"
+        ]
+    },
+    "live_ac": {
+        "AIR_CON_JOB_MODE_CURRENT_JOB_MODE": [
+            "Betriebsmodus",
+            "\"COOL\"=Kühlen",
+            "\"AUTO\"=Automatik",
+            "\"HEAT\"=Heizen",
+            "\"AIR_DRY\"=Entfeuchten",
+            "\"FAN\"=Nur Lüfter"
+        ],
+        "AIR_FLOW_WIND_STRENGTH": [
+            "Windstärke",
+            "\"LOW\"=Niedrig",
+            "\"MID\"=Mittel",
+            "\"HIGH\"=Hoch",
+            "\"AUTO\"=Automatik"
+        ],
+        "AIR_FLOW_WIND_STRENGTH_DETAIL": [
+            "Windstärke Detail",
+            "\"NATURE\"=Nature",
+            "\"LOW\"=Niedrig",
+            "\"MID\"=Mittel",
+            "\"HIGH\"=Hoch"
+        ],
+        "ENERGY_LAST_MONTH": [
+            "Energie Letzter Monat",
+            "SUFFIX= Wh"
+        ],
+        "ENERGY_THIS_MONTH": [
+            "Energie Dieser Monat",
+            "SUFFIX= Wh"
+        ],
+        "ENERGY_YESTERDAY": [
+            "Energie Gestern",
+            "SUFFIX= Wh"
+        ],
+        "ERROR_LAST": "Letzter Fehler",
+        "FILTER_INFO_FILTER_LIFETIME": "Filter-Lebensdauer",
+        "FILTER_INFO_USED_TIME": "Nutzungszeit",
+        "INFO": "Info",
+        "LASTUPDATE": "Letzte Aktualisierung",
+        "OPERATION_AIR_CON_OPERATION_MODE": [
+            "Power",
+            "\"POWER_OFF\"=Ausschalten",
+            "\"POWER_ON\"=Einschalten"
+        ],
+        "POWER_SAVE_POWER_SAVE_ENABLED": [
+            "Energiesparmodus",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "PUSH_LAST": "Letzte Push-Nachricht",
+        "RUN_STATE_CURRENT_STATE": [
+            "Betriebszustand",
+            "\"NORMAL\"=Normal",
+            "\"ERROR\"=Fehler"
+        ],
+        "SLEEP_TIMER_RELATIVE_HOUR_TO_STOP": [
+            "Stoppzeit Sleeptimer Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP": [
+            "Stoppzeit Sleeptimer Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleep Timer",
+        "STATUS": "Status",
+        "TEMPERATURE_CURRENT_TEMPERATURE": [
+            "Ist-Temperatur",
+            "SUFFIX= °C"
+        ],
+        "TEMPERATURE_TARGET_TEMPERATURE": [
+            "Zieltemperatur",
+            "SUFFIX= °C"
+        ],
+        "TIMER_RELATIVE_HOUR_TO_START": [
+            "Startzeit Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_RELATIVE_HOUR_TO_STOP": [
+            "Stoppzeit Relativ (Stunden)",
+            "SUFFIX= h"
+        ],
+        "TIMER_RELATIVE_MINUTE_TO_START": [
+            "Startzeit Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_RELATIVE_MINUTE_TO_STOP": [
+            "Stoppzeit Relativ (Minuten)",
+            "SUFFIX= min"
+        ],
+        "TIMER_RELATIVE_START_TIMER": "Timer Relativ Start",
+        "TIMER_RELATIVE_STOP_TIMER": "Timer Relativ Stop",
+        "WIND_DIRECTION_ROTATE_LEFT_RIGHT": [
+            "Horizontal schwenken",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ],
+        "WIND_DIRECTION_ROTATE_UP_DOWN": [
+            "Vertikal schwenken",
+            "CAPTION_ON=An",
+            "CAPTION_OFF=Aus"
+        ]
+    }
+}
