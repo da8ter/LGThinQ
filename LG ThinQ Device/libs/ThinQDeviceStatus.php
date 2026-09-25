@@ -5,9 +5,9 @@ declare(strict_types=1);
 /**
  * The device's state in Symcon: the stored LastStatus with STATUS and LASTUPDATE, and the
  * capability variables it feeds. A full status replaces it (UpdateStatus), an event report is
- * merged in by zone and selector (ReceiveData), a push notification only sets PUSH_LAST. An event
- * also heals a device whose setup never completed and fetches the profile again once for keys it
- * does not list.
+ * merged in by zone and selector (ReceiveData), and so is a command LG accepted (ControlDevice); a
+ * push notification only sets PUSH_LAST. An event also heals a device whose setup never completed
+ * and fetches the profile again once for keys it does not list.
  */
 final class ThinQDeviceStatus
 {
@@ -49,6 +49,23 @@ final class ThinQDeviceStatus
                 $this->ctx->debug('UpdateStatus applyStatus', $e->getMessage());
             }
         }
+    }
+
+    /**
+     * A command LG accepted is the device's state until LG reports otherwise. Without it a lost
+     * confirmation let the next partial report bring back the old value from the stored status.
+     * Commands have the shape of a report (zone, element, part); a device-wide command of a zone
+     * device (extensionProperty) has no zone to go to and is left out.
+     */
+    public function remember(array $command): void
+    {
+        $state = $this->profiles->readLastStatus();
+        if ($state === [] || (ThinQShape::isZoneList($state) && !isset($command['location']))) {
+            return;
+        }
+        $encoded = (string)json_encode(ThinQShape::merge($state, $command), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->ctx->writeAttributeString('LastStatus', $encoded);
+        @SetValueString($this->varId('STATUS'), $encoded);
     }
 
     /** A push notification (e.g. WASHING_IS_COMPLETE) is not device state: PUSH_LAST only. */

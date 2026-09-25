@@ -176,6 +176,7 @@ class LGThinQDevice extends IPSModuleStrict
         }
         // sendAction() throws an Exception on API error — if we reach here, the call succeeded
         $this->sendAction('Control', ['DeviceID' => $deviceId, 'Payload' => $payload]);
+        $this->deviceStatus()->remember($payload);
         return true;
     }
 

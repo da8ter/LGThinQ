@@ -73,6 +73,41 @@ try {
 }
 check(str_contains($caught, 'Not supported command'), 'ControlDevice: LGs Ablehnung kommt als Ausnahme mit LGs Meldung an (' . $caught . ')');
 
+section('Befehl ohne Rückmeldung');
+// LG accepts a command, but its confirmation (DEVICE_STATUS) gets lost; the next partial report must
+// not bring back the old value from the stored status (live on 25.09.2026: POWER_ON fell back to POWER_OFF)
+World::start();
+[$ac, $acid] = World::liveAc();
+World::quiet();
+$mode = World::value($ac, 'OPERATION_AIR_CON_OPERATION_MODE') === 'POWER_ON' ? 'POWER_OFF' : 'POWER_ON';
+check(RequestAction(World::varId($ac, 'OPERATION_AIR_CON_OPERATION_MODE'), $mode) === true, 'Klimaanlage ' . $mode);
+World::$cloud->drainMqtt();
+World::$cloud->deviceReports($acid, ['temperature' => ['currentTemperature' => 21]]);
+World::flushMqtt();
+check(World::value($ac, 'OPERATION_AIR_CON_OPERATION_MODE') === $mode && World::value($ac, 'TEMPERATURE_CURRENT_TEMPERATURE') === 21.0,
+    'die Teilmeldung danach kommt an und setzt den Befehl nicht zurück (' . json_encode(World::value($ac, 'OPERATION_AIR_CON_OPERATION_MODE')) . ')');
+$st = json_decode((string)World::attr($ac, 'LastStatus'), true);
+check(($st['operation']['airConOperationMode'] ?? null) === $mode && isset($st['runState'], $st['airConJobMode'], $st['temperature']['targetTemperature']),
+    'der gespeicherte Status behält alles andere und hat den Befehl');
+LGTQD_ControlDevice($ac, (string)json_encode(['temperature' => ['unit' => 'C', 'targetTemperature' => 25]]));
+World::$cloud->drainMqtt();
+check((json_decode((string)World::attr($ac, 'LastStatus'), true)['temperature']['targetTemperature'] ?? null) === 25, 'auch LGTQD_ControlDevice aus einem Skript schreibt den gespeicherten Stand fort');
+[$wz, $wzid] = World::example('washer');
+World::quiet();
+check(RequestAction(World::varId($wz, 'TIMER_RELATIVE_HOUR_TO_START'), 5) === true, 'Waschmaschine: Startverzögerung 5 h');
+World::$cloud->drainMqtt();
+World::$cloud->deviceReports($wzid, [['location' => ['locationName' => 'MAIN'], 'runState' => ['currentState' => 'RUNNING']]]);
+World::flushMqtt();
+$st = json_decode((string)World::attr($wz, 'LastStatus'), true);
+check(World::value($wz, 'TIMER_RELATIVE_HOUR_TO_START') === 5 && World::value($wz, 'RUN_STATE_CURRENT_STATE') === 'RUNNING'
+    && ($st['timer']['relativeHourToStart'] ?? null) === 5 && ($st['location']['locationName'] ?? null) === 'MAIN', 'mit Zonen-Hülle ebenso: der Befehl steht in der Zone');
+[$ck] = World::example('cooktop');
+World::quiet();
+$zones = json_decode((string)World::attr($ck, 'LastStatus'), true);
+check(RequestAction(World::varId($ck, 'OPERATION_OPERATION_MODE'), 'POWER_OFF') === true, 'Kochfeld: geräteweiter Befehl (extensionProperty)');
+$after = json_decode((string)World::attr($ck, 'LastStatus'), true);
+check(ThinQShape::isZoneList($after) && $after === $zones, 'die Zonenliste bleibt unverändert, der Befehl hat dort keine Zone');
+
 section('Kühlschrank: Temperatur je Fach');
 World::start();
 [$f, $fid] = World::example('refrigerator');
