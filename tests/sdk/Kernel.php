@@ -45,6 +45,8 @@ final class Kernel
     public static array $failMaintain = [];
     /** Kernel messages delivered to MessageSink: [time, sender, message, data] */
     public static array $messageTrace = [];
+    /** @var array<int, string> exceptions an entry point swallowed; kept across reset() for done() */
+    public static array $fatals = [];
 
     public const DEFAULT_TIME = 1790330400; // 2026-09-25 12:00:00 Europe/Berlin
     private static int $nextId = 10000;
@@ -125,6 +127,7 @@ final class Kernel
     /** Uncaught Throwable in an entry point Symcon called: logged like the kernel does. */
     public static function logFatal(int $id, \Throwable $e): void
     {
+        self::$fatals[] = sprintf('%s: %s (%s:%d)', get_class($e), $e->getMessage(), basename($e->getFile()), $e->getLine());
         self::log($id, 'ERROR', self::nameOf($id), sprintf("Fatal error: Uncaught %s: %s in %s:%d",
             get_class($e), $e->getMessage(), $e->getFile(), $e->getLine()));
     }

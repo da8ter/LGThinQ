@@ -103,6 +103,8 @@ function section(string $title): void
 
 function done(): void
 {
+    // Symcon logs an exception that escapes an entry point (ReceiveData, a timer) as an error
+    check(Kernel::$fatals === [], 'keine Ausnahme ging in einem Einstiegspunkt unter' . (Kernel::$fatals === [] ? '' : ': ' . implode(' | ', array_slice(Kernel::$fatals, 0, 5))));
     $open = array_keys(array_filter($GLOBALS['befunde'], static fn(bool $fixed): bool => !$fixed));
     $fixed = array_keys(array_filter($GLOBALS['befunde']));
     $line = $open === [] ? "\nAlle {$GLOBALS['checks']} Prüfungen bestanden." : "\n{$GLOBALS['checks']} Prüfungen bestanden, "
