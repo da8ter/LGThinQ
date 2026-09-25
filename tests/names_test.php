@@ -7,6 +7,7 @@ declare(strict_types=1);
  * German Symcon shows them: variable names, switch captions, enumeration captions, prefixes and
  * suffixes. tests/fixtures/names_de.json is the reference; a change shows up as a difference.
  * After checking it, write the new state with:  php tests/names_test.php --golden
+ * An English Symcon shows the English sources: none of its texts may be a German translation.
  */
 
 require __DIR__ . '/bootstrap.php';
@@ -76,5 +77,27 @@ if (in_array('--golden', $argv, true) || !is_array($golden)) {
         . implode("\n  ", array_slice($diff, 0, 40)) . (count($diff) > 40 ? "\n  … und " . (count($diff) - 40) . ' weitere' : '')
         . "\n  (gewollt? dann: php tests/names_test.php --golden)"));
 }
+
+section('Englische Namen und Beschriftungen');
+$locale = json_decode((string)file_get_contents(__DIR__ . '/../LG ThinQ Device/locale.json'), true)['translations'];
+check(array_keys($locale) === ['de'], 'locale.json des Geräts übersetzt nur ins Deutsche (Englisch ist die Quellsprache)');
+$german = [];
+foreach ($locale['de'] as $source => $translation) {
+    if ($source !== $translation && !isset($locale['de'][$translation])) {
+        $german[$translation] = true; // a German word that is not also an English source (Status, Power)
+    }
+}
+$found = [];
+foreach (allTexts('en') as $type => $vars) {
+    foreach ($vars as $ident => $texts) {
+        foreach ((array)$texts as $i => $text) {
+            $shown = $i === 0 ? $text : substr($text, strpos($text, '=') + 1);
+            if (preg_match('/[äöüÄÖÜß]/u', $shown) === 1 || isset($german[$shown])) {
+                $found[] = "$type $ident: $text";
+            }
+        }
+    }
+}
+check($found === [], 'englisches Symcon: kein Name und keine Beschriftung auf Deutsch' . ($found === [] ? '' : ":\n  " . implode("\n  ", array_slice($found, 0, 20))));
 
 done();

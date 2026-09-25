@@ -322,16 +322,23 @@ World::start();
 Kernel::$language = 'en';
 [$w] = World::example('washer');
 [$ac] = World::liveAc();
+$deLocale = json_decode((string)file_get_contents($root . '/LG ThinQ Device/locale.json'), true)['translations']['de'];
+$deWords = [];
+foreach ($deLocale as $source => $translation) {
+    if ($source !== $translation && !isset($deLocale[$translation])) {
+        $deWords[$translation] = true; // German, and not also an English source (Status, Power)
+    }
+}
 $names = [];
 foreach ([$w, $ac] as $inst) {
     foreach (World::idents($inst) as $ident) {
         $name = World::variable($inst, $ident)['name'];
-        if (preg_match('/Letzte|Startzeit|Stoppzeit|Minuten|Stunden|Relativ|Absolut|[äöüß]/u', $name)) {
+        if (preg_match('/\b(Letzte[nrs]?|Startzeit|Stoppzeit|Minuten|Stunden|Relativ|Absolut)\b|[äöüß]/u', $name) || isset($deWords[$name])) {
             $names[] = $ident . ' "' . $name . '"';
         }
     }
 }
-befund('N7d', $names === [], 'Englisches Symcon zeigt englische Variablennamen', count($names) . ' deutsche Namen, u. a. ' . implode(', ', array_slice($names, 0, 4)));
+check($names === [], 'Englisches Symcon zeigt englische Variablennamen (N7d)' . ($names === [] ? '' : ': ' . count($names) . ' deutsche Namen, u. a. ' . implode(', ', array_slice($names, 0, 4))));
 
 section('N8 Teilberichte je Fach (behoben)');
 World::start();

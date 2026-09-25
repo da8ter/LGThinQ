@@ -94,7 +94,7 @@ trait KernelRuntime
 
     public static function translate(?string $moduleDir, string $text): string
     {
-        if ($moduleDir === null || self::$language === 'en') {
+        if ($moduleDir === null) {
             return $text;
         }
         if (!isset(self::$locales[$moduleDir])) {

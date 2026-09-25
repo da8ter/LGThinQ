@@ -231,10 +231,10 @@ class ThinQEnumTranslator
      * 
      * @param string $property Property name (e.g., 'current_state')
      * @param string $value Enum value (e.g., 'RUNNING')
-     * @param string $lang Language code ('de' or 'en')
+     * @param string $lang Language code ('de' or 'en', see ThinQNaming::systemLanguage())
      * @return string Translated value or humanized fallback
      */
-    public static function translate(string $property, string $value, string $lang = 'de'): string
+    public static function translate(string $property, string $value, string $lang): string
     {
         $propKey = self::normalizePropertyName($property);
         // Try normalized property first
@@ -270,53 +270,6 @@ class ThinQEnumTranslator
         return ucwords(strtolower($readable));
     }
     
-    /**
-     * Get all translations for a specific property
-     * 
-     * @param string $property Property name
-     * @param string $lang Language code
-     * @return array<string, string> Map of value => translated label
-     */
-    public static function getTranslationsForProperty(string $property, string $lang = 'de'): array
-    {
-        $propKey = self::normalizePropertyName($property);
-        if (!isset(self::$ENUM_MAPS[$propKey])) {
-            return [];
-        }
-        
-        $translations = [];
-        foreach (self::$ENUM_MAPS[$propKey] as $value => $langs) {
-            $translations[$value] = $langs[$lang] ?? $langs['en'] ?? self::humanize($value);
-        }
-        
-        return $translations;
-    }
-    
-    /**
-     * Add custom enum translation
-     * 
-     * @param string $property Property name
-     * @param string $value Enum value
-     * @param string $translation_de German translation
-     * @param string $translation_en English translation
-     */
-    public static function addTranslation(
-        string $property, 
-        string $value, 
-        string $translation_de, 
-        string $translation_en
-    ): void {
-        $propKey = self::normalizePropertyName($property);
-        if (!isset(self::$ENUM_MAPS[$propKey])) {
-            self::$ENUM_MAPS[$propKey] = [];
-        }
-        
-        self::$ENUM_MAPS[$propKey][$value] = [
-            'de' => $translation_de,
-            'en' => $translation_en
-        ];
-    }
-
     /**
      * Normalize property name to snake_case key used in ENUM_MAPS.
      */

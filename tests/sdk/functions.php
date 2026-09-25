@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 function IPS_GetKernelRunlevel(): int { return Kernel::$runlevel; }
 function IPS_GetKernelVersion(): string { return '9.1'; }
+function IPS_GetSystemLanguage(): string { return Kernel::$language === 'de' ? 'de_DE' : 'en_US'; } // 9.1: "de_DE"
 function IPS_GetKernelDir(): string { return sys_get_temp_dir() . '/'; }
 function IPS_Sleep(int $Milliseconds): bool { return true; }
 

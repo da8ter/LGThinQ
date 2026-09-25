@@ -3,8 +3,7 @@
 declare(strict_types=1);
 
 // Load auto-discovery classes
-require_once __DIR__ . '/ThinQGenericProperties.php';
-require_once __DIR__ . '/ThinQEnumTranslator.php';
+require_once __DIR__ . '/ThinQNaming.php';
 require_once __DIR__ . '/ThinQShape.php';
 require_once __DIR__ . '/ThinQValue.php';
 require_once __DIR__ . '/ThinQProfileParser.php';
@@ -96,11 +95,6 @@ class CapabilityEngine
     public function setTranslateCallback(callable $callback): void
     {
         $this->translateCallback = $callback;
-    }
-
-    private function translate(string $text): string
-    {
-        return $this->translateCallback !== null ? ($this->translateCallback)($text) : $text;
     }
 
     private function debugEnabled(): bool
@@ -322,14 +316,6 @@ class CapabilityEngine
 
             $plan[$ident] = $entry;
         }
-        
-        // Translate all variable names from English to user's language
-        // This uses Symcon's locale.json for translations via callback
-        foreach ($plan as $ident => &$entry) {
-            if (isset($entry['name'])) {
-                $entry['name'] = $this->translate($entry['name']);
-            }
-        }
 
         return $plan;
     }
@@ -469,11 +455,8 @@ class CapabilityEngine
     private function getParser(): ThinQProfileParser
     {
         if ($this->parser === null) {
-            $this->parser = new ThinQProfileParser();
-            // Set translation callback to use locale.json via Symcon's Translate()
-            $this->parser->setTranslateCallback(function($text) {
-                return $this->translate($text);
-            });
+            // Names in Symcon's language: English sources, translated through locale.json
+            $this->parser = new ThinQProfileParser(new ThinQNaming($this->translateCallback !== null ? Closure::fromCallable($this->translateCallback) : null));
         }
         return $this->parser;
     }

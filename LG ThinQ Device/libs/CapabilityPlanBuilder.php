@@ -78,7 +78,7 @@ class CapabilityPlanBuilder
                 if (!empty($errorOptions)) { $pres['options'] = $errorOptions; }
                 $this->caps['ERROR_LAST'] = [
                     'ident' => 'ERROR_LAST',
-                    'name' => 'Letzter Fehler',
+                    'name' => $this->parser->naming()->t('Last Error'),
                     'type' => 'string',
                     'read' => [],
                     'create' => ['when' => 'always', 'keys' => []],
@@ -92,7 +92,7 @@ class CapabilityPlanBuilder
                 if (!empty($pushOptions)) { $pres['options'] = $pushOptions; }
                 $this->caps['PUSH_LAST'] = [
                     'ident' => 'PUSH_LAST',
-                    'name' => 'Letzte Push-Nachricht',
+                    'name' => $this->parser->naming()->t('Last Push Message'),
                     'type' => 'string',
                     'read' => [],
                     'create' => ['when' => 'always', 'keys' => []],

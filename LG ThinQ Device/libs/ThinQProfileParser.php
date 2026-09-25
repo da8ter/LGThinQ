@@ -17,10 +17,7 @@ declare(strict_types=1);
  */
 class ThinQProfileParser
 {
-    private string $language = 'de';
-
-    /** @var callable|null */
-    private $translateCallback = null;
+    private ThinQNaming $naming;
 
     /**
      * Zone of the resources being parsed (washer, oven, cooktop: {location: {locationName: …}});
@@ -28,7 +25,17 @@ class ThinQProfileParser
      * (refrigerator compartments) whose locationName is inside the resource.
      */
     private ?string $topLevelLocation = null;
-    
+
+    public function __construct(?ThinQNaming $naming = null)
+    {
+        $this->naming = $naming ?? new ThinQNaming();
+    }
+
+    public function naming(): ThinQNaming
+    {
+        return $this->naming;
+    }
+
     /**
      * Variable plan of a device profile (any form ThinQShape knows): every zone of a zone list with
      * the zone as ident prefix, element lists per element (locationName/switchName as prefix, unit
@@ -49,7 +56,7 @@ class ThinQProfileParser
             foreach ($wrapped as $part => $sub) {
                 foreach ($this->parseProfile($sub) as $entry) {
                     $entry['ident'] = strtoupper((string)$part) . '_' . $entry['ident'];
-                    $entry['name'] = ucfirst((string)$part) . ' ' . $entry['name'];
+                    $entry['name'] = ThinQNaming::partPrefix((string)$part) . $entry['name'];
                     $entry['path'] = $part . '.' . $entry['path'];
                     $entry['part'] = (string)$part;
                     unset($entry['legacyIdent']);
@@ -65,7 +72,7 @@ class ThinQProfileParser
             foreach ($zones as $i => $zone) {
                 foreach ($this->parseResources(ThinQShape::resources($wrapped, $zone), $zone) as $ident => $entry) {
                     $entry['ident'] = strtoupper($zone) . '_' . $ident;
-                    $entry['name'] = ucfirst(strtolower(str_replace('_', ' ', $zone))) . ' ' . $entry['name'];
+                    $entry['name'] = ThinQNaming::zonePrefix($zone) . $entry['name'];
                     $entry['zone'] = $zone;
                     if ($i === 0) {
                         $entry['legacyIdent'] = $ident; // earlier versions parsed only this zone, without prefix
@@ -198,7 +205,7 @@ class ThinQProfileParser
             }
             $entry = [
                 'ident' => $ident,
-                'name' => $this->translateProperty($attrName, $resource, $location),
+                'name' => $this->naming->property($attrName, $resource, $location),
                 'type' => ThinQValue::variableType($meta),
                 'path' => $resource . '.' . $attrName,
                 'resource' => $resource,
@@ -362,7 +369,7 @@ class ThinQProfileParser
                     // and translate it for caption
                     $options[] = [
                         'value' => (string)$val,  // String value (COOL, HEAT, AUTO, ...)
-                        'caption' => ThinQEnumTranslator::translate($propertyName, (string)$val, $this->language)
+                        'caption' => $this->naming->caption($propertyName, (string)$val)
                     ];
                 }
                 
@@ -423,169 +430,5 @@ class ThinQProfileParser
         
         $values = $meta['value']['w'] ?? $meta['value']['r'] ?? [];
         return is_array($values) ? array_values($values) : null;
-    }
-    
-    /**
-     * Translate property name to human-readable format
-     * 
-     * @param string $property Property name (e.g., 'remote_control_enabled')
-     * @param string $resource Resource name (e.g., 'timer')
-     * @param string|null $location Location name (e.g., 'FRIDGE')
-     * @return string
-     */
-    private function translateProperty(string $property, string $resource, ?string $location): string
-    {
-        // Convert to snake_case for lookup
-        $propertySnake = $this->camelToSnake($property);
-        $resourceSnake = $this->camelToSnake($resource);
-        
-        // Special naming for timer properties (timer, sleep_timer, sleepTimer)
-        if (preg_match('/^(timer|sleep_timer)$/i', $resourceSnake)) {
-            $isSleepTimer = (stripos($resourceSnake, 'sleep') !== false);
-            
-            // Special cases: Timer objects (without hour/minute granularity)
-            // sleepTimer.relativeStopTimer → "Sleep Timer"
-            if ($isSleepTimer && preg_match('/relative.*stop.*timer/i', $property)) {
-                return 'Sleep Timer';
-            }
-            // timer.relativeStartTimer → "Timer Relativ Start"
-            if (!$isSleepTimer && preg_match('/relative.*start.*timer/i', $property)) {
-                return 'Timer Relativ Start';
-            }
-            // timer.relativeStopTimer → "Timer Relativ Stop"
-            if (!$isSleepTimer && preg_match('/relative.*stop.*timer/i', $property)) {
-                return 'Timer Relativ Stop';
-            }
-            // timer.absoluteStartTimer → "Timer Absolut Start"
-            if (!$isSleepTimer && preg_match('/absolute.*start.*timer/i', $property)) {
-                return 'Timer Absolut Start';
-            }
-            // timer.absoluteStopTimer → "Timer Absolut Stop"
-            if (!$isSleepTimer && preg_match('/absolute.*stop.*timer/i', $property)) {
-                return 'Timer Absolut Stop';
-            }
-            
-            // Determine timer type label for hour/minute properties
-            $typeLabel = '';
-            if (stripos($property, 'relative') !== false) {
-                $typeLabel = 'Relativ ';
-            } elseif (stripos($property, 'absolute') !== false) {
-                $typeLabel = 'Absolut ';
-            }
-            
-            // Match minute-based timers (minute, minutes)
-            if (preg_match('/minutes?.*to.*start/i', $property)) {
-                return $isSleepTimer 
-                    ? 'Startzeit Sleeptimer ' . $typeLabel . '(Minuten)'
-                    : 'Startzeit ' . $typeLabel . '(Minuten)';
-            }
-            // Match hour-based timers (hour, hours)
-            if (preg_match('/hours?.*to.*start/i', $property)) {
-                return $isSleepTimer 
-                    ? 'Startzeit Sleeptimer ' . $typeLabel . '(Stunden)'
-                    : 'Startzeit ' . $typeLabel . '(Stunden)';
-            }
-            // Match minute-based stop timers
-            if (preg_match('/minutes?.*to.*stop/i', $property)) {
-                return $isSleepTimer 
-                    ? 'Stoppzeit Sleeptimer ' . $typeLabel . '(Minuten)'
-                    : 'Stoppzeit ' . $typeLabel . '(Minuten)';
-            }
-            // Match hour-based stop timers
-            if (preg_match('/hours?.*to.*stop/i', $property)) {
-                return $isSleepTimer 
-                    ? 'Stoppzeit Sleeptimer ' . $typeLabel . '(Stunden)'
-                    : 'Stoppzeit ' . $typeLabel . '(Stunden)';
-            }
-        }
-        
-        // Get translations in configured language (default: German)
-        $translations = ThinQGenericProperties::getTranslations($this->language);
-        
-        // Generic property names that need resource context
-        $genericProperties = ['current_state', 'state', 'status', 'value', 'enabled', 'mode'];
-        
-        // If property is too generic, prepend resource name for context
-        if (in_array($propertySnake, $genericProperties, true)) {
-            // Use resource name for better context
-            if (isset($translations[$resourceSnake])) {
-                $name = $translations[$resourceSnake];
-            } else {
-                $name = $this->humanize($resource, null);
-            }
-            
-            // Prepend location if not MAIN
-            if ($location !== null && strtoupper($location) !== 'MAIN') {
-                return ucfirst(strtolower($location)) . ' ' . $name;
-            }
-            
-            return $name;
-        }
-        
-        // Normal property lookup
-        if (isset($translations[$propertySnake])) {
-            $name = $translations[$propertySnake];
-            
-            // Prepend location if not MAIN
-            if ($location !== null && strtoupper($location) !== 'MAIN') {
-                return ucfirst(strtolower($location)) . ' ' . $name;
-            }
-            
-            return $name;
-        }
-        
-        // Fallback: Use callback translation or humanize
-        $fallbackName = $this->humanize($property, $location);
-        return $this->translate($fallbackName);
-    }
-    
-    /**
-     * Convert snake_case or camelCase to readable format
-     * 
-     * @param string $text
-     * @param string|null $location
-     * @return string
-     */
-    private function humanize(string $text, ?string $location = null): string
-    {
-        // Convert camelCase to snake_case first
-        $text = preg_replace('/([a-z])([A-Z])/', '$1_$2', $text) ?? $text;
-        
-        // Replace underscores with spaces
-        $text = str_replace('_', ' ', $text);
-        
-        // Capitalize words
-        $readable = ucwords(strtolower($text));
-        
-        // Prepend location
-        if ($location !== null && strtoupper($location) !== 'MAIN') {
-            return ucfirst(strtolower($location)) . ' ' . $readable;
-        }
-        
-        return $readable;
-    }
-    
-    /**
-     * Set translation callback for translating property names
-     *
-     * @param callable $callback Function that takes a string and returns translated string
-     */
-    public function setTranslateCallback(callable $callback): void
-    {
-        $this->translateCallback = $callback;
-    }
-
-    /**
-     * Translate a string using the callback or return as-is
-     *
-     * @param string $text Text to translate
-     * @return string Translated text or original if no callback set
-     */
-    private function translate(string $text): string
-    {
-        if ($this->translateCallback !== null) {
-            return ($this->translateCallback)($text);
-        }
-        return $text;
     }
 }

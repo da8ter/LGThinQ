@@ -187,8 +187,9 @@ class CapabilityProfileExtractor
      */
     public function getBestLabel(array $labels): string
     {
-        if (isset($labels['de']) && is_string($labels['de'])) { return (string)$labels['de']; }
-        if (isset($labels['en']) && is_string($labels['en'])) { return (string)$labels['en']; }
+        foreach ([ThinQNaming::systemLanguage(), 'en'] as $language) {
+            if (isset($labels[$language]) && is_string($labels[$language])) { return $labels[$language]; }
+        }
         foreach ($labels as $v) {
             if (is_string($v)) { return (string)$v; }
         }
