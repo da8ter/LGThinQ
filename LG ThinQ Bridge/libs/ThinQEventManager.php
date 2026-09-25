@@ -36,7 +36,12 @@ final class ThinQEventManager
             $this->repository->updateExpiry($deviceId, ThinQClock::now() + ($ttl * 3600), $this->config->clientId);
             return true;
         } catch (Throwable $e) {
-            @IPS_LogMessage('LG ThinQ Event', 'Subscribe error: ' . $e->getMessage());
+            // Retry after an hour; only the first failure of a series goes to the message log.
+            $entry = $this->repository->getAll()[$deviceId] ?? [];
+            if (!isset($entry['failedSince'])) {
+                @IPS_LogMessage('LG ThinQ Event', 'Subscribe error: ' . $e->getMessage());
+            }
+            $this->repository->update($deviceId, ['failedSince' => (int)($entry['failedSince'] ?? ThinQClock::now()), 'retryAt' => ThinQClock::now() + 3600]);
             return false;
         }
     }
@@ -54,11 +59,24 @@ final class ThinQEventManager
         return $ok;
     }
 
-    public function renewExpiring(): void
+    /**
+     * Renews what is due for the given devices (the Device instances of this Bridge). Entries of
+     * other devices are no longer renewed and are dropped once they have expired.
+     *
+     * @param array<int, string> $deviceIds
+     */
+    public function renewExpiring(array $deviceIds): void
     {
         foreach ($this->repository->getAll() as $deviceId => $entry) {
             $deviceId = (string)$deviceId;
-            if ($deviceId !== '' && $this->isDue(is_array($entry) ? $entry : null)) {
+            $entry = is_array($entry) ? $entry : [];
+            if (!in_array($deviceId, $deviceIds, true)) {
+                if ((int)($entry['expiresAt'] ?? 0) <= ThinQClock::now()) {
+                    $this->repository->remove($deviceId);
+                }
+                continue;
+            }
+            if ($this->isDue($entry)) {
                 $this->subscribe($deviceId, true);
             }
         }
@@ -75,6 +93,9 @@ final class ThinQEventManager
     {
         if ($entry === null) {
             return true;
+        }
+        if ((int)($entry['retryAt'] ?? 0) > ThinQClock::now()) {
+            return false;
         }
         $window = min($this->config->normalizedEventRenewLeadMinutes() * 60 + self::CHECK_PERIOD, intdiv($this->config->normalizedEventTtlHours() * 3600, 2));
         return (int)($entry['expiresAt'] ?? 0) - ThinQClock::now() <= $window || (string)($entry['clientId'] ?? '') !== $this->config->clientId;

@@ -106,6 +106,26 @@ check(array_map(static fn(array $r): string => $r['method'] . ' ' . $r['path'], 
 check(LGTQ_UnsubscribeDevice(World::$bridge, $washer, true, true) === true && World::$cloud->eventSubs === [] && World::$cloud->pushSubs === [], 'UnsubscribeDevice räumt beide Abos in der Cloud');
 check(json_decode((string)World::attr(World::$bridge, 'EventSubscriptions'), true) === [], 'und in der Bridge');
 
+section('Abos folgen den Geräteinstanzen');
+World::start();
+[$w1, $id1] = World::example('washer');
+[$w2, $id2] = World::example('dryer');
+IPS_DeleteInstance($w2);
+World::quiet();
+Kernel::advance(25 * 3600);
+$renewed = array_map(static fn(array $r): string => $r['path'], World::$cloud->calls('POST event/{id}/subscribe'));
+check(in_array('event/' . $id1 . '/subscribe', $renewed, true) && !in_array('event/' . $id2 . '/subscribe', $renewed, true), 'erneuert wird nur, was noch eine Geräteinstanz hat');
+check(!isset(json_decode((string)World::attr(World::$bridge, 'EventSubscriptions'), true)[$id2]), 'das Abo des gelöschten Geräts verfällt und verschwindet aus der Bridge');
+World::start();
+World::$cloud->fail('POST event/{id}/subscribe', 500, '', -1);
+[$w3, $id3] = World::example('washer');
+Kernel::advance(3 * 3600);
+$attempts = count(World::$cloud->calls('POST event/{id}/subscribe'));
+check($attempts >= 3 && $attempts <= 5 && count(World::logLines('/Subscribe error/')) === 1, 'dauerhaft fehlschlagendes Abo: stündlich neu versucht, nur einmal im Meldungsprotokoll (' . $attempts . ' Versuche)');
+World::$cloud->faults = [];
+Kernel::advance(3600);
+check(isset(World::$cloud->activeEventSubs()[$id3]), 'nach der Störung holt die Erneuerung das Abo nach');
+
 section('MQTT-Routing');
 [$dev, $did] = World::example('water_heater');
 World::quiet();

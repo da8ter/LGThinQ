@@ -24,6 +24,7 @@ class LGThinQBridge extends IPSModule
     private const DATA_FLOW_GUID = '{A1F438B3-2A68-4A2B-8FDB-7460F1B8B854}';
     private const CHILD_INTERFACE_GUID = '{5E9D1B64-0F44-4F21-9D74-09C5BB90FB2F}';
     private const MQTT_MODULE_GUID = '{F7A0DD2E-7684-95C0-64C2-D2A9DC47577B}';
+    private const DEVICE_MODULE_GUID = '{B5CF9E2D-7B7C-4A0A-9C0E-7E5A0B8E2E9A}';
 
     private ?ThinQBridgeConfig $config = null;
     private ?ThinQHttpClient $httpClient = null;
@@ -400,26 +401,45 @@ class LGThinQBridge extends IPSModule
     public function RenewEvents(): void
     {
         $this->ensureBooted();
+        // Subscriptions follow the Device instances of this Bridge.
+        $deviceIds = $this->childDeviceIds();
         try {
-            $this->eventManager->renewExpiring();
+            $this->eventManager->renewExpiring($deviceIds);
         } catch (Throwable $e) {
             $this->SendDebug('RenewEvents', $e->getMessage(), 0);
         }
+        // A device whose own subscription never succeeded gets one now.
+        foreach (array_diff($deviceIds, array_map('strval', array_keys($this->subscriptionRepository->getAll()))) as $deviceId) {
+            $this->trySubscribeDevice($deviceId, true, true);
+        }
 
         // Push subscriptions do not expire; re-assert them once a day as a safety net.
-        if (ThinQClock::now() - (int)$this->ReadAttributeInteger('PushRegisteredAt') >= 86400) {
-            $deviceIds = array_filter(array_map('strval', array_keys($this->subscriptionRepository->getAll())), static fn(string $id): bool => $id !== '');
-            if ($deviceIds !== []) {
-                $this->registerPushClient(true);
-                foreach ($deviceIds as $deviceId) {
-                    try {
-                        $this->subscribePush($deviceId, true);
-                    } catch (Throwable $e) {
-                        $this->SendDebug('RenewEvents', 'Push renew failed for ' . $deviceId . ': ' . $e->getMessage(), 0);
-                    }
+        if ($deviceIds !== [] && ThinQClock::now() - (int)$this->ReadAttributeInteger('PushRegisteredAt') >= 86400) {
+            $this->registerPushClient(true);
+            foreach ($deviceIds as $deviceId) {
+                try {
+                    $this->subscribePush($deviceId, true);
+                } catch (Throwable $e) {
+                    $this->SendDebug('RenewEvents', 'Push renew failed for ' . $deviceId . ': ' . $e->getMessage(), 0);
                 }
             }
         }
+    }
+
+    /** @return array<int, string> DeviceIDs of the LG ThinQ Device instances connected to this Bridge */
+    private function childDeviceIds(): array
+    {
+        $ids = [];
+        foreach (IPS_GetInstanceListByModuleID(self::DEVICE_MODULE_GUID) as $id) {
+            $info = @IPS_GetInstance($id);
+            if (is_array($info) && (int)($info['ConnectionID'] ?? 0) === $this->InstanceID) {
+                $deviceId = trim((string)@IPS_GetProperty($id, 'DeviceID'));
+                if ($deviceId !== '') {
+                    $ids[] = $deviceId;
+                }
+            }
+        }
+        return array_values(array_unique($ids));
     }
 
     public function SubscribeDevice(string $DeviceID, bool $Push = true, bool $Event = true): bool

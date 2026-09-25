@@ -41,6 +41,14 @@ final class ThinQEventSubscriptionRepository
         $this->saveAll($subs);
     }
 
+    /** @param array<string, mixed> $fields merged into the entry of the device */
+    public function update(string $deviceId, array $fields): void
+    {
+        $subs = $this->getAll();
+        $subs[$deviceId] = $fields + (is_array($subs[$deviceId] ?? null) ? $subs[$deviceId] : []);
+        $this->saveAll($subs);
+    }
+
     public function remove(string $deviceId): void
     {
         $subs = $this->getAll();
