@@ -11,18 +11,13 @@ declare(strict_types=1);
  */
 class ThinQDeviceUtil
 {
-    private int $instanceId;
-
-    public function __construct(
-        private IPSModule $module,
-        int $instanceId
-    ) {
-        $this->instanceId = $instanceId;
+    public function __construct(private ThinQModuleContext $ctx)
+    {
     }
 
     public function setValueByVarType(string $ident, mixed $value): void
     {
-        $vid = (int)@IPS_GetObjectIDByIdent($ident, $this->instanceId);
+        $vid = (int)@IPS_GetObjectIDByIdent($ident, $this->ctx->instanceId);
         if ($vid <= 0) {
             return;
         }
@@ -115,7 +110,7 @@ class ThinQDeviceUtil
 
     public function logThrowable(string $context, \Throwable $e): void
     {
-        $this->module->publicSendDebug($context, $e->getMessage(), 0);
+        $this->ctx->debug($context, $e->getMessage());
     }
 
     public function deepMerge(array $base, array $patch): array

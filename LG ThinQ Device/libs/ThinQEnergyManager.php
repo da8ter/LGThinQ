@@ -18,8 +18,7 @@ class ThinQEnergyManager
     private $applyPresentationCallback;
 
     public function __construct(
-        private IPSModule $module,
-        private int $instanceId,
+        private ThinQModuleContext $ctx,
         callable $sendActionCallback,
         callable $getVarIdCallback,
         callable $applyPresentationCallback
@@ -40,14 +39,14 @@ class ThinQEnergyManager
             $data = json_decode((string)$raw, true);
             return is_array($data) ? $data : null;
         } catch (\Throwable $e) {
-            $this->module->publicSendDebug('FetchEnergyProfile', 'Failed: ' . $e->getMessage(), 0);
+            $this->ctx->debug('FetchEnergyProfile', 'Failed: ' . $e->getMessage());
             return preg_match('/API error 1221\b/', $e->getMessage()) === 1 ? [] : null;
         }
     }
 
     public function getEnergyProperties(): array
     {
-        $raw = $this->module->publicReadAttributeString('EnergyProfile');
+        $raw = $this->ctx->attributeString('EnergyProfile');
         if ($raw === '') {
             return [];
         }
@@ -75,11 +74,11 @@ class ThinQEnergyManager
     {
         $energyProps = $this->getEnergyProperties();
         $hasEnergy = !empty($energyProps);
-        $this->module->publicSendDebug('Energy', sprintf('Energy properties: %s', $hasEnergy ? implode(', ', $energyProps) : 'none'), 0);
+        $this->ctx->debug('Energy', sprintf('Energy properties: %s', $hasEnergy ? implode(', ', $energyProps) : 'none'));
 
-        $this->module->publicMaintainVariable('ENERGY_YESTERDAY', $this->module->publicTranslate('Energy Yesterday'), VARIABLETYPE_FLOAT, '', 900, $hasEnergy);
-        $this->module->publicMaintainVariable('ENERGY_THIS_MONTH', $this->module->publicTranslate('Energy This Month'), VARIABLETYPE_FLOAT, '', 901, $hasEnergy);
-        $this->module->publicMaintainVariable('ENERGY_LAST_MONTH', $this->module->publicTranslate('Energy Last Month'), VARIABLETYPE_FLOAT, '', 902, $hasEnergy);
+        $this->ctx->maintainVariable('ENERGY_YESTERDAY', $this->ctx->t('Energy Yesterday'), VARIABLETYPE_FLOAT, '', 900, $hasEnergy);
+        $this->ctx->maintainVariable('ENERGY_THIS_MONTH', $this->ctx->t('Energy This Month'), VARIABLETYPE_FLOAT, '', 901, $hasEnergy);
+        $this->ctx->maintainVariable('ENERGY_LAST_MONTH', $this->ctx->t('Energy Last Month'), VARIABLETYPE_FLOAT, '', 902, $hasEnergy);
 
         if ($hasEnergy) {
             foreach (['ENERGY_YESTERDAY', 'ENERGY_THIS_MONTH', 'ENERGY_LAST_MONTH'] as $ident) {
@@ -98,12 +97,12 @@ class ThinQEnergyManager
     /** The timer is registered in the module's Create(); here it is only switched on (every 6 h) or off. */
     public function scheduleEnergyTimer(): void
     {
-        $this->module->publicSetTimerInterval('UpdateEnergy', empty($this->getEnergyProperties()) ? 0 : 6 * 3600 * 1000);
+        $this->ctx->setTimerInterval('UpdateEnergy', empty($this->getEnergyProperties()) ? 0 : 6 * 3600 * 1000);
     }
 
     public function execute(): void
     {
-        $deviceId = trim((string)$this->module->publicReadPropertyString('DeviceID'));
+        $deviceId = trim((string)$this->ctx->propertyString('DeviceID'));
         if ($deviceId === '') {
             return;
         }
@@ -113,7 +112,7 @@ class ThinQEnergyManager
             return;
         }
 
-        $this->module->publicSendDebug('Energy', 'Fetching energy usage data...', 0);
+        $this->ctx->debug('Energy', 'Fetching energy usage data...');
 
         $today = (new \DateTime())->setTimestamp(ThinQClock::now());
         $yesterday = (clone $today)->modify('-1 day');
@@ -143,8 +142,8 @@ class ThinQEnergyManager
             if ($vid > 0) { @SetValueFloat($vid, $lastMonthWh); }
         }
 
-        $this->module->publicSendDebug('Energy', sprintf('Updated: yesterday=%.0f Wh, thisMonth=%.0f Wh, lastMonth=%.0f Wh',
-            $yesterdayWh ?? -1, $thisMonthWh ?? -1, $lastMonthWh ?? -1), 0);
+        $this->ctx->debug('Energy', sprintf('Updated: yesterday=%.0f Wh, thisMonth=%.0f Wh, lastMonth=%.0f Wh',
+            $yesterdayWh ?? -1, $thisMonthWh ?? -1, $lastMonthWh ?? -1));
     }
 
     private function fetchEnergyUsage(string $deviceId, string $property, string $period, string $startDate, string $endDate): ?float
@@ -173,7 +172,7 @@ class ThinQEnergyManager
             }
             return $total;
         } catch (\Throwable $e) {
-            $this->module->publicSendDebug('FetchEnergyUsage', sprintf('Failed (%s %s-%s): %s', $period, $startDate, $endDate, $e->getMessage()), 0);
+            $this->ctx->debug('FetchEnergyUsage', sprintf('Failed (%s %s-%s): %s', $period, $startDate, $endDate, $e->getMessage()));
             return null;
         }
     }

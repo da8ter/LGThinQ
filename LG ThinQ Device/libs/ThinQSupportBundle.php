@@ -22,7 +22,7 @@ class ThinQSupportBundle
     private $getEngineCallback;
 
     public function __construct(
-        private IPSModule $module,
+        private ThinQModuleContext $ctx,
         callable $anonymizeCallback,
         callable $flattenCallback,
         callable $sendActionCallback,
@@ -42,8 +42,8 @@ class ThinQSupportBundle
             $zipData = $this->buildZip();
             return 'data:application/zip;base64,' . base64_encode($zipData);
         } catch (\Throwable $e) {
-            $this->module->publicSendDebug('UIExportSupportBundle', $e->getMessage(), 0);
-            return 'data:text/plain,' . rawurlencode($this->module->publicTranslate('Error creating support package') . ': ' . $e->getMessage());
+            $this->ctx->debug('UIExportSupportBundle', $e->getMessage());
+            return 'data:text/plain,' . rawurlencode($this->ctx->t('Error creating support package') . ': ' . $e->getMessage());
         }
     }
 
@@ -60,7 +60,7 @@ class ThinQSupportBundle
         }
 
         // 00_meta.json
-        $instanceId = $this->module->publicGetInstanceId();
+        $instanceId = $this->ctx->instanceId;
         $meta = [
             'module'        => 'LG ThinQ Device',
             'instanceId'    => $instanceId,
@@ -72,7 +72,7 @@ class ThinQSupportBundle
         $zip->addFromString('00_meta.json', json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 
         // Determine DeviceID
-        $deviceId = trim((string)$this->module->publicReadPropertyString('DeviceID'));
+        $deviceId = trim((string)$this->ctx->propertyString('DeviceID'));
 
         // 10_device_info.json (from GetDevices, anonymized)
         $devices = [];
@@ -120,7 +120,7 @@ class ThinQSupportBundle
             // ignore, fallback to LastStatus
         }
         if (empty($status)) {
-            $ls = (string)$this->module->publicReadAttributeString('LastStatus');
+            $ls = (string)$this->ctx->attributeString('LastStatus');
             $ld = json_decode($ls, true);
             $status = is_array($ld) ? $ld : [];
         }
@@ -156,7 +156,7 @@ class ThinQSupportBundle
         // 50_capabilities_summary.json
         $summary = [];
         try {
-            $type = trim((string)$this->module->publicReadAttributeString('DeviceType'));
+            $type = trim((string)$this->ctx->attributeString('DeviceType'));
             if ($type === '' && is_array($profileExtracted)) {
                 $type = (string)($profileExtracted['deviceType'] ?? '');
             }

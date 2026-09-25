@@ -141,7 +141,7 @@ check($wrong === [], sprintf('Region je Land wie LGs SDK (%d Länder)', $total) 
 World::start(['CountryCode' => 'XX']);
 check(ThinQBridgeConfig::resolveRegion('XX') === '' && Kernel::$instances[World::$bridge]['status'] === IS_INACTIVE, 'unbekanntes Land: keine Region, die Bridge meldet Status 104 statt still KIC zu nehmen');
 
-section('N4 Exportierte Funktionen');
+section('N4 Exportierte Funktionen (behoben)');
 // The module API: form buttons, script functions and the timer targets (RenewEvents, InitialSetup, UpdateEnergy).
 $api = ['lgtq_controldevice', 'lgtq_getdeviceprofile', 'lgtq_getdevicestatus', 'lgtq_getdevices', 'lgtq_renewall', 'lgtq_renewevents',
     'lgtq_subscribeall', 'lgtq_subscribedevice', 'lgtq_syncdevices', 'lgtq_testconnection', 'lgtq_uigeneratemqttclientcerts',
@@ -151,8 +151,7 @@ $api = ['lgtq_controldevice', 'lgtq_getdeviceprofile', 'lgtq_getdevicestatus', '
 $exported = array_map('strtolower', Kernel::exportedFunctions());
 check(array_diff($api, $exported) === [], 'Modul-API bleibt als LGTQ_-/LGTQD_-Funktionen erhalten');
 $internal = array_values(array_diff($exported, $api));
-befund('N4', $internal === [], 'Nur die Modul-API erscheint als LGTQ_-/LGTQD_-Funktion',
-    sprintf('%d weitere Funktionen, u. a. %s', count($internal), implode(', ', array_slice($internal, 0, 4))));
+check($internal === [], 'nur die Modul-API erscheint als LGTQ_-/LGTQD_-Funktion' . ($internal === [] ? '' : sprintf(' (%d weitere, u. a. %s)', count($internal), implode(', ', array_slice($internal, 0, 4)))));
 World::start();
 World::example('washer');
 World::liveAc();

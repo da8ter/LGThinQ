@@ -846,7 +846,7 @@ class LGThinQDevice extends IPSModule
     private function getProfileManager(): ThinQDeviceProfileManager
     {
         return new ThinQDeviceProfileManager(
-            $this,
+            $this->moduleContext(),
             fn(string $a, array $p = []) => $this->sendAction($a, $p),
             fn(array $a, string $p = '') => $this->flatten($a, $p)
         );
@@ -874,7 +874,7 @@ class LGThinQDevice extends IPSModule
 
     private function util(): ThinQDeviceUtil
     {
-        return new ThinQDeviceUtil($this, $this->InstanceID);
+        return new ThinQDeviceUtil($this->moduleContext());
     }
 
     private function setValueByVarType(string $ident, mixed $value): void
@@ -900,7 +900,7 @@ class LGThinQDevice extends IPSModule
     public function UIExportSupportBundle(): string
     {
         $bundle = new ThinQSupportBundle(
-            $this,
+            $this->moduleContext(),
             fn(array $a) => $this->anonymizeArray($a),
             fn(array $a, string $p = '') => $this->flatten($a, $p),
             fn(string $a, array $p = []) => $this->sendAction($a, $p),
@@ -922,7 +922,7 @@ class LGThinQDevice extends IPSModule
     private function energy(): ThinQEnergyManager
     {
         return new ThinQEnergyManager(
-            $this, $this->InstanceID,
+            $this->moduleContext(),
             fn(string $a, array $p = []) => $this->sendAction($a, $p),
             fn(string $ident) => $this->getVarId($ident),
             fn(int $vid, string $ident, array $pres, array $fp, string $type) => $this->applyPresentation($vid, $ident, $pres, $fp, $type)
