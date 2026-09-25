@@ -47,23 +47,24 @@ check(($l = $leaks()) === [], 'Debug an, MQTT-Einrichtung: kein Schlüssel, Zert
 LGTQ_UIGenerateMQTTClientCerts(World::$bridge);
 check(($l = $leaks()) === [], 'Debug an, Zertifikats-ZIP: kein Schlüssel oder PAT im Klartext' . ($l === [] ? '' : ' (' . implode(', ', $l) . ')'));
 
-section('F2 Topicfilter');
+section('F2 Topicfilter (behoben)');
 World::start([], false);
 [$dev, $did] = World::example('water_heater');
 World::quiet();
 World::$cloud->deviceReports($did, ['temperature' => ['currentTemperature' => 47]]);
 World::flushMqtt();
-$template = World::value($dev, 'TEMPERATURE_CURRENT_TEMPERATURE') === 47.0;
+check(World::value($dev, 'TEMPERATURE_CURRENT_TEMPERATURE') === 47.0, 'Standardfilter app/clients/{ClientID}/push: {ClientID} wird eingesetzt, der Push kommt an');
 IPS_SetProperty(World::$bridge, 'MQTTTopicFilter', 'app/clients/+/push');
 IPS_ApplyChanges(World::$bridge);
 World::quiet();
 World::$cloud->deviceReports($did, ['temperature' => ['currentTemperature' => 48]]);
 World::flushMqtt();
-$plus = World::value($dev, 'TEMPERATURE_CURRENT_TEMPERATURE') === 48.0;
-$warn = World::warningsLike('/preg_match/');
-befund('F2', $template && $plus && $warn === [], 'Pushes kommen mit dem Standardfilter {ClientID} und mit + an',
-    sprintf('Standard "app/clients/{ClientID}/push": %s; "app/clients/+/push": %s%s', $template ? 'kommt an' : 'verworfen',
-        $plus ? 'kommt an' : 'verworfen', $warn !== [] ? ' — ' . $warn[0] : ''));
+check(World::value($dev, 'TEMPERATURE_CURRENT_TEMPERATURE') === 48.0 && World::warningsLike('/preg_match/') === [], 'Filter mit +: der Push kommt an, ohne Warnung');
+$match = [['app/clients/+/push', 'app/clients/Symcon1/push', true], ['app/clients/#', 'app/clients', true], ['app/clients/#', 'app/clients/a/b', true],
+    ['app/clients/+/push', 'app/clients/a/b/push', false], ['app/clients/*/#', 'app/clients/Symcon1/push', true],
+    ['app/clients/Symcon1/push', 'app/clients/Symcon2/push', false], ['app/clients/symcon1/push', 'app/clients/Symcon1/push', true]];
+$wrong = array_filter($match, static fn(array $m): bool => ThinQMqttRouter::topicMatches($m[0], $m[1]) !== $m[2]);
+check($wrong === [], 'MQTT-Platzhalter + und # ebenenweise, * wie +' . ($wrong === [] ? '' : ': ' . json_encode(array_values($wrong))));
 
 section('F4 Erneuerung der Event-Abos');
 World::start();

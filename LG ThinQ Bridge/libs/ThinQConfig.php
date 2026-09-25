@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 final class ThinQBridgeConfig
 {
+    /** LG publishes to app/clients/<client id>/push; {ClientID} is filled in at runtime. */
+    public const DEFAULT_TOPIC = 'app/clients/{ClientID}/push';
+
     public string $accessToken;
     public string $countryCode;
     public string $clientId;
@@ -92,6 +95,17 @@ final class ThinQBridgeConfig
     public function isValid(): bool
     {
         return empty($this->validate());
+    }
+
+    /** The MQTT topic filter with {ClientID} filled in; empty means no filtering. */
+    public function topicFilter(): string
+    {
+        return self::expandTopic($this->mqttTopicFilter, $this->clientId);
+    }
+
+    public static function expandTopic(string $filter, string $clientId): string
+    {
+        return str_replace('{ClientID}', $clientId, trim($filter));
     }
 
     public function baseUrl(): string

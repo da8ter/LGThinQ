@@ -43,8 +43,8 @@ final class ThinQMqttRouter
             return;
         }
 
-        $filter = (string)$this->config->mqttTopicFilter;
-        if ($filter !== '' && !$this->topicMatches($topic, $filter)) {
+        $filter = $this->config->topicFilter();
+        if ($filter !== '' && !self::topicMatches($filter, $topic)) {
             if ($this->config->debug) {
                 if (method_exists($this->module, 'DebugLog')) {
                     $this->module->DebugLog('MQTT', 'Filter miss: topic=' . $topic . ' filter=' . $filter);
@@ -148,14 +148,25 @@ final class ThinQMqttRouter
         return $env;
     }
 
-    private function topicMatches(string $topic, string $filter): bool
+    /**
+     * MQTT filter match, level by level: "+" (and the older "*") stands for one level, "#" for the
+     * rest including the parent level. Levels compare case-insensitively, as before.
+     */
+    public static function topicMatches(string $filter, string $topic): bool
     {
-        $filter = trim($filter);
-        if ($filter === '') {
-            return true;
+        $levels = explode('/', $filter);
+        $parts = explode('/', $topic);
+        foreach ($levels as $i => $level) {
+            if ($level === '#') {
+                return $i === count($levels) - 1;
+            }
+            if (!array_key_exists($i, $parts)) {
+                return false;
+            }
+            if ($level !== '+' && $level !== '*' && strcasecmp($level, $parts[$i]) !== 0) {
+                return false;
+            }
         }
-        $escaped = preg_quote($filter, '/');
-        $pattern = '/^' . str_replace(['\\*', '\\+', '\\#'], ['.*', '[^/]+', '.*'], $escaped) . '$/i';
-        return (bool)preg_match($pattern, $topic);
+        return count($levels) === count($parts);
     }
 }
