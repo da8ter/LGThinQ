@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/ThinQHttpTransport.php';
+require_once __DIR__ . '/ThinQRedactor.php';
 
 final class ThinQHttpClient
 {
@@ -19,13 +20,11 @@ final class ThinQHttpClient
         $this->transport = new ThinQHttpTransport();
     }
 
+    /** HTTP traces go to the instance debug only (never to the message log), with secrets redacted. */
     private function dbg(string $tag, string $message): void
     {
-        // Mirror HTTP logs to the Bridge instance debug if available; otherwise fall back to kernel log
-        if (method_exists($this->module, 'DebugLog')) {
-            $this->module->DebugLog('HTTP', $tag . ': ' . $message);
-        } else {
-            @IPS_LogMessage('LG ThinQ HTTP', $tag . ': ' . $message);
+        if ($this->config->debug && method_exists($this->module, 'DebugLog')) {
+            $this->module->DebugLog('HTTP', $tag . ': ' . ThinQRedactor::text($message, [$this->config->accessToken, $this->apiKey]));
         }
     }
 
@@ -62,17 +61,10 @@ final class ThinQHttpClient
             ? json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
             : '';
 
-        if ($this->config->debug) {
-            @IPS_LogMessage('LG ThinQ HTTP', 'Request: ' . $method . ' ' . $url);
-            @IPS_LogMessage('LG ThinQ HTTP', 'Headers: ' . json_encode($headers, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-            if ($method !== 'GET') {
-                @IPS_LogMessage('LG ThinQ HTTP', 'Body: ' . $body);
-            }
-            $this->dbg('Request', $method . ' ' . $url);
-            $this->dbg('Headers', json_encode($headers, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-            if ($method !== 'GET') {
-                $this->dbg('Body', (string)$body);
-            }
+        $this->dbg('Request', $method . ' ' . $url);
+        $this->dbg('Headers', (string)json_encode(ThinQRedactor::headers($headers), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        if ($method !== 'GET') {
+            $this->dbg('Body', ThinQRedactor::snippet((string)$body));
         }
 
         $reply = $this->transport->send($method, $url, $headers, $method !== 'GET' ? $body : null, 15);
@@ -84,14 +76,8 @@ final class ThinQHttpClient
         $statusHeader = $reply['statusLine'];
         $statusCode = $reply['status'];
 
-        if ($this->config->debug) {
-            @IPS_LogMessage('LG ThinQ HTTP', 'ResponseStatus: ' . $statusCode . ' HeaderLine: ' . $statusHeader);
-            // Log a compact, truncated response body for diagnostics
-            $snippet = substr(preg_replace('/\s+/', ' ', (string)$result), 0, 1000);
-            @IPS_LogMessage('LG ThinQ HTTP', 'ResponseBody: ' . $snippet . (strlen($result) > 1000 ? ' ...[truncated]' : ''));
-            $this->dbg('ResponseStatus', $statusCode . ' HeaderLine: ' . $statusHeader);
-            $this->dbg('ResponseBody', $snippet . (strlen($result) > 1000 ? ' ...[truncated]' : ''));
-        }
+        $this->dbg('ResponseStatus', $statusCode . ' HeaderLine: ' . $statusHeader);
+        $this->dbg('ResponseBody', ThinQRedactor::snippet((string)$result));
 
         if ($statusCode === 204 || trim($result) === '') {
             return [];
@@ -99,10 +85,7 @@ final class ThinQHttpClient
 
         $decoded = json_decode($result, true);
         if ($statusCode >= 400) {
-            if ($this->config->debug) {
-                @IPS_LogMessage('LG ThinQ HTTP', 'HTTP error status ' . $statusCode . ' for URL: ' . $url);
-                $this->dbg('Error', 'HTTP error status ' . $statusCode . ' for URL: ' . $url);
-            }
+            $this->dbg('Error', 'HTTP error status ' . $statusCode . ' for URL: ' . $url);
             if (is_array($decoded) && isset($decoded['error'])) {
                 $code = $decoded['error']['code'] ?? 'unknown';
                 $message = $decoded['error']['message'] ?? 'unknown';
@@ -116,10 +99,7 @@ final class ThinQHttpClient
             return [];
         }
 
-        if ($this->config->debug) {
-            @IPS_LogMessage('LG ThinQ HTTP', 'DecodedKeys: ' . implode(',', array_keys($decoded)));
-            $this->dbg('DecodedKeys', implode(',', array_keys($decoded)));
-        }
+        $this->dbg('DecodedKeys', implode(',', array_keys($decoded)));
 
         return $decoded['response'] ?? $decoded;
     }
