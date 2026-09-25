@@ -120,15 +120,7 @@ function readCoverage(int $inst): int
     $status = json_decode((string)World::attr($inst, 'LastStatus'), true) ?: [];
     $engine = new CapabilityEngine($inst, dirname(__DIR__) . '/LG ThinQ Device');
     $engine->buildPlan((string)World::attr($inst, 'DeviceType'), $profile, $status);
-    $util = new ThinQDeviceUtil(Kernel::$instances[$inst]['object'], $inst);
-    $vm = new CapabilityVarManager($engine->getDescriptors(), $util->flatten($profile), $util->flatten($status));
-    $n = 0;
-    foreach ($engine->getDescriptors() as $cap) {
-        if (!in_array($cap['ident'] ?? '', ['ERROR_LAST', 'PUSH_LAST'], true) && $vm->readValue($cap, $util->flatten($status)) !== null) {
-            $n++;
-        }
-    }
-    return $n;
+    return count(array_diff_key($engine->readValues($status), array_flip(['ERROR_LAST', 'PUSH_LAST'])));
 }
 
 $types = array_keys(FakeThinQCloud::examples()['devices']);

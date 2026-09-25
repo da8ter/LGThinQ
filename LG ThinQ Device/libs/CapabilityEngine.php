@@ -139,6 +139,26 @@ class CapabilityEngine
         return array_values($this->caps);
     }
 
+    /**
+     * Values the current plan reads from a status, keyed by ident (idents without a value are left out).
+     * @param array<string, mixed> $status
+     * @return array<string, mixed>
+     */
+    public function readValues(array $status): array
+    {
+        $flat = $this->flatten($status);
+        $out = [];
+        foreach ($this->caps as $cap) {
+            $ident = (string)($cap['ident'] ?? '');
+            if ($ident === '') continue;
+            $val = $this->readValue($cap, $flat);
+            if ($val !== null) {
+                $out[$ident] = $val;
+            }
+        }
+        return $out;
+    }
+
     /** @return array<int, string> idents (with message) that failed to create in the last ensureVariables() run */
     public function getCreateFailures(): array
     {
