@@ -3,10 +3,11 @@
 declare(strict_types=1);
 
 /*
- * Findings of the review from 25.09.2026, Bridge side, as open checks: befund() reports
- * OFFEN while the defect is there and BEHOBEN once it is gone (then turn it into check()).
- * IDs: F = the 15 reported findings, N = the ones cut by the 15-item cap, W = found while
- * building this bench. Device side: review_device_test.php.
+ * Findings of the review from 25.09.2026, Bridge side. All are fixed and each is a check() that
+ * fails if its defect comes back. IDs: F = the 15 reported findings, N = the ones cut by the
+ * 15-item cap, W = found while building this bench. Device side: review_device_test.php.
+ * A new finding starts as befund() (OFFEN until fixed, then BEHOBEN; tests/run.sh --streng fails
+ * while one is open) and becomes a check() with its fix.
  */
 
 require __DIR__ . '/bootstrap.php';

@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 /*
- * Findings of the review from 25.09.2026, Device side, as open checks (see review_bridge_test.php
- * for the scheme). Every finding starts from a fresh world.
+ * Findings of the review from 25.09.2026, Device side, all fixed (see review_bridge_test.php for
+ * the scheme). Every finding starts from a fresh world.
  */
 
 require __DIR__ . '/bootstrap.php';
@@ -277,18 +277,17 @@ section('N6 Support-Paket (behoben)');
 $summary = json_decode($zip(LGTQD_UIExportSupportBundle($w), '50_capabilities_summary.json'), true);
 check(($summary['descriptorCount'] ?? 0) >= count(World::idents($w)) - 3, 'Support-Paket zählt die Fähigkeiten (' . json_encode($summary['descriptorCount'] ?? null) . ' bei ' . count(World::idents($w)) . ' Variablen)');
 
-section('N7 Regeln aus CLAUDE.md');
+section('N7 Regeln aus CLAUDE.md (behoben)');
 $root = dirname(__DIR__);
-$accepted = ['LG ThinQ Device/module.php' => 940, 'LG ThinQ Bridge/module.php' => 866, 'LG ThinQ Device/libs/CapabilityControlBuilder.php' => 692, 'LG ThinQ Bridge/libs/ThinQMqttSetupWizard.php' => 550];
 $long = [];
-foreach (array_merge(glob($root . '/*/module.php'), glob($root . '/*/libs/*.php'), glob($root . '/libs/*.php')) as $file) {
-    $rel = substr($file, strlen($root) + 1);
-    $lines = count(file($file));
-    if ($lines > max(500, $accepted[$rel] ?? 0)) {
-        $long[] = $rel . ' ' . $lines . (isset($accepted[$rel]) ? ' (angenommen ' . $accepted[$rel] . ')' : '');
+$sources = new RecursiveIteratorIterator(new RecursiveCallbackFilterIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
+    static fn(SplFileInfo $f): bool => !in_array($f->getFilename(), ['.claude', '.API References', '.planning', '.git'], true)));
+foreach ($sources as $file) {
+    if ($file->getExtension() === 'php' && ($lines = count(file($file->getPathname()))) > 500) {
+        $long[] = substr($file->getPathname(), strlen($root) + 1) . ' ' . $lines;
     }
 }
-befund('N7a', $long === [], 'Dateien bis 500 Zeilen (oder die in REQUIREMENTS.md angenommene Länge)', implode(', ', $long));
+check($long === [], 'jede PHP-Datei hat höchstens 500 Zeilen, ohne Ausnahmen (N7a)' . ($long === [] ? '' : ': ' . implode(', ', $long)));
 $profiles = [];
 foreach (array_merge(glob($root . '/*/module.php'), glob($root . '/*/libs/*.php'), glob($root . '/libs/*.php')) as $file) {
     if (preg_match_all("/'~[A-Za-z0-9.]+'/", (string)file_get_contents($file), $m)) {

@@ -11,6 +11,7 @@ require_once __DIR__ . '/libs/ThinQShape.php';
 require_once __DIR__ . '/libs/ThinQDeviceProfileManager.php';
 require_once __DIR__ . '/libs/ThinQDeviceUtil.php';
 require_once __DIR__ . '/libs/ThinQDeviceSetup.php';
+require_once __DIR__ . '/libs/ThinQDeviceStatus.php';
 require_once __DIR__ . '/libs/ThinQCleanup.php';
 
 class LGThinQDevice extends IPSModule
@@ -151,37 +152,8 @@ class LGThinQDevice extends IPSModule
         @$this->SetTimerInterval('InitialUpdateStatus', 0);
 
         try {
-            $payload = $this->sendAction('GetStatus', ['DeviceID' => $deviceId]);
-            $status = json_decode((string)$payload, true);
-            if (!is_array($status)) {
-                throw new Exception($this->t('Invalid status response'));
-            }
-
-            $status = ThinQShape::status($status);
-
-            if ($status === []) {
-                // An empty answer carries no state; keep the last known one instead of wiping it.
-                $this->SendDebug('UpdateStatus', 'Empty status response, keeping the last known status', 0);
-                return;
-            }
-
-            $encoded = json_encode($status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-            $this->WriteAttributeString('LastStatus', $encoded);
-
-            @SetValueString($this->getVarId('STATUS'), $encoded);
-            @SetValueInteger($this->getVarId('LASTUPDATE'), ThinQClock::now());
-
-            // CapabilityEngine: Werte anwenden
-            $engine = $this->prepareEngine();
-            if ($engine !== null) {
-                try {
-                    $engine->applyStatus($status);
-                } catch (\Throwable $e) {
-                    $this->logThrowable('UpdateStatus applyStatus', $e);
-                }
-            }
+            $this->deviceStatus()->update($deviceId);
         } catch (\Throwable $e) {
-
             $this->logThrowable('UpdateStatus', $e);
         }
     }
@@ -215,7 +187,7 @@ class LGThinQDevice extends IPSModule
         }
 
 
-        $engine = $this->prepareEngine();
+        $engine = $this->deviceStatus()->engine();
         if ($engine === null) {
             throw new Exception($this->t('Unknown action'));
         }
@@ -271,89 +243,10 @@ class LGThinQDevice extends IPSModule
         }
 
         if ($action === 'Push') {
-            // A push notification (e.g. WASHING_IS_COMPLETE) is not device state: PUSH_LAST only.
-            $code = trim((string)($buf['PushCode'] ?? ''));
-            if ($code !== '' && $this->getVarId('PUSH_LAST') > 0) {
-                $this->setValueByVarType('PUSH_LAST', $code);
-                @SetValueInteger($this->getVarId('LASTUPDATE'), ThinQClock::now());
-            }
-            return '';
+            $this->deviceStatus()->push((string)($buf['PushCode'] ?? ''));
+        } elseif (is_array($buf['Event'] ?? null)) {
+            $this->deviceStatus()->event($buf['Event']);
         }
-
-        $event = $buf['Event'] ?? null;
-        if (!is_array($event)) {
-            return '';
-        }
-
-        // Zones by location, element lists by selector (a report may carry just one compartment)
-        $event = ThinQShape::status($event);
-        $merged = ThinQShape::merge($this->readLastStatus(), $event);
-        $encoded = json_encode($merged, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        $this->WriteAttributeString('LastStatus', $encoded);
-        @SetValueString($this->getVarId('STATUS'), $encoded);
-        @SetValueInteger($this->getVarId('LASTUPDATE'), ThinQClock::now());
-
-        $profile = $this->readStoredProfile();
-        $type = trim((string)$this->ReadAttributeString('DeviceType'));
-
-        // Self-heal (runs BEFORE the profile guard, so it also covers the case where the
-        // cached profile/type are missing). A device with only the generic
-        // INFO/STATUS/LASTUPDATE variables never got its capability variables created.
-        // If the cached profile is available we rebuild from it (no API call); if it is
-        // missing (the initial GetProfile failed, e.g. the parent was not ready at create
-        // time) we re-run the full setup, which re-fetches the profile from the API.
-        // Throttled (selfHealCooldownElapsed) so a device stuck in this state does not
-        // hammer the API on every push.
-        if ($this->hasOnlyGenericVariables() || $profile === [] || $type === '') {
-            $this->SendDebug('ReceiveData', sprintf('self-heal check: type=%s profileEmpty=%s cooldown=%s',
-                $type !== '' ? $type : '(empty)', empty($profile) ? 'yes' : 'no',
-                $this->selfHealCooldownElapsed() ? 'elapsed' : 'active'), 0);
-            $hasParent = $this->HasActiveParent();
-            if ($this->selfHealCooldownElapsed() && $hasParent && trim((string)$this->ReadPropertyString('DeviceID')) !== '') {
-                $this->SetBuffer('SelfHealTs', (string)ThinQClock::now());
-                try {
-                    if (!empty($profile) && $type !== '') {
-                        $this->SendDebug('ReceiveData', 'Self-heal: recreating variables from cached profile', 0);
-                        $this->ensureDeviceVariablesWithPresentations($profile, $merged, $type);
-                    } else {
-                        $this->SendDebug('ReceiveData', 'Self-heal: profile/type missing -> full setup (re-fetch from API)', 0);
-                        $this->setup()->run();
-                    }
-                } catch (\Throwable $e) {
-                    $this->logThrowable('SelfHeal', $e);
-                }
-                // Refresh local copies for the value-apply below
-                $profile = $this->readStoredProfile();
-                $type = trim((string)$this->ReadAttributeString('DeviceType'));
-            }
-        }
-
-        // Keys of this report the profile does not list: one fresh profile; keys LG reports but never
-        // lists (AC airQualitySensor) are remembered, so they do not cost a profile call per push.
-        $needsSetup = false;
-        $unknown = !empty($profile) ? $this->unknownReportKeys($event, $profile) : [];
-        if ($unknown !== []) {
-            $this->SendDebug('ReceiveData', 'Report has keys the profile does not list (' . implode(', ', $unknown) . '), refreshing it', 0);
-            $freshProfile = $this->fetchProfileFromAPI();
-            if (!empty($freshProfile)) {
-                $profile = $freshProfile;
-                $this->WriteAttributeString('LastProfile', json_encode($profile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                $needsSetup = true;
-                $this->rememberUnprofiledKeys(array_keys(array_diff_key(array_flip($unknown), ThinQShape::profileKeys($profile))));
-            }
-        }
-
-        if ($type !== '' && !empty($profile)) {
-            $engine = $this->getCapabilityEngine();
-            $engine->buildPlan($type, $profile, $merged);
-            if ($needsSetup || $engine->missingStatusVariables() !== []) {
-                // New properties, or variables that only appear with a status value (timer SET)
-                $this->ensureDeviceVariablesWithPresentations($profile, $merged, $type);
-            } else {
-                $engine->applyStatus($merged);
-            }
-        }
-
         return '';
     }
 
@@ -370,44 +263,7 @@ class LGThinQDevice extends IPSModule
         ];
         
         // Suppress warning if parent has no active interface
-        $result = @$this->SendDataToParent(json_encode($packet));
-        if (!is_string($result)) {
-            return '';
-        }
-        $decoded = json_decode($result, true);
-        if (is_array($decoded)) {
-            if (($decoded['success'] ?? true) === false) {
-                $error = '';
-                if (isset($decoded['error'])) {
-                    $error = (string)$decoded['error'];
-                } elseif (isset($decoded['errors']) && is_array($decoded['errors'])) {
-                    $error = implode('; ', array_map('strval', $decoded['errors']));
-                } elseif (isset($decoded['message'])) {
-                    $error = (string)$decoded['message'];
-                }
-                if ($error === '') {
-                    $snippet = substr(preg_replace('/\s+/', ' ', (string)$result), 0, 200);
-                    $error = 'unknown error (payload: ' . $snippet . ')';
-                }
-                throw new Exception($error);
-            }
-            if (isset($decoded['devices'])) {
-                return json_encode($decoded['devices']);
-            }
-            if (isset($decoded['status'])) {
-                return json_encode($decoded['status']);
-            }
-            if (isset($decoded['profile'])) {
-                return json_encode($decoded['profile']);
-            }
-            if (isset($decoded['energyProfile'])) {
-                return json_encode($decoded['energyProfile']);
-            }
-            if (isset($decoded['energyData'])) {
-                return json_encode($decoded['energyData']);
-            }
-        }
-        return $result;
+        return ThinQDeviceUtil::bridgeResult(@$this->SendDataToParent(json_encode($packet)));
     }
 
 
@@ -426,49 +282,10 @@ class LGThinQDevice extends IPSModule
     }
 
 
-    private function ensureDeviceVariablesWithPresentations(array $profile, array $status, string $type): void
-    {
-        $this->setup()->ensureVariables($profile, $status, $type);
-    }
-
-    private function hasOnlyGenericVariables(): bool
-    {
-        return $this->setup()->hasOnlyGenericVariables();
-    }
-
-    /**
-     * Throttle for self-heal: at most one attempt per 5 minutes. A buffer, not an attribute: an
-     * attribute that did not exist yet (module updated without reload) made every push heal.
-     */
-    private function selfHealCooldownElapsed(): bool
-    {
-        return (ThinQClock::now() - (int)$this->GetBuffer('SelfHealTs')) >= 300;
-    }
-
-    private function prepareEngine(): ?CapabilityEngine
-    {
-        $profile = $this->readStoredProfile();
-        $type = trim((string)$this->ReadAttributeString('DeviceType'));
-        if ($type === '') {
-            return null;
-        }
-        $engine = $this->getCapabilityEngine();
-        // Build plan to load capabilities including auto-discovery
-        $status = $this->readLastStatus();
-        $engine->buildPlan($type, $profile, $status);
-        return $engine;
-    }
-
     private function fetchDeviceProfile(string $deviceId): array
     {
         return $this->getProfileManager()->fetchDeviceProfile($deviceId);
     }
-
-    private function resolveDeviceType(string $deviceId, array $profile): string
-    {
-        return $this->getProfileManager()->resolveDeviceType($deviceId, $profile);
-    }
-
 
     private function applyPresentation(int $vid, string $ident, array $presentation, array $flatProfile, string $type): void
     {
@@ -537,43 +354,6 @@ class LGThinQDevice extends IPSModule
         );
     }
 
-    private function readStoredProfile(): array
-    {
-        return $this->getProfileManager()->readStoredProfile();
-    }
-
-    /** @return array<int, string> "resource.property" keys of a report that neither the profile nor the remembered list knows */
-    private function unknownReportKeys(array $report, array $profile): array
-    {
-        $known = ThinQShape::profileKeys($profile) + array_fill_keys($this->unprofiledKeys(), true);
-        return array_keys(array_diff_key(ThinQShape::statusKeys($report), $known));
-    }
-
-    /** @return array<int, string> keys LG reports without listing them in the profile (kept until the next kernel start) */
-    private function unprofiledKeys(): array
-    {
-        $keys = json_decode((string)$this->GetBuffer('UnprofiledKeys'), true);
-        return is_array($keys) ? $keys : [];
-    }
-
-    /** @param array<int, string> $keys */
-    private function rememberUnprofiledKeys(array $keys): void
-    {
-        if ($keys !== []) {
-            $this->SetBuffer('UnprofiledKeys', (string)json_encode(array_values(array_unique(array_merge($this->unprofiledKeys(), $keys)))));
-        }
-    }
-
-    private function fetchProfileFromAPI(): array
-    {
-        return $this->getProfileManager()->fetchProfileFromAPI();
-    }
-
-    private function readLastStatus(): array
-    {
-        return $this->getProfileManager()->readLastStatus();
-    }
-
     private function util(): ThinQDeviceUtil
     {
         return new ThinQDeviceUtil($this->moduleContext());
@@ -624,6 +404,12 @@ class LGThinQDevice extends IPSModule
             fn(int $vid, string $ident, array $presentation, array $flatProfile, string $type) => $this->applyPresentation($vid, $ident, $presentation, $flatProfile, $type),
             fn() => $this->UpdateEnergy(), fn() => $this->UpdateStatus(),
             fn() => $this->doAutoSubscribe(trim($this->ReadPropertyString('DeviceID'))));
+    }
+
+    private function deviceStatus(): ThinQDeviceStatus
+    {
+        return new ThinQDeviceStatus($this->moduleContext(), $this->getProfileManager(), fn(string $a, array $p = []) => $this->sendAction($a, $p),
+            fn(): CapabilityEngine => $this->getCapabilityEngine(), fn(): ThinQDeviceSetup => $this->setup());
     }
 
     private function cleanup(): ThinQCleanup

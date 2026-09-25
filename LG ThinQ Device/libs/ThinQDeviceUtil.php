@@ -6,7 +6,8 @@ declare(strict_types=1);
  * ThinQDeviceUtil
  *
  * Extracted from LG ThinQ Device/module.php.
- * Pure utility methods: value setting, array flattening, anonymization and throwable logging.
+ * Pure utility methods: the Bridge's answer, value setting, array flattening, anonymization and
+ * throwable logging.
  */
 class ThinQDeviceUtil
 {
@@ -17,6 +18,41 @@ class ThinQDeviceUtil
     public function setValueByVarType(string $ident, mixed $value): void
     {
         ThinQValue::write((int)@IPS_GetObjectIDByIdent($ident, $this->ctx->instanceId), $value);
+    }
+
+    /**
+     * The Bridge's answer to a ForwardData call: an error as exception, else the payload (devices,
+     * status, profile, energy) as JSON, anything else as it came; nothing without a parent.
+     */
+    public static function bridgeResult(mixed $result): string
+    {
+        if (!is_string($result)) {
+            return '';
+        }
+        $decoded = json_decode($result, true);
+        if (!is_array($decoded)) {
+            return $result;
+        }
+        if (($decoded['success'] ?? true) === false) {
+            $error = '';
+            if (isset($decoded['error'])) {
+                $error = (string)$decoded['error'];
+            } elseif (isset($decoded['errors']) && is_array($decoded['errors'])) {
+                $error = implode('; ', array_map('strval', $decoded['errors']));
+            } elseif (isset($decoded['message'])) {
+                $error = (string)$decoded['message'];
+            }
+            if ($error === '') {
+                $error = 'unknown error (payload: ' . substr((string)preg_replace('/\s+/', ' ', $result), 0, 200) . ')';
+            }
+            throw new Exception($error);
+        }
+        foreach (['devices', 'status', 'profile', 'energyProfile', 'energyData'] as $key) {
+            if (isset($decoded[$key])) {
+                return (string)json_encode($decoded[$key]);
+            }
+        }
+        return $result;
     }
 
     public static function flatten(array $data, string $prefix = ''): array

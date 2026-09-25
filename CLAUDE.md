@@ -102,59 +102,76 @@ Ziel dieser Optimierung: Code-Qualität und Wartbarkeit verbessern — God-Class
 ## Architecture
 
 ## System Overview
+Three Symcon modules plus shared code in `libs/`: `ThinQModuleTrait` (translation, kernel check, module context), `ThinQModuleContext`, `ThinQJsonAttribute`, `ThinQClock`. Helper classes reach their module only through a `ThinQModuleContext` built from closures, so no internal function becomes an `LGTQ_`/`LGTQD_` script function. Every PHP file stays at or below 500 lines (checked by `tests/review_device_test.php`).
 ## Module Hierarchy (IP-Symcon)
 ```
+Client Socket (TLS, LG-signed client certificate)
+  └─ MQTT Client (Symcon)
+       └─ LG ThinQ Bridge (Splitter, LGTQ) ── HTTPS ── LG ThinQ Connect API
+            ├─ LG ThinQ Device (LGTQD), one per LG device
+            └─ LG ThinQ Configurator (LGTQC)
 ```
 ## Component Breakdown
 ### LG ThinQ Bridge (`type: 2` — Splitter)
-- OAuth/PAT authentication with LG ThinQ Connect API
-- Device list management (fetched and cached as attribute JSON)
-- MQTT topic subscription and certificate provisioning
-- Push event TTL management and renewal timer
-- Routing `ReceiveData` payloads to child modules via `SendDataToChildren`
+- PAT authentication; region from the country code (table of LG's SDK), unknown country → status 104
+- Device list (attribute `Devices`), event subscriptions (renewed before the TTL runs out) and push subscriptions (at most daily)
+- One-click MQTT setup: broker from LG's route, LG-signed certificate, MQTT Client and Client Socket
+- MQTT messages to the children as `Event` (device state) or `Push` (notification)
+- `SendDebug` is overridden and redacts secrets centrally
 | Class | Responsibility |
 |-------|---------------|
-| `ThinQConfig` | Typed value object for Bridge configuration |
-| `ThinQHttpClient` | Wraps `file_get_contents` for LG API HTTP calls |
-| `ThinQDeviceRepository` | Manages cached device list (stored as attribute JSON) |
-| `ThinQEventSubscriptionRepository` | Manages push subscription state per device |
-| `ThinQEventManager` | Orchestrates event subscription creation/renewal |
-| `ThinQEventPipeline` | Processes incoming MQTT payloads, routes to devices |
-| `ThinQMqttRouter` | Parses MQTT topics, matches device IDs |
-| `ThinQCertificateManager` | Generates/stores TLS client certificates for MQTT |
-| `ThinQApiErrorCodes` | Classifies API error codes (retry vs auth vs fatal) |
-| `ThinQHelpers` | Shared utility functions |
+| `ThinQBridgeConfig` (`ThinQConfig.php`) | Bridge configuration, region, topic filter with `{ClientID}` |
+| `ThinQHttpClient`, `ThinQHttpTransport` | HTTP to LG; an error answer is a `ThinQApiException` (HTTP status and LG code) |
+| `ThinQApi` | The LG endpoints: devices, state, profile, control, energy, event/push subscriptions, client, certificate |
+| `ThinQSubscriptionService` | Event and push subscriptions: when to renew, retries, cooldown, subscriptions without a device |
+| `ThinQForwardHandler` | ForwardData actions of Device and Configurator |
+| `ThinQMqttRouter`, `ThinQEventPipeline` | Topic filter level by level (`+`/`*` one level, `#` the rest), device ID, dispatch |
+| `ThinQClientId` | The client ID (x-client-id, certificate CN, topic) |
+| `ThinQCertificateManager`, `ThinQMqttCertBuilder` | CSR and LG-signed certificate; ZIP export for an external MQTT client |
+| `ThinQMqttSetupWizard`, `ThinQMqttInstances` | The setup steps; reading and configuring MQTT Client and Client Socket |
+| `ThinQRedactor` | Keeps the PAT, API key, PEM blocks and bearer tokens out of debug output |
 ### LG ThinQ Device (`type: 3` — Device)
-- Maintaining IP-Symcon variables that represent device state
-- `ReceiveData`: processing status updates from Bridge
-- `RequestAction`: forwarding user commands to Bridge → API
-- Building variable/presentation plan from device capability profile
-- Energy usage variable management
+- Variables, presentations and actions from the LG profile (capability plan)
+- `ReceiveData`: `Event` is merged into the stored status, `Push` sets PUSH_LAST
+- `RequestAction`: command through the Bridge
+- Setup repeated with backoff until profile and device type are there; self-heal; energy
 | Class | Responsibility |
 |-------|---------------|
-| `CapabilityEngine` | Core: maps LG capability profiles → IPS variable plan + presentations |
-| `ThinQProfileParser` | Parses LG device profile JSON into structured capability objects |
-| `ThinQGenericProperties` | Defines generic properties common to all device types |
-| `ThinQEnumTranslator` | Translates LG enum values to human-readable strings |
+| `ThinQShape` | LG's data shapes: profile (zones, element lists by selector, WashTower parts), status, merge, ranges |
+| `ThinQValue` | Variable type from the profile, values written by the actual variable type, command values |
+| `ThinQNaming`, `ThinQGenericProperties`, `ThinQEnumTranslator` | Names from English sources (German via `locale.json`); enum captions per property in Symcon's language |
+| `ThinQProfileParser` | Profile → plan entries (ident, name, type, path, selector, presentation) |
+| `CapabilityEngine` with `CapabilityPlanBuilder`, `CapabilityProfileExtractor`, `CapabilityVarManager`, `CapabilityControlBuilder` | Plan, variable creation, reading the status, building commands |
+| `ThinQDeviceSetup` | Setup run with backoff; variables, presentations, actions; renaming of legacy idents |
+| `ThinQDeviceStatus` | Status, event and push into `LastStatus`, STATUS, LASTUPDATE and the variables; self-heal |
+| `ThinQDeviceProfileManager` | Profile and device type from the Bridge, stored copies |
+| `ThinQEnergyManager` | Energy profile and usage (ENERGY_*) |
+| `ThinQPresentationBuilder` | Presentation arrays |
+| `ThinQCleanup`, `ThinQSupportBundle`, `ThinQDeviceUtil` | Removing variables outside the plan; support package; the Bridge's answer, anonymizing |
 ### LG ThinQ Configurator (`type: 4` — Configurator)
+- Lists the Bridge's devices and creates Device instances
 ## Data Flow
 ```
+LG cloud ─MQTT─► MQTT Client ─► Bridge::ReceiveData ─► ThinQMqttRouter ─► SendDataToChildren {Action: Event | Push}
+                                                                        └► Device::ReceiveData ─► ThinQDeviceStatus
+Device::RequestAction ─► CapabilityEngine::buildControlPayload ─► ForwardData {Action: Control} ─► ThinQForwardHandler ─► ThinQApi::control
 ```
 ## Design Patterns
-- **Splitter pattern** (IP-Symcon): Bridge acts as protocol splitter between MQTT and child Device modules
-- **Repository pattern**: `ThinQDeviceRepository`, `ThinQEventSubscriptionRepository` for attribute-backed state
-- **Value object**: `ThinQConfig` encapsulates Bridge configuration
-- **Capability-driven variable creation**: Device profile JSON → `CapabilityEngine` → variable plan → `MaintainVariable`
-- **Lazy initialization**: private dependencies set to `null`, instantiated on first use
+- **Splitter pattern** (IP-Symcon): the Bridge sits between MQTT/HTTPS and the Device instances
+- **Module context**: helpers get a `ThinQModuleContext` of closures instead of public module methods
+- **Attribute-backed state**: `ThinQJsonAttribute` for the device list and the subscriptions
+- **Capability-driven variable creation**: profile → `ThinQShape` → `ThinQProfileParser` → `CapabilityEngine` plan → `MaintainVariable`
+- **Errors as exceptions**: `ThinQApiException`; a failed call is never stored as data (profile, type, status)
 ## Key Abstractions
-- `ThinQBridgeConfig` — typed config object passed to lib classes
-- `CapabilityEngine::buildPlan()` — central function mapping device type + profile + status → array of variable descriptors
+- `ThinQBridgeConfig` — typed configuration passed to the Bridge's classes
+- `ThinQShape` — the one place that knows how LG shapes profiles, states and commands
+- `CapabilityEngine::buildPlan()` — device type + profile + status → variable descriptors
 - Data flow GUID `{A1F438B3-2A68-4A2B-8FDB-7460F1B8B854}` — interface contract between Bridge and Device/Configurator
 ## Entry Points
-- `LGThinQBridge::Create()` / `ApplyChanges()` — module lifecycle, starts timers and MQTT subscription
-- `LGThinQBridge::ReceiveData()` — MQTT event entry point from IP-Symcon
-- `LGThinQDevice::ReceiveData()` — status update entry from Bridge
-- `LGThinQDevice::RequestAction()` — user action entry (e.g. slider/switch change)
+- `LGThinQBridge::Create()` / `ApplyChanges()` — lifecycle, timers, subscriptions
+- `LGThinQBridge::ReceiveData()` — MQTT messages; `ForwardData()` — requests of the children
+- `LGThinQDevice::ApplyChanges()` — setup; `ReceiveData()` — events and pushes; `RequestAction()` — commands
+- `tests/run.sh` — bench without Symcon: kernel in memory, fake LG cloud with MQTT, 59 LG example devices and a live air conditioner
 <!-- GSD:architecture-end -->
 
 <!-- GSD:workflow-start source:GSD defaults -->
