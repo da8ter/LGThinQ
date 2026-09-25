@@ -290,12 +290,17 @@ foreach (array_merge(glob($root . '/*/module.php'), glob($root . '/*/libs/*.php'
 }
 befund('N7a', $long === [], 'Dateien bis 500 Zeilen (oder die in REQUIREMENTS.md angenommene Länge)', implode(', ', $long));
 $profiles = [];
-foreach (glob($root . '/*/module.php') as $file) {
+foreach (array_merge(glob($root . '/*/module.php'), glob($root . '/*/libs/*.php'), glob($root . '/libs/*.php')) as $file) {
     if (preg_match_all("/'~[A-Za-z0-9.]+'/", (string)file_get_contents($file), $m)) {
-        $profiles[] = basename(dirname($file)) . ': ' . implode(', ', array_unique($m[0]));
+        $profiles[] = substr($file, strlen($root) + 1) . ': ' . implode(', ', array_unique($m[0]));
     }
 }
-befund('N7b', $profiles === [], 'Keine Variablenprofile für eigene Variablen', implode('; ', $profiles));
+check($profiles === [], 'keine Variablenprofile für eigene Variablen' . ($profiles === [] ? '' : ': ' . implode('; ', $profiles)));
+World::start();
+[$wb] = World::example('washer');
+$lu = World::variable($wb, 'LASTUPDATE');
+check(($lu['profile'] ?? '') === '' && (json_decode(is_string($lu['presentation'] ?? null) ? $lu['presentation'] : (string)json_encode($lu['presentation'] ?? []), true)['PRESENTATION'] ?? '') === VARIABLE_PRESENTATION_DATE_TIME,
+    'LASTUPDATE mit der Darstellung Datum/Uhrzeit');
 $german = [];
 foreach (glob($root . '/*/form.json') as $file) {
     array_walk_recursive(json_decode((string)file_get_contents($file), true), static function ($v, $k) use (&$german, $file): void {
