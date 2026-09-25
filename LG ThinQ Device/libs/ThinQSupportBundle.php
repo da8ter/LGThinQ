@@ -161,7 +161,7 @@ class ThinQSupportBundle
                 $type = (string)($profileExtracted['deviceType'] ?? '');
             }
             $engine = ($this->getEngineCallback)();
-            $engine->loadCapabilities($type !== '' ? $type : 'ac', is_array($profileExtracted) ? $profileExtracted : []);
+            $engine->buildPlan($type, is_array($profileExtracted) ? $profileExtracted : [], is_array($status) ? $status : []);
             $descs = $engine->getDescriptors();
             $brief = [];
             foreach ($descs as $cap) {

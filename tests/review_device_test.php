@@ -197,16 +197,15 @@ if (method_exists('LGThinQDevice', 'publicMaintainReferences')) {
 befund('N3', $fatal === '' && !in_array(World::$bridge, Kernel::$instances[$w]['references'], true),
     'Kein Aufruf einer SDK-Methode, die es nicht gibt (und keine Referenz auf die Bridge, sonst Status 101 beim Reload)', $fatal);
 
-section('N5 MaintainVariable liefert false');
+section('N5 MaintainVariable liefert false (behoben)');
 World::start();
 Kernel::$failMaintain['RUN_STATE_CURRENT_STATE'] = true;
 [$w] = World::example('washer');
-befund('N5', World::logLines('/RUN_STATE_CURRENT_STATE/') !== [], 'Eine Variable, die Symcon nicht anlegt, steht im Meldungsprotokoll',
-    'RUN_STATE_CURRENT_STATE fehlt, ' . (in_array('RUN_STATE_CURRENT_STATE', World::idents($w), true) ? 'ist aber da' : 'das Protokoll schweigt'));
+check(!in_array('RUN_STATE_CURRENT_STATE', World::idents($w), true) && World::logLines('/Variable.*RUN_STATE_CURRENT_STATE/') !== [], 'eine Variable, die Symcon nicht anlegt, steht im Meldungsprotokoll');
 
-section('N6 Support-Paket');
+section('N6 Support-Paket (behoben)');
 $summary = json_decode($zip(LGTQD_UIExportSupportBundle($w), '50_capabilities_summary.json'), true);
-befund('N6', ($summary['descriptorCount'] ?? 0) > 0, 'Support-Paket zählt die Fähigkeiten', 'descriptorCount ' . json_encode($summary['descriptorCount'] ?? null) . ' bei ' . count(World::idents($w)) . ' Variablen');
+check(($summary['descriptorCount'] ?? 0) >= count(World::idents($w)) - 3, 'Support-Paket zählt die Fähigkeiten (' . json_encode($summary['descriptorCount'] ?? null) . ' bei ' . count(World::idents($w)) . ' Variablen)');
 
 section('N7 Regeln aus CLAUDE.md');
 $root = dirname(__DIR__);

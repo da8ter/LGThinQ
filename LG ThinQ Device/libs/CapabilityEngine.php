@@ -23,7 +23,6 @@ require_once __DIR__ . '/CapabilityControlBuilder.php';
 class CapabilityEngine
 {
     private int $instanceId;
-    private string $baseDir;
 
     /** @var array<string, mixed> */
     private array $caps = [];
@@ -39,19 +38,15 @@ class CapabilityEngine
     /** @var ThinQProfileParser|null */
     private ?ThinQProfileParser $parser = null;
 
-    /** @var bool */
-    private bool $autoDiscoveryEnabled = true;
-    
     /** @var callable|null */
     private $translateCallback = null;
     
     /** @var callable|null */
     private $maintainVariableCallback = null;
 
-    public function __construct(int $instanceId, string $baseDir)
+    public function __construct(int $instanceId)
     {
         $this->instanceId = $instanceId;
-        $this->baseDir = rtrim($baseDir, '/');
     }
 
     /**
@@ -125,14 +120,6 @@ class CapabilityEngine
         return $this->getControlBuilder()->capHasWriteDefinition($cap);
     }
 
-    /** @param array<string, mixed> $profile */
-    public function loadCapabilities(string $deviceType, array $profile): void
-    {
-        $this->caps = [];
-        $this->flatProfile = $this->flatten($profile);
-        $this->dbg('Manual capabilities disabled; using auto-discovery only.');
-    }
-
     /** @return array<int, array<string, mixed>> */
     public function getDescriptors(): array
     {
@@ -165,21 +152,12 @@ class CapabilityEngine
         return $this->createFailures;
     }
 
-    /** @return array<string, array<string, mixed>> Map of ident => presentation */
-    public function getPresentationMap(): array
-    {
-        $map = [];
-        foreach ($this->caps as $ident => $cap) {
-            if (isset($cap['presentation']) && is_array($cap['presentation'])) {
-                $map[$ident] = $cap['presentation'];
-            }
-        }
-        return $map;
-    }
-
     /** @param array<string, mixed>|null $status */
     public function ensureVariables(array $profile, ?array $status, string $deviceType): void
     {
+        if ($this->maintainVariableCallback === null) {
+            throw new \LogicException('ensureVariables needs the MaintainVariable callback');
+        }
         // Use caps loaded by buildPlan() — do NOT reload here (preserves auto-discovered caps).
         $flatStatus = is_array($status) ? $this->flatten($status) : [];
         $this->flatStatus = $flatStatus;
@@ -191,59 +169,24 @@ class CapabilityEngine
             // Best-effort per capability: a failure on a single variable must not
             // abort creation of all the others (incl. the always-create ERROR_LAST/PUSH_LAST).
             try {
-                $should = $this->shouldCreate($cap, $this->flatProfile, $flatStatus);
-                $vid = $this->getVarId($ident);
-                if (!$should && $vid === 0) continue;
-                if ($vid === 0) {
-                    $type = strtoupper((string)($cap['type'] ?? 'string'));
-                    $ipsType = match ($type) {
-                        'BOOLEAN' => VARIABLETYPE_BOOLEAN,
-                        'INTEGER' => VARIABLETYPE_INTEGER,
-                        'FLOAT'   => VARIABLETYPE_FLOAT,
-                        default   => VARIABLETYPE_STRING
-                    };
-                    $name = (string)($cap['name'] ?? $ident);
-                    if ($this->maintainVariableCallback !== null) {
-                        $vid = call_user_func($this->maintainVariableCallback, $ident, $name, $ipsType, '', 0, true);
-                    } else {
-                        $vid = IPS_CreateVariable($ipsType);
-                        IPS_SetParent($vid, $this->instanceId);
-                        IPS_SetIdent($vid, $ident);
-                        IPS_SetName($vid, $name);
-                    }
+                if ($this->getVarId($ident) > 0 || !$this->shouldCreate($cap, $this->flatProfile, $flatStatus)) {
+                    continue;
                 }
-                $enableWhen = strtolower((string)($cap['action']['enableWhen'] ?? ''));
-                if ($enableWhen === 'always') {
-                    $this->enableAction($ident);
-                } elseif ($enableWhen === 'profilewriteableany') {
-                    $writeKeys = $cap['action']['writeableKeys'] ?? [];
-                    $hasWrite = is_array($writeKeys) && $this->profileHasWriteAny($writeKeys);
-                    if ($hasWrite || $this->capHasWriteDefinition($cap)) {
-                        $this->enableAction($ident);
-                    }
-                } else {
-                    $this->dbg(sprintf('NOT enabling action for %s (enableWhen=%s)', $ident, $enableWhen));
+                $type = strtoupper((string)($cap['type'] ?? 'string'));
+                $ipsType = match ($type) {
+                    'BOOLEAN' => VARIABLETYPE_BOOLEAN,
+                    'INTEGER' => VARIABLETYPE_INTEGER,
+                    'FLOAT'   => VARIABLETYPE_FLOAT,
+                    default   => VARIABLETYPE_STRING
+                };
+                $vid = (int)call_user_func($this->maintainVariableCallback, $ident, (string)($cap['name'] ?? $ident), $ipsType, '', 0, true);
+                if ($vid <= 0) {
+                    throw new \RuntimeException('Symcon did not create the variable');
                 }
             } catch (\Throwable $e) {
                 $this->createFailures[] = $ident . ': ' . $e->getMessage();
                 $this->dbg(sprintf('ensureVariables: failed for ident=%s: %s', $ident, $e->getMessage()));
                 continue;
-            }
-        }
-    }
-
-    /**
-     * Re-enable actions for variables that request reassertOn:["setup"].
-     * Call this after variables were created and presentations applied.
-     */
-    public function reassertActionsOnSetup(): void
-    {
-        foreach ($this->caps as $cap) {
-            $ident = (string)($cap['ident'] ?? '');
-            if ($ident === '') continue;
-            $reassert = $cap['action']['reassertOn'] ?? [];
-            if (is_array($reassert) && in_array('setup', array_map('strtolower', $reassert), true)) {
-                $this->enableAction($ident);
             }
         }
     }
@@ -315,22 +258,18 @@ class CapabilityEngine
      */
     public function buildPlan(string $deviceType, array $profile, ?array $status): array
     {
-        // 1. Load manual capabilities (if exist)
-        $this->loadCapabilities($deviceType, $profile);
+        // Auto-discover from the profile, apply companion patterns, add ERROR_LAST/PUSH_LAST
+        $this->caps = [];
         $this->flatProfile = $this->flatten($profile);
         $this->flatStatus = is_array($status) ? $this->flatten($status) : [];
-
-        // 2. Auto-discover from profile (if enabled), apply companion patterns, add ERROR_LAST/PUSH_LAST
-        if ($this->autoDiscoveryEnabled) {
-            $builder = new CapabilityPlanBuilder(
-                $this->caps,
-                $this->flatProfile,
-                function(string $msg) { $this->dbg($msg); },
-                $this->getExtractor(),
-                $this->getParser()
-            );
-            $builder->run($profile);
-        }
+        $builder = new CapabilityPlanBuilder(
+            $this->caps,
+            $this->flatProfile,
+            function(string $msg) { $this->dbg($msg); },
+            $this->getExtractor(),
+            $this->getParser()
+        );
+        $builder->run($profile);
 
         // 3. Build final plan (existing logic)
         $plan = [];
@@ -455,12 +394,6 @@ class CapabilityEngine
     private function shouldCreate(array $cap, array $flatProfile, array $flatStatus): bool
     {
         return $this->getControlBuilder()->shouldCreate($cap, $flatProfile, $flatStatus);
-    }
-
-    private function enableAction(string $ident): void
-    {
-        // Action enabling is handled in the main module's SetupDeviceVariables via EnableAction().
-        $this->dbg(sprintf('enableAction: %s - SKIPPING (handled by main module)', $ident));
     }
 
     /** @param array<string, mixed> $cap */

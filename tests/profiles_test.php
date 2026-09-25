@@ -118,7 +118,7 @@ function readCoverage(int $inst): int
 {
     $profile = json_decode((string)World::attr($inst, 'LastProfile'), true) ?: [];
     $status = json_decode((string)World::attr($inst, 'LastStatus'), true) ?: [];
-    $engine = new CapabilityEngine($inst, dirname(__DIR__) . '/LG ThinQ Device');
+    $engine = new CapabilityEngine($inst);
     $engine->buildPlan((string)World::attr($inst, 'DeviceType'), $profile, $status);
     return count(array_diff_key($engine->readValues($status), array_flip(['ERROR_LAST', 'PUSH_LAST'])));
 }

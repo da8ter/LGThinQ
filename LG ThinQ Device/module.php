@@ -893,7 +893,7 @@ class LGThinQDevice extends IPSModule
 
     private function getCapabilityEngine(): CapabilityEngine
     {
-        $engine = new CapabilityEngine($this->InstanceID, __DIR__);
+        $engine = new CapabilityEngine($this->InstanceID);
         
         // Set translation callback so CapabilityEngine can use Symcon's Translate()
         $engine->setTranslateCallback(function($text) {
