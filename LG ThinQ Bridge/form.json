@@ -9,7 +9,7 @@
         { "type": "ValidationTextBox", "enabled": false, "name": "ClientID", "caption": "Client ID (CN for certificate)", "width": "400px", "placeholder": "leave empty to auto-generate / inherit" },
         { "type": "CheckBox", "enabled": false, "name": "UseMQTT", "caption": "Use MQTT for events", "visible": false },
         
-        { "type": "ValidationTextBox", "enabled": false, "name": "MQTTTopicFilter", "caption": "Topic filter", "visible": false, "width": "600px", "placeholder": "app/clients/*/#" },
+        { "type": "ValidationTextBox", "enabled": false, "name": "MQTTTopicFilter", "caption": "Topic filter", "visible": false, "width": "600px", "placeholder": "app/clients/{ClientID}/push" },
         { "type": "CheckBox", "enabled": false, "name": "IgnoreRetained", "caption": "Ignore retained MQTT messages", "visible": false },
 
         { "type": "Label", "label": "Event API (Auto-Renew)", "visible": false },
@@ -21,13 +21,13 @@
 
     ],
     "actions": [
-        { "type": "Button", "caption": "MQTT Verbindung einrichten", "onClick": "LGTQ_UISetupMqttConnection($id);" },
-        { "type": "Button", "label": "Test connection", "onClick": "LGTQ_TestConnection($id);" },
-        { "type": "Button", "label": "Sync devices", "onClick": "LGTQ_SyncDevices($id);" },
-        { "type": "Button", "label": "Update now", "onClick": "LGTQ_Update($id);" },
-        { "type": "Button", "label": "Subscribe all known devices", "onClick": "LGTQ_SubscribeAll($id);" },
-        { "type": "Button", "label": "Unsubscribe all known devices", "onClick": "LGTQ_UnsubscribeAll($id);" },
-        { "type": "Button", "label": "Renew all now", "onClick": "LGTQ_RenewAll($id);" }
+        { "type": "Button", "caption": "Set up MQTT connection", "onClick": "LGTQ_UISetupMqttConnection($id);" },
+        { "type": "Button", "caption": "Test connection", "onClick": "LGTQ_TestConnection($id);" },
+        { "type": "Button", "caption": "Sync devices", "onClick": "LGTQ_SyncDevices($id);" },
+        { "type": "Button", "caption": "Update now", "onClick": "LGTQ_Update($id);" },
+        { "type": "Button", "caption": "Subscribe all known devices", "onClick": "LGTQ_SubscribeAll($id);" },
+        { "type": "Button", "caption": "Unsubscribe all known devices", "onClick": "LGTQ_UnsubscribeAll($id);" },
+        { "type": "Button", "caption": "Renew all now", "onClick": "LGTQ_RenewAll($id);" }
     ],
     "status": [
         { "code": 101, "icon": "inactive", "caption": "Creating" },

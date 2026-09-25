@@ -17,11 +17,11 @@ final class ThinQCleanup
             return $this->ctx->t('No device type or profile yet – aborting.');
         }
         if ($candidates === []) {
-            return $this->ctx->t('Keine Variablen zum Löschen gefunden.');
+            return $this->ctx->t('No variables to delete.');
         }
         $lines = array_map(static fn(array $c): string => sprintf('%s (ID %d, Name "%s")', $c['ident'], $c['id'], $c['name']), $candidates);
-        return $this->ctx->t('Folgende Variablen würden gelöscht werden') . ":\n" . implode("\n", $lines) . "\n\n"
-            . sprintf($this->ctx->t('Summe: %d'), count($candidates));
+        return $this->ctx->t('These variables would be deleted') . ":\n" . implode("\n", $lines) . "\n\n"
+            . sprintf($this->ctx->t('Total: %d'), count($candidates));
     }
 
     /** Deletes (or, with $delete false, only counts) the variables outside the plan. */

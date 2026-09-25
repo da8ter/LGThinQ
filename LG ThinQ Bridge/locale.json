@@ -4,11 +4,7 @@
             "LG ThinQ Cloud Connection (PAT-based)": "LG ThinQ Cloud Connection (PAT-based)",
             "Personal Access Token (PAT)": "Personal Access Token (PAT)",
             "Country Code (e.g., DE, US)": "Country Code (e.g., DE, US)",
-            "Client ID (generated on save if empty)": "Client ID (generated on save if empty)",
-            "Enable debug logging": "Enable debug logging",
-            "MQTT Push (Symcon MQTT Client)": "MQTT Push (Symcon MQTT Client)",
             "Use MQTT for events": "Use MQTT for events",
-            "MQTT Client Instance": "MQTT Client Instance",
             "Topic filter": "Topic filter",
             "Ignore retained MQTT messages": "Ignore retained MQTT messages",
             "Event API (Auto-Renew)": "Event API (Auto-Renew)",
@@ -61,11 +57,7 @@
             "LG ThinQ Cloud Connection (PAT-based)": "LG ThinQ Cloud Verbindung (PAT-basiert)",
             "Personal Access Token (PAT)": "Persönlicher Zugriffstoken (PAT)",
             "Country Code (e.g., DE, US)": "Ländercode (z. B. DE, US)",
-            "Client ID (generated on save if empty)": "Client-ID (wird beim Speichern generiert, falls leer)",
-            "Enable debug logging": "Debug-Logging aktivieren",
-            "MQTT Push (Symcon MQTT Client)": "MQTT Push (Symcon MQTT Client)",
             "Use MQTT for events": "MQTT für Events verwenden",
-            "MQTT Client Instance": "MQTT Client Instanz",
             "Topic filter": "Topic-Filter",
             "Ignore retained MQTT messages": "Retained MQTT-Nachrichten ignorieren",
             "Event API (Auto-Renew)": "Event API (Auto-Renew)",
@@ -121,7 +113,12 @@
             "certificate signing request (CSR)": "Zertifikatsanforderung (CSR)",
             "Notes:": "Hinweise:",
             "Import certificate and private key where your MQTT client needs them.": "Zertifikat und privaten Schlüssel dort importieren, wo Ihr MQTT-Client sie braucht.",
-            "The common name (CN) must match the MQTT client ID exactly.": "Der Common Name (CN) muss exakt der MQTT-ClientID entsprechen."
+            "The common name (CN) must match the MQTT client ID exactly.": "Der Common Name (CN) muss exakt der MQTT-ClientID entsprechen.",
+            "Set up MQTT connection": "MQTT-Verbindung einrichten",
+            "Client ID (CN for certificate)": "Client-ID (CN für das Zertifikat)",
+            "leave empty to auto-generate / inherit": "leer lassen: wird erzeugt bzw. vom MQTT-Client übernommen",
+            "Debug logging": "Debug-Protokoll",
+            "Diagnostics": "Diagnose"
         }
     }
 }

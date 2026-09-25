@@ -112,11 +112,9 @@
       "Temperature control not possible: device is POWER_OFF": "Temperature control not possible: device is POWER_OFF",
       "Temperature control not possible in mode": "Temperature control not possible in mode",
       "Unknown action": "Unknown action",
-
       "Info": "Info",
       "Status": "Status",
       "Error creating support package": "Error creating support package",
-
       "An": "On",
       "Aus": "Off",
       "Offen": "Open",
@@ -306,7 +304,7 @@
       "Replace": "Ersetzen",
       "Good": "Gut",
       "Bad": "Schlecht",
-      "Medium": "Mittel",      
+      "Medium": "Mittel",
       "_comment_autodiscovery": "=== Auto-Discovery Property Names ===",
       "Remote Control Enabled": "Fernsteuerung",
       "Current State": "Status",
@@ -406,7 +404,19 @@
       "Energy Yesterday": "Energie Gestern",
       "Energy This Month": "Energie Dieser Monat",
       "Energy Last Month": "Energie Letzter Monat",
-      " Wh": " Wh"
+      " Wh": " Wh",
+      "Diagnostics & support": "Diagnose & Support",
+      "Note: if a device does not work correctly, you can create a diagnostic file. It only contains device-specific data; personal data such as the device ID or tokens is anonymized.": "Hinweis: Falls ein Gerät nicht korrekt funktioniert, können Sie eine Diagnose-Datei erstellen. Sie enthält nur gerätespezifische Daten; persönliche Daten wie die Device-ID oder Token werden anonymisiert.",
+      "Create support package (ZIP)": "Support-Paket (ZIP) erzeugen",
+      "1. Show cleanup preview": "1. Aufräum-Vorschau anzeigen",
+      "2. Clean up variables": "2. Variablen aufräumen",
+      "Variables that are not part of the plan will be deleted. Continue?": "Nicht im Plan befindliche Variablen werden gelöscht. Fortfahren?",
+      "Reapply Presentations": "Darstellungen neu anwenden",
+      "Debug logging": "Debug-Protokoll",
+      "No variables to delete.": "Keine Variablen zum Löschen gefunden.",
+      "These variables would be deleted": "Folgende Variablen würden gelöscht werden",
+      "Total: %d": "Summe: %d",
+      "No device type or profile yet – aborting.": "Noch kein Gerätetyp oder Profil – Abbruch."
     }
   }
 }

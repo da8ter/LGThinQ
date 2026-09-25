@@ -302,14 +302,22 @@ $lu = World::variable($wb, 'LASTUPDATE');
 check(($lu['profile'] ?? '') === '' && (json_decode(is_string($lu['presentation'] ?? null) ? $lu['presentation'] : (string)json_encode($lu['presentation'] ?? []), true)['PRESENTATION'] ?? '') === VARIABLE_PRESENTATION_DATE_TIME,
     'LASTUPDATE mit der Darstellung Datum/Uhrzeit');
 $german = [];
+$untranslated = [];
 foreach (glob($root . '/*/form.json') as $file) {
-    array_walk_recursive(json_decode((string)file_get_contents($file), true), static function ($v, $k) use (&$german, $file): void {
-        if (in_array($k, ['caption', 'label'], true) && preg_match('/[äöüÄÖÜß]| einrichten| erzeugen| anzeigen|Hinweis|Diagnose/u', (string)$v)) {
-            $german[] = basename(dirname($file)) . ': "' . mb_strimwidth((string)$v, 0, 40, '…') . '"';
+    $de = json_decode((string)file_get_contents(dirname($file) . '/locale.json'), true)['translations']['de'] ?? [];
+    array_walk_recursive(json_decode((string)file_get_contents($file), true), static function ($v, $k) use (&$german, &$untranslated, $file, $de): void {
+        if (!in_array($k, ['caption', 'label', 'confirm', 'placeholder'], true) || !is_string($v) || preg_match('#^[\w{}*+/.-]+$#', $v) === 1) {
+            return; // technical placeholders such as app/clients/{ClientID}/push are not translated
+        }
+        if (preg_match('/[äöüÄÖÜß]| einrichten| erzeugen| anzeigen|Hinweis|Diagnose|Fortfahren/u', $v)) {
+            $german[] = basename(dirname($file)) . ': "' . mb_strimwidth($v, 0, 40, '…') . '"';
+        } elseif (!isset($de[$v])) {
+            $untranslated[] = basename(dirname($file)) . ': "' . mb_strimwidth($v, 0, 40, '…') . '"';
         }
     });
 }
-befund('N7c', $german === [], 'Formulare mit englischen Quelltexten (Übersetzung über locale.json)', implode(', ', $german));
+check($german === [], 'Formulare mit englischen Quelltexten (N7c)' . ($german === [] ? '' : ': ' . implode(', ', $german)));
+check($untranslated === [], 'jeder Formulartext hat eine deutsche Übersetzung' . ($untranslated === [] ? '' : ': ' . implode(', ', $untranslated)));
 World::start();
 Kernel::$language = 'en';
 [$w] = World::example('washer');
