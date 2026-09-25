@@ -21,7 +21,7 @@ done < <(find . -name '*.json' -not -path './.claude/*' -not -path './.API Refer
 echo "Syntax und JSON in Ordnung."
 
 status=0
-for t in bridge device configurator transport profiles review_bridge review_device; do
+for t in bridge device configurator transport shape profiles review_bridge review_device; do
     echo
     echo "### ${t}_test.php"
     if ! out=$("$PHP" "tests/${t}_test.php" "$@" 2>&1); then
