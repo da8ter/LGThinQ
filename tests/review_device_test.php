@@ -380,14 +380,14 @@ IPS_ApplyChanges(World::$bridge);
 Kernel::advance(2);
 check(in_array('RUN_STATE_CURRENT_STATE', World::idents($w5), true), 'wird die Bridge aktiv (IM_CHANGESTATUS), richtet sich das Gerät binnen Sekunden ein statt beim nächsten Versuch');
 
-section('N11 locale.json');
+section('N11 locale.json (behoben)');
 $dups = [];
 foreach (glob($root . '/*/locale.json') as $file) {
     foreach (jsonDuplicateKeys((string)file_get_contents($file)) as $d) {
         $dups[] = basename(dirname($file)) . ': ' . $d;
     }
 }
-befund('N11', $dups === [], 'locale.json ohne doppelte Schlüssel', count($dups) . ' doppelt, u. a. ' . implode(', ', array_slice($dups, 0, 4)));
+check($dups === [], 'locale.json ohne doppelte Schlüssel' . ($dups === [] ? '' : ' (' . count($dups) . ' doppelt, u. a. ' . implode(', ', array_slice($dups, 0, 4)) . ')'));
 
 section('N12 Energiewerte sofort (behoben)');
 World::start();
