@@ -56,7 +56,7 @@ trait KernelRuntime
         foreach (self::$instances as $id => $inst) {
             if (in_array($message, $inst['messages'][$senderId] ?? [], true)) {
                 self::$messageTrace[] = [self::now(), $senderId, $message, $id];
-                self::runEntry($id, static fn(IPSModule $o) => $o->MessageSink(self::now(), $senderId, $message, $data));
+                self::runEntry($id, static fn(IPSModuleBase $o) => $o->MessageSink(self::now(), $senderId, $message, $data));
             }
         }
     }
@@ -73,7 +73,7 @@ trait KernelRuntime
             }
         }
         foreach (array_keys(self::$instances) as $id) {
-            self::runEntry($id, static fn(IPSModule $o) => $o->ApplyChanges());
+            self::runEntry($id, static fn(IPSModuleBase $o) => $o->ApplyChanges());
         }
         self::$runlevel = KR_READY;
         self::sendMessage(0, IPS_KERNELSTARTED);
@@ -85,7 +85,7 @@ trait KernelRuntime
         foreach (array_keys(self::$instances) as $id) {
             if (self::moduleOf($id)['class'] ?? null) {
                 self::instantiate($id);
-                self::runEntry($id, static fn(IPSModule $o) => $o->ApplyChanges());
+                self::runEntry($id, static fn(IPSModuleBase $o) => $o->ApplyChanges());
             }
         }
     }

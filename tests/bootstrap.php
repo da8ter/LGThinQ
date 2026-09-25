@@ -40,6 +40,7 @@ require_once __DIR__ . '/../libs/ThinQClock.php';
 require_once __DIR__ . '/sdk/KernelRuntime.php';
 require_once __DIR__ . '/sdk/Kernel.php';
 require_once __DIR__ . '/sdk/IPSModule.php';
+require_once __DIR__ . '/sdk/IPSModuleStrict.php';
 require_once __DIR__ . '/sdk/functions.php';
 require_once __DIR__ . '/fake/ThinQCommandCheck.php';
 require_once __DIR__ . '/fake/FakeThinQCloud.php';

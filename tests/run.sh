@@ -4,9 +4,10 @@
 #   tests/run.sh            Syntax, JSON, alle Testdateien; offene Befunde brechen nicht ab
 #   tests/run.sh --streng   zusätzlich Exit 1, solange ein Befund des Reviews offen ist
 #
-# Bausteine: tests/sdk (Symcon-Kern im Speicher, Verhalten von Symcon 9.1 gemessen am 25.09.2026),
-# tests/fake (LG-Cloud mit MQTT, Transport-Ersatz), tests/fixtures (LG-Beispiele aus der aktuellen
-# Spezifikation, echte Klimaanlage, Ländertabelle des LG-SDK). LG-Beispiele auffrischen:
+# Bausteine: tests/sdk (Symcon-Kern im Speicher mit IPSModule und IPSModuleStrict, Verhalten von
+# Symcon 9.1 gemessen am 25.09.2026), tests/fake (LG-Cloud mit MQTT, Transport-Ersatz), tests/fixtures
+# (LG-Beispiele aus der aktuellen Spezifikation, echte Klimaanlage, Ländertabelle des LG-SDK,
+# Signaturen der ModuleStrictStubs). LG-Beispiele auffrischen:
 #   php tests/tools/lg_spec_holen.php   (danach php tests/profiles_test.php --golden, falls gewollt)
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -21,7 +22,7 @@ done < <(find . -name '*.json' -not -path './.claude/*' -not -path './.API Refer
 echo "Syntax und JSON in Ordnung."
 
 status=0
-for t in bridge device configurator transport shape profiles names review_bridge review_device; do
+for t in sdk bridge device configurator transport shape profiles names review_bridge review_device; do
     echo
     echo "### ${t}_test.php"
     if ! out=$("$PHP" "tests/${t}_test.php" "$@" 2>&1); then

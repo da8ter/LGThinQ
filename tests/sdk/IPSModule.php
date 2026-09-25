@@ -3,14 +3,14 @@
 declare(strict_types=1);
 
 /*
- * IPSModule as the LG ThinQ modules see it (they extend IPSModule, not IPSModuleStrict,
- * hence no parameter types on the overridable methods). State lives in Kernel, so a new
+ * The module base of the kernel in memory, shared by IPSModule (untyped, below) and
+ * IPSModuleStrict (typed signatures, IPSModuleStrict.php). State lives in Kernel, so a new
  * PHP object after a reload or kernel restart finds properties and attributes again.
  * Rules taken from SymconStubs (Symcon GmbH) and the 9.1 measurements: MaintainVariable
  * sets name and position only on creation, re-creates on a type change and updates the
  * (module) presentation on every call; missing timers and attributes warn.
  */
-class IPSModule
+trait IPSModuleCore
 {
     protected $InstanceID;
 
@@ -414,4 +414,15 @@ class IPSModule
     {
         return Kernel::moduleOf($this->InstanceID)['dir'] ?? null;
     }
+}
+
+/** What the kernel instantiates: an IPSModule or an IPSModuleStrict. */
+interface IPSModuleBase
+{
+}
+
+/** The untyped base: overrides of a module extending it carry no parameter types. */
+class IPSModule implements IPSModuleBase
+{
+    use IPSModuleCore;
 }

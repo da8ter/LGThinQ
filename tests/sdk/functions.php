@@ -208,7 +208,7 @@ function RequestAction(int $VariableID, mixed $Value): bool
     $v = Kernel::$variables[$VariableID] ?? null;
     $target = $v === null ? 0 : ($v['customAction'] > 0 ? $v['customAction'] : $v['action']);
     $obj = Kernel::$instances[$target]['object'] ?? null;
-    if (!$obj instanceof IPSModule) {
+    if (!$obj instanceof IPSModuleBase) {
         Kernel::warn('No valid action available');
         return false;
     }
@@ -322,7 +322,7 @@ function IPS_DeleteInstance(int $InstanceID): bool
     if (!instanceOrWarn($InstanceID)) {
         return false;
     }
-    Kernel::runEntry($InstanceID, static fn(IPSModule $o) => $o->Destroy());
+    Kernel::runEntry($InstanceID, static fn(IPSModuleBase $o) => $o->Destroy());
     Kernel::log($InstanceID, 'MESSAGE', Kernel::nameOf($InstanceID), 'Entferne...');
     Kernel::deleteObject($InstanceID);
     return true;
@@ -438,7 +438,7 @@ function IPS_GetModule(string $ModuleID): array|false
 function IPS_RequestAction(int $InstanceID, string $VariableIdent, mixed $Value): bool
 {
     $obj = Kernel::$instances[$InstanceID]['object'] ?? null;
-    if (!$obj instanceof IPSModule) {
+    if (!$obj instanceof IPSModuleBase) {
         Kernel::warn(sprintf('Instanz #%d existiert nicht', $InstanceID));
         return false;
     }

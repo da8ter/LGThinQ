@@ -323,7 +323,7 @@ final class Kernel
         $skip = ['__construct', 'Create', 'Destroy', 'ApplyChanges', 'ReceiveData', 'ForwardData', 'RequestAction',
             'MessageSink', 'GetConfigurationForm', 'GetConfigurationForParent', 'Translate', 'GetCompatibleParents'];
         foreach ((new ReflectionClass($class))->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            if ($method->getDeclaringClass()->getName() === 'IPSModule' || in_array($method->getName(), $skip, true) || $method->isStatic()) {
+            if (in_array($method->getDeclaringClass()->getName(), ['IPSModule', 'IPSModuleStrict'], true) || in_array($method->getName(), $skip, true) || $method->isStatic()) {
                 continue;
             }
             $params = ['int $InstanceID'];
@@ -358,7 +358,7 @@ final class Kernel
     public static function callPublic(int $id, string $method, array $args): mixed
     {
         $obj = self::$instances[$id]['object'] ?? null;
-        if (!$obj instanceof IPSModule) {
+        if (!$obj instanceof IPSModuleBase) {
             self::warn(sprintf('Instanz #%d existiert nicht', $id));
             return false;
         }
@@ -380,7 +380,7 @@ final class Kernel
         self::log($id, 'MESSAGE', (string)$module['ModuleName'], 'Erstelle...');
         if ($module['class'] !== null) {
             self::instantiate($id);
-            self::runEntry($id, static fn(IPSModule $o) => $o->ApplyChanges());
+            self::runEntry($id, static fn(IPSModuleBase $o) => $o->ApplyChanges());
         }
         if (self::$instances[$id]['status'] === IS_CREATING) {
             self::$instances[$id]['status'] = IS_ACTIVE;
@@ -389,7 +389,7 @@ final class Kernel
     }
 
     /** New PHP object for an instance, then Create() — like instance creation, reload and kernel start. */
-    public static function instantiate(int $id): IPSModule
+    public static function instantiate(int $id): IPSModuleBase
     {
         $class = (string)self::$modules[self::$instances[$id]['module']]['class'];
         $obj = new $class($id);
@@ -403,7 +403,7 @@ final class Kernel
     public static function runEntry(int $id, callable $fn): mixed
     {
         $obj = self::$instances[$id]['object'] ?? null;
-        if (!$obj instanceof IPSModule) {
+        if (!$obj instanceof IPSModuleBase) {
             return null;
         }
         try {
@@ -422,7 +422,7 @@ final class Kernel
         }
         self::$instances[$id]['properties'] = self::$instances[$id]['pending'];
         self::$instances[$id]['changed'] = self::now();
-        self::runEntry($id, static fn(IPSModule $o) => $o->ApplyChanges());
+        self::runEntry($id, static fn(IPSModuleBase $o) => $o->ApplyChanges());
         return true;
     }
 
@@ -450,8 +450,8 @@ final class Kernel
             if (self::$instances[$cid]['connection'] !== $parentId || !self::implementsData($cid, $dataId)) {
                 continue;
             }
-            if (self::$instances[$cid]['object'] instanceof IPSModule) {
-                self::runEntry($cid, static fn(IPSModule $o) => $o->ReceiveData($json));
+            if (self::$instances[$cid]['object'] instanceof IPSModuleBase) {
+                self::runEntry($cid, static fn(IPSModuleBase $o) => $o->ReceiveData($json));
             } elseif (is_object(self::$instances[$cid]['handler']) && method_exists(self::$instances[$cid]['handler'], 'ReceiveData')) {
                 self::$instances[$cid]['handler']->ReceiveData($json);
             }
