@@ -217,7 +217,7 @@
             "TIMER_REMAIN_MINUTE"
         ],
         "befehle": [
-            "Cooktop - Power Off => LG-Beispiel passt nicht zum eigenen Profil (location fehlt, das Profil hat 3 Zonen)"
+            "Cooktop - Power Off => keine Variable OPERATION_OPERATION_MODE"
         ]
     },
     "curtain_ctrl": {

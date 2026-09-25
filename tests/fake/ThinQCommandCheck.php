@@ -31,7 +31,7 @@ final class ThinQCommandCheck
             }
             return null;
         }
-        $zone = self::zone($profile, $cmd['location']['locationName'] ?? null);
+        $zone = self::extension($profile, $cmd) ?? self::zone($profile, $cmd['location']['locationName'] ?? null);
         if (is_string($zone)) {
             return $zone;
         }
@@ -79,6 +79,19 @@ final class ThinQCommandCheck
             }
         }
         return null;
+    }
+
+    /**
+     * [SDK] pythinqconnect cooktop.py: extensionProperty holds device-wide resources (operation.operationMode);
+     * a command for them carries no location even when the profile has zones.
+     */
+    private static function extension(array $profile, array $cmd): ?array
+    {
+        $ext = $profile['extensionProperty'] ?? null;
+        if (!is_array($ext) || isset($cmd['location']) || array_diff_key($cmd, $ext) !== []) {
+            return null;
+        }
+        return $ext;
     }
 
     /** Resources of the addressed zone, or the reason why there is none. */
@@ -194,7 +207,7 @@ final class ThinQCommandCheck
             }
             return $out;
         }
-        $zone = self::zone($profile, $cmd['location']['locationName'] ?? null);
+        $zone = self::extension($profile, $cmd) ?? self::zone($profile, $cmd['location']['locationName'] ?? null);
         if (is_string($zone)) {
             return [];
         }
