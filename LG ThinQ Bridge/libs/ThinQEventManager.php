@@ -8,13 +8,15 @@ final class ThinQEventManager
     public const CHECK_PERIOD = 600;
 
     private ThinQHttpClient $httpClient;
-    private ThinQEventSubscriptionRepository $repository;
+    /** deviceId => {expiresAt, clientId} or, after a failure, {failedSince, retryAt} */
+    private ThinQJsonAttribute $repository;
     private ThinQBridgeConfig $config;
 
     public function __construct(
+        private ThinQModuleContext $ctx,
         ThinQBridgeConfig $config,
         ThinQHttpClient $httpClient,
-        ThinQEventSubscriptionRepository $repository
+        ThinQJsonAttribute $repository
     ) {
         $this->config = $config;
         $this->httpClient = $httpClient;
@@ -24,21 +26,21 @@ final class ThinQEventManager
     public function subscribe(string $deviceId, bool $force = false): bool
     {
         try {
-            if (!$force && !$this->isDue($this->repository->getAll()[$deviceId] ?? null)) {
+            if (!$force && !$this->isDue($this->repository->all()[$deviceId] ?? null)) {
                 return true;
             }
             $ttl = $this->config->normalizedEventTtlHours();
             $body = ['expire' => ['unit' => 'HOUR', 'timer' => $ttl]];
             $this->httpClient->request('POST', 'event/' . rawurlencode($deviceId) . '/subscribe', $body);
-            $this->repository->updateExpiry($deviceId, ThinQClock::now() + ($ttl * 3600), $this->config->clientId);
+            $this->repository->put($deviceId, ['expiresAt' => ThinQClock::now() + ($ttl * 3600), 'clientId' => $this->config->clientId]);
             return true;
         } catch (Throwable $e) {
             // Retry after an hour; only the first failure of a series goes to the message log.
-            $entry = $this->repository->getAll()[$deviceId] ?? [];
+            $entry = $this->repository->all()[$deviceId] ?? [];
             if (!isset($entry['failedSince'])) {
-                @IPS_LogMessage('LG ThinQ Event', 'Subscribe error: ' . $e->getMessage());
+                $this->ctx->log('Subscribe error: ' . $e->getMessage(), KL_WARNING);
             }
-            $this->repository->update($deviceId, ['failedSince' => (int)($entry['failedSince'] ?? ThinQClock::now()), 'retryAt' => ThinQClock::now() + 3600]);
+            $this->repository->merge($deviceId, ['failedSince' => (int)($entry['failedSince'] ?? ThinQClock::now()), 'retryAt' => ThinQClock::now() + 3600]);
             return false;
         }
     }
@@ -49,7 +51,7 @@ final class ThinQEventManager
         try {
             $this->httpClient->request('DELETE', 'event/' . rawurlencode($deviceId) . '/unsubscribe');
         } catch (Throwable $e) {
-            @IPS_LogMessage('LG ThinQ Event', 'Unsubscribe error: ' . $e->getMessage());
+            $this->ctx->debug('Event', 'Unsubscribe error: ' . $e->getMessage());
             $ok = false;
         }
         $this->repository->remove($deviceId);
@@ -64,7 +66,7 @@ final class ThinQEventManager
      */
     public function renewExpiring(array $deviceIds): void
     {
-        foreach ($this->repository->getAll() as $deviceId => $entry) {
+        foreach ($this->repository->all() as $deviceId => $entry) {
             $deviceId = (string)$deviceId;
             $entry = is_array($entry) ? $entry : [];
             if (!in_array($deviceId, $deviceIds, true)) {

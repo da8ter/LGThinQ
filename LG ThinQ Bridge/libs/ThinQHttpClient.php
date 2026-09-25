@@ -7,14 +7,14 @@ require_once __DIR__ . '/ThinQRedactor.php';
 
 final class ThinQHttpClient
 {
-    private IPSModule $module;
+    private ThinQModuleContext $ctx;
     private ThinQBridgeConfig $config;
     private string $apiKey;
     private ThinQHttpTransport $transport;
 
-    public function __construct(IPSModule $module, ThinQBridgeConfig $config, string $apiKey)
+    public function __construct(ThinQModuleContext $ctx, ThinQBridgeConfig $config, string $apiKey)
     {
-        $this->module = $module;
+        $this->ctx = $ctx;
         $this->config = $config;
         $this->apiKey = $apiKey;
         $this->transport = new ThinQHttpTransport();
@@ -23,8 +23,8 @@ final class ThinQHttpClient
     /** HTTP traces go to the instance debug only (never to the message log), with secrets redacted. */
     private function dbg(string $tag, string $message): void
     {
-        if ($this->config->debug && method_exists($this->module, 'DebugLog')) {
-            $this->module->DebugLog('HTTP', $tag . ': ' . ThinQRedactor::text($message, [$this->config->accessToken, $this->apiKey]));
+        if ($this->config->debug) {
+            $this->ctx->debug('HTTP', $tag . ': ' . ThinQRedactor::text($message, [$this->config->accessToken, $this->apiKey]));
         }
     }
 

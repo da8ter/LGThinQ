@@ -5,8 +5,6 @@ declare(strict_types=1);
 require_once __DIR__ . '/../libs/ThinQModuleTrait.php';
 require_once __DIR__ . '/libs/ThinQHelpers.php';
 require_once __DIR__ . '/libs/ThinQConfig.php';
-require_once __DIR__ . '/libs/ThinQDeviceRepository.php';
-require_once __DIR__ . '/libs/ThinQEventSubscriptionRepository.php';
 require_once __DIR__ . '/libs/ThinQRedactor.php';
 require_once __DIR__ . '/libs/ThinQHttpClient.php';
 require_once __DIR__ . '/libs/ThinQEventManager.php';
@@ -26,8 +24,9 @@ class LGThinQBridge extends IPSModule
 
     private ?ThinQBridgeConfig $config = null;
     private ?ThinQHttpClient $httpClient = null;
-    private ?ThinQDeviceRepository $deviceRepository = null;
-    private ?ThinQEventSubscriptionRepository $subscriptionRepository = null;
+    private ?ThinQJsonAttribute $deviceRepository = null;
+    private ?ThinQJsonAttribute $subscriptionRepository = null;
+    private ?ThinQJsonAttribute $pushRepository = null;
     private ?ThinQEventManager $eventManager = null;
     private ?ThinQEventPipeline $eventPipeline = null;
     private ?ThinQMqttRouter $mqttRouter = null;
@@ -291,7 +290,7 @@ class LGThinQBridge extends IPSModule
         $this->ensureBooted();
         try {
             $devices = $this->fetchDevices();
-            $this->deviceRepository->saveAll($devices);
+            $this->deviceRepository->replace($devices);
             $this->NotifyUser($this->t('Device list updated') . ': ' . count($devices) . ' ' . $this->t('devices') . '.');
         } catch (Throwable $e) {
             $this->SendDebug('SyncDevices', $e->getMessage(), 0);
@@ -304,7 +303,7 @@ class LGThinQBridge extends IPSModule
         $this->ensureBooted();
         try {
             $devices = $this->fetchDevices();
-            $this->deviceRepository->saveAll($devices);
+            $this->deviceRepository->replace($devices);
         } catch (Throwable $e) {
             $this->SendDebug('Update', $e->getMessage(), 0);
         }
@@ -315,7 +314,7 @@ class LGThinQBridge extends IPSModule
         $this->ensureBooted();
         try {
             $devices = $this->fetchDevices();
-            $this->deviceRepository->saveAll($devices);
+            $this->deviceRepository->replace($devices);
             $ok = 0;
             $total = 0;
             foreach ($devices as $device) {
@@ -341,12 +340,12 @@ class LGThinQBridge extends IPSModule
         $this->ensureBooted();
         try {
             $ids = [];
-            foreach ($this->subscriptionRepository->getAll() as $deviceId => $_) {
+            foreach ($this->subscriptionRepository->all() as $deviceId => $_) {
                 if ($deviceId !== '') {
                     $ids[$deviceId] = true;
                 }
             }
-            foreach ($this->deviceRepository->getAll() as $device) {
+            foreach ($this->deviceRepository->all() as $device) {
                 $deviceId = (string)($device['deviceId'] ?? ($device['device_id'] ?? ''));
                 if ($deviceId !== '') {
                     $ids[$deviceId] = true;
@@ -364,9 +363,9 @@ class LGThinQBridge extends IPSModule
             } catch (Throwable $e) {
                 $this->SendDebug('UnsubscribeAll Push', $e->getMessage(), 0);
             }
-            $this->subscriptionRepository->saveAll([]);
+            $this->subscriptionRepository->replace([]);
             $this->WriteAttributeInteger('PushRegisteredAt', 0);
-            $this->WriteAttributeString('PushDeviceSubs', '{}');
+            $this->pushRepository->replace([]);
             $this->NotifyUser(sprintf($this->t('UnsubscribeAll: %d/%d devices unsubscribed'), $ok, $total));
         } catch (Throwable $e) {
             $this->SendDebug('UnsubscribeAll', $e->getMessage(), 0);
@@ -378,7 +377,7 @@ class LGThinQBridge extends IPSModule
     {
         $this->ensureBooted();
         try {
-            $subs = $this->subscriptionRepository->getAll();
+            $subs = $this->subscriptionRepository->all();
             $ok = 0;
             $total = count($subs);
             foreach (array_keys($subs) as $deviceId) {
@@ -407,7 +406,7 @@ class LGThinQBridge extends IPSModule
             $this->SendDebug('RenewEvents', $e->getMessage(), 0);
         }
         // A device whose own subscription never succeeded gets one now.
-        foreach (array_diff($deviceIds, array_map('strval', array_keys($this->subscriptionRepository->getAll()))) as $deviceId) {
+        foreach (array_diff($deviceIds, array_map('strval', array_keys($this->subscriptionRepository->all()))) as $deviceId) {
             $this->trySubscribeDevice($deviceId, true, true);
         }
 
@@ -498,8 +497,7 @@ class LGThinQBridge extends IPSModule
     /** POST push/{id}/subscribe, at most once per cooldown and client ID unless forced; throws on real errors. */
     private function subscribePush(string $deviceId, bool $force): void
     {
-        $subs = $this->pushSubscriptions();
-        $entry = $subs[$deviceId] ?? null;
+        $entry = $this->pushRepository->get($deviceId);
         if (!$force && is_array($entry) && (string)($entry['clientId'] ?? '') === $this->config->clientId
             && ThinQClock::now() - (int)($entry['at'] ?? 0) < $this->pushCooldownSeconds()) {
             return;
@@ -513,15 +511,7 @@ class LGThinQBridge extends IPSModule
             }
             $this->SendDebug('Push Subscribe', 'Already subscribed (OK) for ' . $deviceId, 0);
         }
-        $subs[$deviceId] = ['at' => ThinQClock::now(), 'clientId' => $this->config->clientId];
-        $this->WriteAttributeString('PushDeviceSubs', (string)json_encode($subs, JSON_UNESCAPED_SLASHES));
-    }
-
-    /** @return array<string, array<string, mixed>> deviceId => {at, clientId} of the last successful push subscribe */
-    private function pushSubscriptions(): array
-    {
-        $subs = json_decode((string)$this->ReadAttributeString('PushDeviceSubs'), true);
-        return is_array($subs) ? $subs : [];
+        $this->pushRepository->put($deviceId, ['at' => ThinQClock::now(), 'clientId' => $this->config->clientId]);
     }
 
     private function pushCooldownSeconds(): int
@@ -544,9 +534,7 @@ class LGThinQBridge extends IPSModule
             $ok = $this->eventManager->unsubscribe($DeviceID) && $ok;
         }
         if ($Push) {
-            $subs = $this->pushSubscriptions();
-            unset($subs[$DeviceID]);
-            $this->WriteAttributeString('PushDeviceSubs', (string)json_encode((object)$subs, JSON_UNESCAPED_SLASHES));
+            $this->pushRepository->remove($DeviceID);
             try {
                 $this->httpClient->request('DELETE', 'push/' . rawurlencode($DeviceID) . '/unsubscribe');
             } catch (Throwable $e) {
@@ -592,10 +580,12 @@ class LGThinQBridge extends IPSModule
     private function bootServices(): void
     {
         $this->config = $this->createBridgeConfig();
-        $this->deviceRepository = new ThinQDeviceRepository($this);
-        $this->subscriptionRepository = new ThinQEventSubscriptionRepository($this);
-        $this->httpClient = new ThinQHttpClient($this, $this->config, self::API_KEY);
-        $this->eventManager = new ThinQEventManager($this->config, $this->httpClient, $this->subscriptionRepository);
+        $ctx = $this->moduleContext();
+        $this->deviceRepository = new ThinQJsonAttribute($ctx, 'Devices');
+        $this->subscriptionRepository = new ThinQJsonAttribute($ctx, 'EventSubscriptions');
+        $this->pushRepository = new ThinQJsonAttribute($ctx, 'PushDeviceSubs');
+        $this->httpClient = new ThinQHttpClient($ctx, $this->config, self::API_KEY);
+        $this->eventManager = new ThinQEventManager($ctx, $this->config, $this->httpClient, $this->subscriptionRepository);
         $this->eventPipeline = new ThinQEventPipeline();
         $this->eventPipeline->onEvent(function (string $deviceId, array $payload): void {
             $this->sendToChildren('Event', $deviceId, ['Event' => $payload]);
@@ -603,7 +593,7 @@ class LGThinQBridge extends IPSModule
         $this->eventPipeline->onMeta(function (string $type, string $deviceId, array $payload): void {
             $this->handleMetaEvent($type, $deviceId, $payload);
         });
-        $this->mqttRouter = new ThinQMqttRouter($this, $this->config, $this->eventPipeline);
+        $this->mqttRouter = new ThinQMqttRouter($ctx, $this->config, $this->eventPipeline);
     }
 
     private function createBridgeConfig(): ThinQBridgeConfig
@@ -814,52 +804,9 @@ class LGThinQBridge extends IPSModule
         return $data;
     }
 
-    public function DebugLog(string $tag, string $message): void
-    {
-        // Wrapper to allow helper classes to log debug output via module context
-        $this->SendDebug($tag, $message, 0);
-    }
-
     private function NotifyUser(string $message): void
     {
         $this->LogMessage($message, KL_MESSAGE);
-    }
-
-    // --- Public wrappers for repositories (avoid protected method access) ---
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    public function GetDevicesCache(): array
-    {
-        $raw = (string)$this->ReadAttributeString('Devices');
-        $data = json_decode($raw, true);
-        return is_array($data) ? $data : [];
-    }
-
-    /**
-     * @param array<int, array<string, mixed>> $devices
-     */
-    public function SaveDevicesCache(array $devices): void
-    {
-        $this->WriteAttributeString('Devices', json_encode($devices, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    }
-
-    /**
-     * @return array<string, array<string, mixed>>
-     */
-    public function GetEventSubscriptionsCache(): array
-    {
-        $raw = (string)$this->ReadAttributeString('EventSubscriptions');
-        $data = json_decode($raw, true);
-        return is_array($data) ? $data : [];
-    }
-
-    /**
-     * @param array<string, array<string, mixed>> $subs
-     */
-    public function SaveEventSubscriptionsCache(array $subs): void
-    {
-        $this->WriteAttributeString('EventSubscriptions', json_encode($subs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 
     // --- UI: Generate new MQTT Client SSL Certificates ---
@@ -867,7 +814,7 @@ class LGThinQBridge extends IPSModule
     {
         try {
             $zipData = (new ThinQMqttCertBuilder(
-                $this,
+                $this->moduleContext(),
                 $this->InstanceID,
                 fn() => $this->debugMqttParentInfo(),
                 fn() => $this->createBridgeConfig(),
@@ -885,7 +832,7 @@ class LGThinQBridge extends IPSModule
         $this->ensureBooted();
         try {
             $result = (new ThinQMqttSetupWizard(
-                $this,
+                $this->moduleContext(),
                 $this->InstanceID,
                 self::API_KEY,
                 $this->config,

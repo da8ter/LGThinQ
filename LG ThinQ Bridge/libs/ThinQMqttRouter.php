@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 final class ThinQMqttRouter
 {
-    private IPSModule $module;
+    private ThinQModuleContext $ctx;
     private ThinQBridgeConfig $config;
     private ThinQEventPipeline $pipeline;
 
-    public function __construct(IPSModule $module, ThinQBridgeConfig $config, ThinQEventPipeline $pipeline)
+    public function __construct(ThinQModuleContext $ctx, ThinQBridgeConfig $config, ThinQEventPipeline $pipeline)
     {
-        $this->module = $module;
+        $this->ctx = $ctx;
         $this->config = $config;
         $this->pipeline = $pipeline;
     }
@@ -18,11 +18,7 @@ final class ThinQMqttRouter
     public function handle(string $json): void
     {
         if ($this->config->debug) {
-            if (method_exists($this->module, 'DebugLog')) {
-                $this->module->DebugLog('ReceiveData', $json);
-            } else {
-                @IPS_LogMessage('LG ThinQ MQTT', 'ReceiveData: ' . $json);
-            }
+            $this->ctx->debug('ReceiveData', $json);
         }
         $raw = json_decode($json, true);
         if (!is_array($raw)) {
@@ -34,11 +30,7 @@ final class ThinQMqttRouter
         $retain = (bool)($env['Retain'] ?? ($env['retain'] ?? false));
         if ($this->config->ignoreRetained && $retain) {
             if ($this->config->debug) {
-                if (method_exists($this->module, 'DebugLog')) {
-                    $this->module->DebugLog('MQTT', 'Ignore retained: ' . $topic);
-                } else {
-                    @IPS_LogMessage('LG ThinQ MQTT', 'Ignore retained: ' . $topic);
-                }
+                $this->ctx->debug('MQTT', 'Ignore retained: ' . $topic);
             }
             return;
         }
@@ -46,11 +38,7 @@ final class ThinQMqttRouter
         $filter = $this->config->topicFilter();
         if ($filter !== '' && !self::topicMatches($filter, $topic)) {
             if ($this->config->debug) {
-                if (method_exists($this->module, 'DebugLog')) {
-                    $this->module->DebugLog('MQTT', 'Filter miss: topic=' . $topic . ' filter=' . $filter);
-                } else {
-                    @IPS_LogMessage('LG ThinQ MQTT', 'Filter miss: topic=' . $topic . ' filter=' . $filter);
-                }
+                $this->ctx->debug('MQTT', 'Filter miss: topic=' . $topic . ' filter=' . $filter);
             }
             return;
         }
@@ -63,11 +51,7 @@ final class ThinQMqttRouter
             $payload = $payloadRaw;
         }
         if (!is_array($payload)) {
-            if (method_exists($this->module, 'DebugLog')) {
-                $this->module->DebugLog('MQTT', 'Invalid payload on topic ' . $topic);
-            } else {
-                @IPS_LogMessage('LG ThinQ MQTT', 'Invalid payload on topic ' . $topic);
-            }
+            $this->ctx->debug('MQTT', 'Invalid payload on topic ' . $topic);
             return;
         }
 
@@ -100,11 +84,7 @@ final class ThinQMqttRouter
             }
             if ($this->config->debug) {
                 $haveKeys = implode(',', array_keys($node));
-                if (method_exists($this->module, 'DebugLog')) {
-                    $this->module->DebugLog('MQTT', 'DEVICE_STATUS/event without usable report/state for deviceId=' . $deviceId . ' keys=[' . $haveKeys . ']');
-                } else {
-                    @IPS_LogMessage('LG ThinQ MQTT', 'DEVICE_STATUS/event without usable report/state for deviceId=' . $deviceId . ' keys=[' . $haveKeys . ']');
-                }
+                $this->ctx->debug('MQTT', 'DEVICE_STATUS/event without usable report/state for deviceId=' . $deviceId . ' keys=[' . $haveKeys . ']');
             }
             return;
         }
@@ -119,11 +99,7 @@ final class ThinQMqttRouter
             return;
         }
 
-        if (method_exists($this->module, 'DebugLog')) {
-            $this->module->DebugLog('MQTT', 'Unknown message type on topic ' . $topic);
-        } else {
-            @IPS_LogMessage('LG ThinQ MQTT', 'Unknown message type on topic ' . $topic);
-        }
+        $this->ctx->debug('MQTT', 'Unknown message type on topic ' . $topic);
     }
 
     /**
