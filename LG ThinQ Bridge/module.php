@@ -488,15 +488,11 @@ class LGThinQBridge extends IPSModule
     // --- UI: Generate new MQTT Client SSL Certificates ---
     public function UIGenerateMQTTClientCerts(): string
     {
+        $this->ensureBooted();
         try {
-            $zipData = (new ThinQMqttCertBuilder(
-                $this->moduleContext(),
-                $this->InstanceID,
-                fn() => $this->debugMqttParentInfo(),
-                fn() => $this->createBridgeConfig(),
-                self::API_KEY
-            ))->build();
-            return 'data:application/zip;base64,' . base64_encode($zipData);
+            $cn = ThinQClientId::sanitize($this->config->clientId);
+            $api = new ThinQApi(new ThinQHttpClient($this->moduleContext(), $this->config->withClientId($cn), self::API_KEY));
+            return 'data:application/zip;base64,' . base64_encode((new ThinQMqttCertBuilder($this->moduleContext(), $api))->build($cn));
         } catch (\Throwable $e) {
             $this->SendDebug('UIGenerateMQTTClientCerts', $e->getMessage(), 0);
             return 'data:text/plain,' . rawurlencode($this->t('Error generating certificates') . ': ' . $e->getMessage());

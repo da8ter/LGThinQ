@@ -112,7 +112,16 @@
             "Broker host could not be determined from API data.": "Broker-Host konnte nicht aus den API-Daten ermittelt werden.",
             "Hostname '%s' could not be resolved.": "Hostname '%s' konnte nicht aufgelöst werden.",
             "Module 'MQTT Client' not found.": "Modul 'MQTT Client' nicht gefunden.",
-            "Module 'Client Socket' not found.": "Modul 'Client Socket' nicht gefunden."
+            "Module 'Client Socket' not found.": "Modul 'Client Socket' nicht gefunden.",
+            "This ZIP file contains a client certificate for the MQTT client, signed via the LG ThinQ API.": "Diese ZIP-Datei enthält ein über die LG ThinQ API signiertes Client-Zertifikat für den MQTT-Client.",
+            "Files:": "Dateien:",
+            "X.509 client certificate (signed by LG)": "X.509-Client-Zertifikat (von LG signiert)",
+            "private key (PEM, not encrypted)": "privater Schlüssel (PEM, unverschlüsselt)",
+            "public key": "öffentlicher Schlüssel",
+            "certificate signing request (CSR)": "Zertifikatsanforderung (CSR)",
+            "Notes:": "Hinweise:",
+            "Import certificate and private key where your MQTT client needs them.": "Zertifikat und privaten Schlüssel dort importieren, wo Ihr MQTT-Client sie braucht.",
+            "The common name (CN) must match the MQTT client ID exactly.": "Der Common Name (CN) muss exakt der MQTT-ClientID entsprechen."
         }
     }
 }

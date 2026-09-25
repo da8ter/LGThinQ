@@ -207,18 +207,6 @@ class ThinQMqttSetupWizard
                         $this->ctx->debug('MQTT', 'Route-provided CA invalid, length=' . strlen((string)$routeCA));
                     }
                 }
-                if (!$haveCA && $subsMeta !== null) {
-                    $apiCAPem = $certMgr->extractCAPEMFromSubscriptions($subsMeta);
-                    if (is_string($apiCAPem) && $apiCAPem !== '') {
-                        $caPemFormatted = $certMgr->ensureCertificatePEM($apiCAPem);
-                        if (@openssl_x509_read($caPemFormatted) !== false) {
-                            $haveCA = true;
-                            if ($this->ctx->debugEnabled()) {
-                                $this->ctx->debug('MQTT', 'CA from LG API subscriptions applied (len=' . strlen($caPemFormatted) . ')');
-                            }
-                        }
-                    }
-                }
                 if (!$haveCA) {
                     $awsCA = $certMgr->downloadAmazonRootCA1();
                     if (is_string($awsCA) && $awsCA !== '' && strpos($awsCA, '-----BEGIN CERTIFICATE-----') !== false) {
@@ -342,9 +330,8 @@ class ThinQMqttSetupWizard
         if ($subjectCN === '') {
             $subjectCN = ThinQClientId::generate();
         }
-        $tmpHttp = new ThinQHttpClient($this->ctx, $this->config->withClientId($subjectCN), $this->apiKey);
-        $certMgr = new ThinQCertificateManager($this->instanceId);
-        return $certMgr->requestLGSignedCert($tmpHttp, $subjectCN);
+        $api = new ThinQApi(new ThinQHttpClient($this->ctx, $this->config->withClientId($subjectCN), $this->apiKey));
+        return (new ThinQCertificateManager($this->instanceId))->requestLGSignedCert($api, $subjectCN);
     }
 
     /**

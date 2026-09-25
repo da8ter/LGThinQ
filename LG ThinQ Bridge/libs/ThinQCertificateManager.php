@@ -76,43 +76,32 @@ final class ThinQCertificateManager
     }
 
     /**
-     * Request an LG-signed client certificate via the ThinQ API.
+     * Request an LG-signed client certificate for $subjectCN; $api must send x-client-id = $subjectCN.
+     * LG's OpenAPI wraps both requests in {"body": ...}; the client registration is idempotent.
      *
-     * @return array{cn:string, cert:string, key:string, public:string, subscriptions:mixed}
+     * @return array{cn:string, cert:string, key:string, public:string, csr:string, subscriptions:mixed}
      * @throws \RuntimeException
      */
-    public function requestLGSignedCert(ThinQHttpClient $httpClient, string $subjectCN): array
+    public function requestLGSignedCert(ThinQApi $api, string $subjectCN): array
     {
         $material = $this->generateKeyAndCSR($subjectCN);
-
         try {
-            // Idempotent client registration
-            try {
-                $httpClient->request('POST', 'client', ['body' => ['type' => 'MQTT', 'service-code' => 'SVC202', 'device-type' => '607']]);
-            } catch (\Throwable $e) {
-                // Ignore errors (idempotent/register may already exist)
-            }
-            $resp = $httpClient->request('POST', 'client/certificate', ['body' => ['service-code' => 'SVC202', 'csr' => $material['csrPem']]]);
+            $api->registerClient();
         } catch (\Throwable $e) {
-            // Fallback without body wrapper
-            $resp = $httpClient->request('POST', 'client/certificate', ['service-code' => 'SVC202', 'csr' => $material['csrPem']]);
+            // already registered, or registration not needed; the certificate request decides
         }
-
-        $resNode = $resp;
-        if (isset($resp['result']) && is_array($resp['result'])) {
-            $resNode = $resp['result'];
-        }
-        $certOut = (string)($resNode['certificatePem'] ?? '');
+        $result = $api->requestCertificate($material['csrPem']);
+        $certOut = (string)($result['certificatePem'] ?? '');
         if ($certOut === '') {
             throw new \RuntimeException('LG certificate request returned no certificatePem');
         }
-
         return [
             'cn'            => $subjectCN,
             'cert'          => $certOut,
             'key'           => $material['privateKey'],
             'public'        => $material['publicKey'],
-            'subscriptions' => $resNode['subscriptions'] ?? null,
+            'csr'           => $material['csrPem'],
+            'subscriptions' => $result['subscriptions'] ?? null,
         ];
     }
 
@@ -168,61 +157,6 @@ final class ThinQCertificateManager
         }
         $wrapped = chunk_split(base64_encode($bin), 64, "\n");
         return "-----BEGIN PRIVATE KEY-----\n" . rtrim($wrapped, "\n") . "\n-----END PRIVATE KEY-----\n";
-    }
-
-    /**
-     * Try to find a CA certificate within the 'subscriptions' metadata returned by the LG API.
-     * @param mixed $subscriptions
-     */
-    public function extractCAPEMFromSubscriptions($subscriptions): string
-    {
-        $found = '';
-        $scan = function ($node) use (&$scan, &$found): void {
-            if ($found !== '') {
-                return;
-            }
-            if (is_string($node)) {
-                $str = trim($node);
-                if ($str === '') {
-                    return;
-                }
-                if (strpos($str, '-----BEGIN CERTIFICATE-----') !== false) {
-                    if (@openssl_x509_read($str) !== false) {
-                        $found = $str;
-                    }
-                    return;
-                }
-                $b64 = preg_replace('/[^A-Za-z0-9+\/=]/', '', $str);
-                if ($b64 !== '') {
-                    $bin = base64_decode($b64, true);
-                    if ($bin !== false) {
-                        $wrapped = "-----BEGIN CERTIFICATE-----\n" . rtrim(chunk_split(base64_encode($bin), 64, "\n"), "\n") . "\n-----END CERTIFICATE-----\n";
-                        if (@openssl_x509_read($wrapped) !== false) {
-                            $found = $wrapped;
-                        }
-                    }
-                }
-                return;
-            }
-            if (is_array($node)) {
-                foreach (['ca', 'CA', 'certificateAuthority', 'root', 'rootCA', 'cacert', 'cacertificate'] as $k) {
-                    if (isset($node[$k])) {
-                        $scan($node[$k]);
-                        if ($found !== '') {
-                            return;
-                        }
-                    }
-                }
-                foreach ($node as $v) {
-                    $scan($v);
-                    if ($found !== '') {
-                        return;
-                    }
-                }
-            }
-        };
-        $scan($subscriptions);
-        return is_string($found) ? $found : '';
     }
 
     /**
