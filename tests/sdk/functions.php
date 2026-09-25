@@ -366,6 +366,7 @@ function IPS_ConnectInstance(int $InstanceID, int $ParentID): bool
         return false;
     }
     Kernel::$instances[$InstanceID]['connection'] = $ParentID;
+    Kernel::sendMessage($InstanceID, FM_CONNECT, [$ParentID]);
     return true;
 }
 
@@ -374,7 +375,9 @@ function IPS_DisconnectInstance(int $InstanceID): bool
     if (!instanceOrWarn($InstanceID)) {
         return false;
     }
+    $parent = (int)Kernel::$instances[$InstanceID]['connection'];
     Kernel::$instances[$InstanceID]['connection'] = 0;
+    Kernel::sendMessage($InstanceID, FM_DISCONNECT, [$parent]);
     return true;
 }
 

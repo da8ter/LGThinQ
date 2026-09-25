@@ -32,7 +32,6 @@ class LGThinQDevice extends IPSModule
         $this->RegisterAttributeString('DeviceType', '');
         $this->RegisterAttributeString('LastProfile', '');
         $this->RegisterAttributeString('EnergyProfile', '');
-        $this->RegisterAttributeInteger('LastSelfHealTs', 0);
         // Timer registered at 0 (disabled); interval is set in ApplyChanges when needed
         $this->RegisterTimer('InitialUpdateStatus', 0, 'LGTQD_InitialSetup($_IPS[\'TARGET\']);');
         $this->RegisterTimer('UpdateEnergy', 0, 'LGTQD_UpdateEnergy($_IPS[\'TARGET\']);');
@@ -96,14 +95,46 @@ class LGThinQDevice extends IPSModule
         @SetValueString($this->getVarId('INFO'), json_encode($info, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
 
+        // Once the Bridge becomes active (e.g. its PAT is entered), an incomplete setup continues at once
+        $this->RegisterMessage($this->InstanceID, FM_CONNECT);
+        $this->RegisterMessage($this->InstanceID, FM_DISCONNECT);
+        $this->watchParent();
+
         // Status, profile, type, variables, energy, subscription; repeated with backoff until complete
         $this->setup()->run();
     }
 
+    /** IM_CHANGESTATUS of the current parent (the Bridge), and no longer of an earlier one. */
+    private function watchParent(): void
+    {
+        $info = @IPS_GetInstance($this->InstanceID);
+        $parent = is_array($info) ? (int)($info['ConnectionID'] ?? 0) : 0;
+        $watched = (int)$this->GetBuffer('WatchedParent');
+        if ($watched > 0 && $watched !== $parent) {
+            $this->UnregisterMessage($watched, IM_CHANGESTATUS);
+        }
+        if ($parent > 0) {
+            $this->RegisterMessage($parent, IM_CHANGESTATUS);
+        }
+        $this->SetBuffer('WatchedParent', (string)$parent);
+    }
+
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
     {
-        if ($Message === IPS_KERNELSTARTED) {
-            $this->ApplyChanges();
+        switch ($Message) {
+            case IPS_KERNELSTARTED:
+                $this->ApplyChanges();
+                break;
+            case FM_CONNECT:
+            case FM_DISCONNECT:
+                $this->watchParent();
+                break;
+            case IM_CHANGESTATUS:
+                // The Bridge became active: an incomplete setup need not wait for its next attempt
+                if ((int)($Data[0] ?? 0) === IS_ACTIVE && $this->GetBuffer('SetupState') !== 'done') {
+                    $this->SetTimerInterval('InitialUpdateStatus', 1000);
+                }
+                break;
         }
     }
 
@@ -279,7 +310,7 @@ class LGThinQDevice extends IPSModule
                 $this->selfHealCooldownElapsed() ? 'elapsed' : 'active'), 0);
             $hasParent = $this->HasActiveParent();
             if ($this->selfHealCooldownElapsed() && $hasParent && trim((string)$this->ReadPropertyString('DeviceID')) !== '') {
-                $this->WriteAttributeInteger('LastSelfHealTs', ThinQClock::now());
+                $this->SetBuffer('SelfHealTs', (string)ThinQClock::now());
                 try {
                     if (!empty($profile) && $type !== '') {
                         $this->SendDebug('ReceiveData', 'Self-heal: recreating variables from cached profile', 0);
@@ -406,13 +437,12 @@ class LGThinQDevice extends IPSModule
     }
 
     /**
-     * Throttle for self-heal: caps repeated recreation/error-logging on every push when
-     * capability variable creation keeps failing. 5-minute cooldown; healing on success is
-     * immediate (the device leaves the only-generic state and stops re-entering this branch).
+     * Throttle for self-heal: at most one attempt per 5 minutes. A buffer, not an attribute: an
+     * attribute that did not exist yet (module updated without reload) made every push heal.
      */
     private function selfHealCooldownElapsed(): bool
     {
-        return (ThinQClock::now() - (int)$this->ReadAttributeInteger('LastSelfHealTs')) >= 300;
+        return (ThinQClock::now() - (int)$this->GetBuffer('SelfHealTs')) >= 300;
     }
 
     private function prepareEngine(): ?CapabilityEngine

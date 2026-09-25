@@ -309,7 +309,7 @@ try {
 }
 check(str_contains($caught, 'HTTP 500 error from') && str_contains($caught, '(empty body)'), 'LGTQ_GetDeviceStatus: ein 500 ohne Rumpf ist ein Fehler, kein leeres Ergebnis');
 
-section('N10 Selbstheilung ohne das Attribut LastSelfHealTs');
+section('N10 Selbstheilung ohne das Attribut LastSelfHealTs (behoben)');
 World::start();
 [$w, $wid] = World::example('washer');
 unset(Kernel::$instances[$w]['attributes']['LastSelfHealTs']); // instance from before the attribute, module updated without reload
@@ -326,8 +326,16 @@ for ($i = 0; $i < 3; $i++) {
 }
 $heals = substr_count(World::debugText($w), 'Self-heal: recreating');
 $attrWarn = count(World::warningsLike('/Attribut LastSelfHealTs nicht gefunden/'));
-befund('N10', $heals <= 1 && $attrWarn === 0, 'Selbstheilung bleibt gedrosselt, auch wenn das Attribut noch fehlt',
-    sprintf('%d Heilversuche bei 3 Pushes in 90 s, %d Warnungen "Attribut LastSelfHealTs nicht gefunden"', $heals, $attrWarn));
+check($heals <= 1 && $attrWarn === 0, sprintf('Selbstheilung bleibt gedrosselt, auch ohne das alte Attribut (%d Heilversuche bei 3 Pushes in 90 s, %d Attribut-Warnungen)', $heals, $attrWarn));
+World::start();
+IPS_SetProperty(World::$bridge, 'AccessToken', '');
+IPS_ApplyChanges(World::$bridge);
+[$w5, $wid5] = World::example('washer');
+Kernel::advance(3600); // by now the setup retries only every 5 min
+IPS_SetProperty(World::$bridge, 'AccessToken', World::$cloud->pat);
+IPS_ApplyChanges(World::$bridge);
+Kernel::advance(2);
+check(in_array('RUN_STATE_CURRENT_STATE', World::idents($w5), true), 'wird die Bridge aktiv (IM_CHANGESTATUS), richtet sich das Gerät binnen Sekunden ein statt beim nächsten Versuch');
 
 section('N11 locale.json');
 $dups = [];

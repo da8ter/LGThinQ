@@ -357,7 +357,11 @@ class IPSModule
 
     protected function SetStatus($Status)
     {
+        $old = (int)Kernel::$instances[$this->InstanceID]['status'];
         Kernel::$instances[$this->InstanceID]['status'] = (int)$Status;
+        if ($old !== (int)$Status) {
+            Kernel::sendMessage($this->InstanceID, IM_CHANGESTATUS, [(int)$Status, $old]); // like Symcon: only on a change
+        }
         return true;
     }
 
