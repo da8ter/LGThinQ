@@ -16,8 +16,8 @@ class CapabilityVarManager
     ) {}
 
     /**
-     * Read value using 'read' section from descriptor: a source path (optionally mapped through
-     * valueMap, case-insensitive) or an element of a list selected by 'where'.
+     * Read value using 'read' section from descriptor: an element of a list selected by 'where', a
+     * zone of a zone list, or a source path; mapped through valueMap (case-insensitive) if given.
      * @param array<string, mixed> $cap
      * @param array<string, mixed> $flat
      */
@@ -25,6 +25,7 @@ class CapabilityVarManager
     {
         $read = $cap['read'] ?? null;
         if (!is_array($read)) return null;
+        $v = null;
         if (isset($read['array']) && is_array($read['array'])) {
             $cfg = $read['array'];
             $container = (string)($cfg['container'] ?? '');
@@ -33,19 +34,31 @@ class CapabilityVarManager
             if ($container !== '' && $path !== '') {
                 $flatSrc = $this->flatStatus ?: $this->flatProfile;
                 $idx = $this->findArrayIndex($flatSrc, $container, $where);
-                if ($idx !== null) {
-                    $v = $this->getFromFlat($flatSrc, $container . '.' . $idx . '.' . $path);
-                    if ($v !== null) {
-                        return $v;
-                    }
+                $v = $idx !== null ? $this->getFromFlat($flatSrc, $container . '.' . $idx . '.' . $path) : null;
+            }
+        } elseif (isset($read['zone']) && is_array($read['zone'])) {
+            $v = $this->readZone($flat, (string)($read['zone']['name'] ?? ''), (string)($read['zone']['path'] ?? ''));
+        } else {
+            foreach (is_array($read['sources'] ?? null) ? $read['sources'] : [] as $p) {
+                $v = $this->getFromFlat($flat, (string)$p);
+                if ($v !== null) {
+                    break;
                 }
             }
         }
         $map = is_array($read['valueMap'] ?? null) ? array_change_key_case($read['valueMap'], CASE_UPPER) : null;
-        foreach (is_array($read['sources'] ?? null) ? $read['sources'] : [] as $p) {
-            $v = $this->getFromFlat($flat, (string)$p);
-            if ($v !== null) {
-                return ($map !== null && array_key_exists(strtoupper((string)$v), $map)) ? $map[strtoupper((string)$v)] : $v;
+        return ($v !== null && $map !== null && array_key_exists(strtoupper((string)$v), $map)) ? $map[strtoupper((string)$v)] : $v;
+    }
+
+    /** Value of $path in the zone named $zone: a zone list ("0.location.locationName") or a single reported zone. */
+    private function readZone(array $flat, string $zone, string $path)
+    {
+        if (($flat['location.locationName'] ?? null) === $zone) {
+            return $flat[$path] ?? null;
+        }
+        foreach ($flat as $key => $value) {
+            if ($value === $zone && preg_match('/^(\d+)\.location\.locationName$/', (string)$key, $m) === 1) {
+                return $flat[$m[1] . '.' . $path] ?? null;
             }
         }
         return null;

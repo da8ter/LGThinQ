@@ -124,6 +124,7 @@ final class ThinQDeviceSetup
         $engine = ($this->engine)();
         try {
             $plan = $engine->buildPlan($type, $profile, $status);
+            self::migrateLegacyIdents($this->ctx->instanceId, $plan);
             $preExisting = [];
             foreach ($plan as $ident => $_) {
                 $preExisting[(string)$ident] = $this->varId((string)$ident) > 0;
@@ -168,6 +169,26 @@ final class ThinQDeviceSetup
         }
 
         $engine->applyStatus($status);
+    }
+
+    /**
+     * Earlier versions parsed only the first zone of a multi-zone device, without zone prefix
+     * (POWER_POWER_LEVEL); such a variable gets the new ident and keeps its ID and history.
+     *
+     * @param array<string, array<string, mixed>> $plan
+     */
+    public static function migrateLegacyIdents(int $instanceId, array $plan): void
+    {
+        foreach ($plan as $ident => $entry) {
+            $legacy = (string)($entry['legacyIdent'] ?? '');
+            if ($legacy === '' || (int)@IPS_GetObjectIDByIdent((string)$ident, $instanceId) > 0) {
+                continue;
+            }
+            $vid = (int)@IPS_GetObjectIDByIdent($legacy, $instanceId);
+            if ($vid > 0) {
+                @IPS_SetIdent($vid, (string)$ident);
+            }
+        }
     }
 
     /**

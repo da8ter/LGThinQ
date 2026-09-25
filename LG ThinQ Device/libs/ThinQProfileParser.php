@@ -23,279 +23,196 @@ class ThinQProfileParser
     private $translateCallback = null;
 
     /**
-     * Implicit top-level location detected from property array wrapper.
-     * Set by normalizePropertyStructure for Washer/Oven/Cooktop-style profiles
-     * where property[0] contains a location wrapper like {location: {locationName: "MAIN"}}.
-     * This is a TOP-LEVEL location (separate key in API payload), distinct from
-     * array-based locations (fridge/wine cellar) where locationName is inside the resource.
-     * @var string|null
+     * Zone of the resources being parsed (washer, oven, cooktop: {location: {locationName: …}});
+     * commands carry it as a separate top-level key, unlike the elements of an element list
+     * (refrigerator compartments) whose locationName is inside the resource.
      */
     private ?string $topLevelLocation = null;
     
     /**
-     * Parse device profile and generate variable plan
-     * 
+     * Variable plan of a device profile (any form ThinQShape knows): every zone of a zone list with
+     * the zone as ident prefix, element lists per element (locationName/switchName as prefix, unit
+     * lists through the device's unit), extensionProperty without zone, and the parts of a washtower
+     * with WASHER_/DRYER_ as prefix.
+     *
      * @param array<string, mixed> $profile Device profile from API
      * @return array<string, array<string, mixed>> Variable plan keyed by ident
      */
     public function parseProfile(array $profile): array
     {
-        $plan = [];
-        
-        // Profile can be empty
-        if (empty($profile)) {
+        $wrapped = ThinQShape::wrapProfile($profile);
+        if ($wrapped === null) {
             return [];
         }
-        
-        // Profile structure: property array contains resources
-        // Can be: property[0] = {...} OR property = [{...}] OR property = {...}
-        $properties = $this->normalizePropertyStructure($profile);
-        
-        // --- Special handling for Temperature resources ---
+        if (ThinQShape::isPartProfile($wrapped)) {
+            $plan = [];
+            foreach ($wrapped as $part => $sub) {
+                foreach ($this->parseProfile($sub) as $entry) {
+                    $entry['ident'] = strtoupper((string)$part) . '_' . $entry['ident'];
+                    $entry['name'] = ucfirst((string)$part) . ' ' . $entry['name'];
+                    $entry['path'] = $part . '.' . $entry['path'];
+                    $entry['part'] = (string)$part;
+                    unset($entry['legacyIdent']);
+                    $plan[$entry['ident']] = $entry;
+                }
+            }
+            return $plan;
+        }
+        $zones = ThinQShape::zones($wrapped);
+        $plan = [];
+        if (count($zones) > 1) {
+            // Several zones (cooktop, plant cultivator): each gets its prefix, commands carry the zone
+            foreach ($zones as $i => $zone) {
+                foreach ($this->parseResources(ThinQShape::resources($wrapped, $zone), $zone) as $ident => $entry) {
+                    $entry['ident'] = strtoupper($zone) . '_' . $ident;
+                    $entry['name'] = ucfirst(strtolower(str_replace('_', ' ', $zone))) . ' ' . $entry['name'];
+                    $entry['zone'] = $zone;
+                    if ($i === 0) {
+                        $entry['legacyIdent'] = $ident; // earlier versions parsed only this zone, without prefix
+                    }
+                    $plan[$entry['ident']] = $entry;
+                }
+            }
+        } else {
+            $plan = $this->parseResources(ThinQShape::resources($wrapped), $zones[0] ?? null);
+        }
+        if (is_array($wrapped['extensionProperty'] ?? null)) {
+            $plan += $this->parseResources($wrapped['extensionProperty'], null); // device-wide, no zone in commands
+        }
+        return $plan;
+    }
+
+    /**
+     * Entries for the resources of one zone; $wrap is the zone name commands carry as top-level
+     * location (washer, oven: {"location": {…}, …}). Of the temperature resources of refrigerators
+     * and air conditioners only the target and current temperature are taken.
+     *
+     * @param array<string, mixed> $properties
+     * @return array<string, array<string, mixed>>
+     */
+    private function parseResources(array $properties, ?string $wrap): array
+    {
+        $this->topLevelLocation = $wrap;
+        $plan = [];
         $temp = $properties['temperature'] ?? null;
         $tiu  = $properties['temperatureInUnits'] ?? null;
         $skip = [];
-        $hasLoc = function ($d): bool {
-            return is_array($d) && ($this->isMultiLocationArray($d) || (isset($d['locationName']) && is_string($d['locationName']) && $d['locationName'] !== ''));
-        };
-        // Prefer 'temperature' with location. If it has no location but 'temperatureInUnits' does, fallback to 'temperatureInUnits'.
-        if (is_array($temp) || is_array($tiu)) {
-            if (is_array($temp) && $hasLoc($temp)) {
-                if ($this->isMultiLocationArray($temp)) {
-                    foreach ($temp as $idx => $locData) {
-                        if (!is_array($locData)) continue;
-                        $location = (string)($locData['locationName'] ?? 'LOC_' . (string)$idx);
-                        $plan = array_merge($plan, $this->parseResourceAllowed('temperature', $locData, $location, ['targetTemperature', 'currentTemperature']));
-                    }
-                } else {
-                    $location = (string)($temp['locationName'] ?? 'MAIN');
-                    $plan = array_merge($plan, $this->parseResourceAllowed('temperature', $temp, $location, ['targetTemperature', 'currentTemperature']));
-                }
-                $skip['temperature'] = true;
-                $skip['temperatureInUnits'] = true; // prevent duplicates from parallel resource
-            } elseif (is_array($tiu) && $hasLoc($tiu)) {
-                // Fallback: Use temperatureInUnits with C-fields to retain location
-                if ($this->isMultiLocationArray($tiu)) {
-                    foreach ($tiu as $idx => $locData) {
-                        if (!is_array($locData)) continue;
-                        $location = (string)($locData['locationName'] ?? 'LOC_' . (string)$idx);
-                        $plan = array_merge($plan, $this->parseResourceAllowed('temperatureInUnits', $locData, $location, ['targetTemperatureC', 'currentTemperatureC']));
-                    }
-                } else {
-                    $location = (string)($tiu['locationName'] ?? 'MAIN');
-                    $plan = array_merge($plan, $this->parseResourceAllowed('temperatureInUnits', $tiu, $location, ['targetTemperatureC', 'currentTemperatureC']));
-                }
-                $skip['temperature'] = true;
-                $skip['temperatureInUnits'] = true;
-            } elseif (is_array($temp)) {
-                // No locations anywhere: keep only the two main fields from temperature
-                $plan = array_merge($plan, $this->parseResourceAllowed('temperature', $temp, null, ['targetTemperature', 'currentTemperature']));
-                $skip['temperature'] = true;
-                $skip['temperatureInUnits'] = true;
-            } elseif (is_array($tiu)) {
-                // No locations and no 'temperature': keep the two C fields from temperatureInUnits
-                $plan = array_merge($plan, $this->parseResourceAllowed('temperatureInUnits', $tiu, null, ['targetTemperatureC', 'currentTemperatureC']));
-                $skip['temperature'] = true;
-                $skip['temperatureInUnits'] = true;
+        $hasLoc = fn($d): bool => $this->isLocationList($d) || (is_array($d) && is_string($d['locationName'] ?? null) && $d['locationName'] !== '');
+        // Prefer 'temperature' with location; else 'temperatureInUnits' with location; else the two main fields
+        $pick = null;
+        if (is_array($temp) && $hasLoc($temp)) {
+            $pick = ['temperature', $temp, ['targetTemperature', 'currentTemperature']];
+        } elseif (is_array($tiu) && $hasLoc($tiu)) {
+            $pick = ['temperatureInUnits', $tiu, ['targetTemperatureC', 'currentTemperatureC']];
+        } elseif (is_array($temp)) {
+            $pick = ['temperature', $temp, ['targetTemperature', 'currentTemperature']];
+        } elseif (is_array($tiu)) {
+            $pick = ['temperatureInUnits', $tiu, ['targetTemperatureC', 'currentTemperatureC']];
+        }
+        if ($pick !== null) {
+            [$res, $data, $allowed] = $pick;
+            if (ThinQShape::selectorOf($data) === 'unit') { // oven: one temperature per unit
+                $element = $this->unitElement($data);
+                $plan = $this->parseResource($res, $element, null, $allowed, ['unit' => (string)$element['unit']]);
+                $data = [];
             }
+            foreach ($this->isLocationList($data) ? $data : [$data] as $idx => $locData) {
+                if (!is_array($locData)) continue;
+                $location = $hasLoc($data) ? (string)($locData['locationName'] ?? ($this->isLocationList($data) ? 'LOC_' . $idx : 'MAIN')) : null;
+                $plan = array_merge($plan, $this->parseResource($res, $locData, $location, $allowed, $location !== null ? ['locationName' => $location] : null));
+            }
+            $skip = ['temperature' => true, 'temperatureInUnits' => true];
         }
 
         foreach ($properties as $resource => $data) {
-            if (isset($skip[(string)$resource])) {
-                continue; // already handled specially above
-            }
-            if (!is_array($data)) {
-                continue; // Skip non-array entries (e.g., simple strings)
-            }
-            
-            // Ensure resource is always a string (can be int if array is numeric)
             $resource = (string)$resource;
-
-            // Skip the 'location' resource from Washer/Oven/Cooktop profiles –
-            // it's extracted as topLevelLocation and not a real controllable resource
-            if ($resource === 'location') {
+            // 'location' is the zone wrapper, not a resource
+            if (isset($skip[$resource]) || !is_array($data) || $resource === 'location') {
                 continue;
             }
-            
-            // Check if this is a multi-location resource (array of locations)
-            if ($this->isMultiLocationArray($data)) {
-                foreach ($data as $idx => $locData) {
-                    if (!is_array($locData)) continue;
-                    $location = $locData['locationName'] ?? "LOC_$idx";
-                    $plan = array_merge($plan, $this->parseResource($resource, $locData, $location));
+            $selector = ThinQShape::selectorOf($data);
+            if ($selector === 'locationName' || $selector === 'switchName') {
+                foreach ($data as $element) {
+                    $value = (string)$element[$selector];
+                    $plan = array_merge($plan, $this->parseResource($resource, $element, $value, null, [$selector => $value]));
                 }
-            } elseif (isset($data['locationName'])) {
-                // Single location case
-                $location = (string)$data['locationName'];
-                $plan = array_merge($plan, $this->parseResource($resource, $data, $location));
-            } else {
-                // Standard case: no location (most common)
-                $plan = array_merge($plan, $this->parseResource($resource, $data));
+            } elseif ($selector === 'unit') {
+                // One variable per property in the device's unit, not one per unit; skipped next to a plain twin
+                if (!isset($properties[(string)preg_replace('/InUnits$/', '', $resource)]) || !str_ends_with($resource, 'InUnits')) {
+                    $element = $this->unitElement($data);
+                    $plan = array_merge($plan, $this->parseResource($resource, $element, null, null, ['unit' => (string)$element['unit']], true));
+                }
+            } elseif (!array_is_list($data)) {
+                $location = is_string($data['locationName'] ?? null) ? $data['locationName'] : null;
+                $plan = array_merge($plan, $this->parseResource($resource, $data, $location, null, $location !== null ? ['locationName' => $location] : null));
             }
         }
-        
         return $plan;
     }
-    
-    /**
-     * The resources of the profile (ThinQShape): the first zone of a zone list, whose name then
-     * travels as top-level location in the commands (washer, oven: {"location": {…}, …}).
-     *
-     * @param array<string, mixed> $profile
-     * @return array<string, mixed>
-     */
-    private function normalizePropertyStructure(array $profile): array
+
+    /** A list of elements selected by locationName (refrigerator compartments). */
+    private function isLocationList(mixed $data): bool
     {
-        $wrapped = ThinQShape::wrapProfile($profile) ?? [];
-        $zones = ThinQShape::zones($wrapped);
-        $this->topLevelLocation = $zones[0] ?? null;
-        return ThinQShape::resources($wrapped);
+        return ThinQShape::selectorOf($data) === 'locationName';
+    }
+
+    /** The element of a unit list in Celsius, else the first one. */
+    private function unitElement(array $list): array
+    {
+        foreach ($list as $element) {
+            if (($element['unit'] ?? null) === 'C') {
+                return $element;
+            }
+        }
+        return $list[0];
     }
 
     /**
-     * Check if data is an array of location objects
-     * 
-     * @param array<int|string, mixed> $data
-     * @return bool
-     */
-    private function isMultiLocationArray(array $data): bool
-    {
-        // Treat as multi-location only if:
-        // - it's a numeric array with object elements
-        // - at least one element provides a locationName
-        // - and elements look like property objects (fields with 'type')
-        if (!isset($data[0]) || !is_array($data[0])) {
-            return false;
-        }
-        $hasLocation = false;
-        foreach ($data as $elem) {
-            if (is_array($elem) && array_key_exists('locationName', $elem)) {
-                $hasLocation = true;
-                break;
-            }
-        }
-        if (!$hasLocation) {
-            return false; // prevent LOC_* placeholder locations
-        }
-        $firstElem = $data[0];
-        foreach ($firstElem as $key => $val) {
-            if ($key === 'locationName') continue;
-            if (is_array($val) && isset($val['type'])) {
-                return true;
-            }
-        }
-        return false;
-    }
-    
-    /**
-     * Parse a single resource into variable entries
-     * 
-     * @param string $resource Resource name (e.g., 'timer', 'temperature')
-     * @param array<string, mixed> $data Resource data containing properties
-     * @param string|null $location Optional location name (e.g., 'FRIDGE', 'MAIN')
+     * Entries for the properties of one resource (or one element of an element list).
+     *
+     * @param array<string, mixed> $data resource or element
+     * @param string|null $location ident prefix of an element (FRIDGE, SWITCH_1)
+     * @param array<int, string>|null $allowed only these properties
+     * @param array<string, string>|null $selector how reads and commands address the element, e.g. ['switchName' => 'SWITCH_1']
+     * @param bool $skipBounds leave out read-only bounds (minTemperature, airCoolMaxTemperature) in unit lists
      * @return array<string, array<string, mixed>>
      */
-    private function parseResource(string $resource, array $data, ?string $location = null): array
+    private function parseResource(string $resource, array $data, ?string $location = null, ?array $allowed = null, ?array $selector = null, bool $skipBounds = false): array
     {
         $plan = [];
-        
         foreach ($data as $attrName => $meta) {
-            // Skip special keys
-            if ($attrName === 'locationName' || !is_array($meta)) {
+            $attrName = (string)$attrName;
+            if (!is_array($meta) || !isset($meta['type']) || in_array($attrName, ThinQShape::SELECTORS, true)) {
                 continue;
             }
-            
-            // Skip if no type defined (not a property)
-            if (!isset($meta['type'])) {
+            if (($allowed !== null && !in_array($attrName, $allowed, true))
+                || ($skipBounds && preg_match('/(^(min|max)|[a-z](Min|Max))[A-Z]/', $attrName) === 1 && !$this->isWriteable($meta))) {
                 continue;
             }
-            
             $ident = $this->buildIdent($resource, $attrName, $location);
-            $fullPropertyName = $resource . '.' . $attrName;
-            
-            $readable = $this->isReadable($meta);
             $writeable = $this->isWriteable($meta);
-            
-            // Force writeable for timer HOUR properties (often marked read-only in profile but should be settable)
-            // Matches: relativeHourToStart, absoluteHourToStop, timerHour, targetHour
-            // Note: Minute writeability comes from profile mode; washer has no minute setters per SDK
+            // Timer HOUR properties are settable even where the profile marks them read-only
+            // (relativeHourToStart, absoluteHourToStop, timerHour, targetHour); minutes follow the profile
             if (preg_match('/hour.*to.*(start|stop)|^(timer|target)Hour$/i', $attrName)) {
                 $writeable = true;
             }
-            
             $entry = [
                 'ident' => $ident,
                 'name' => $this->translateProperty($attrName, $resource, $location),
                 'type' => ThinQValue::variableType($meta),
-                'path' => $fullPropertyName,
+                'path' => $resource . '.' . $attrName,
                 'resource' => $resource,
                 'property' => $attrName,
                 'location' => $location,
-                'readable' => $readable,
+                'selector' => $selector,
+                'readable' => $this->isReadable($meta),
                 'writeable' => $writeable,
                 'presentation' => $this->inferPresentation($meta, $attrName, $writeable),
                 'range' => $this->extractRange($meta),
                 'enum' => $this->extractEnum($meta),
                 'meta' => $meta // Keep original for write payloads
             ];
-            // Per SDK: Washer/Oven/Cooktop use top-level location wrapping (separate key).
-            // Only set when location came from property array wrapper, NOT from resource array.
-            if ($location === null && $this->topLevelLocation !== null) {
-                $entry['topLevelLocation'] = $this->topLevelLocation;
-            }
-            $plan[$ident] = $entry;
-        }
-        
-        return $plan;
-    }
-
-    /**
-     * Parse a resource but only include a whitelist of attributes
-     *
-     * @param string $resource
-     * @param array<string,mixed> $data
-     * @param string|null $location
-     * @param array<int,string> $allowed
-     * @return array<string, array<string,mixed>>
-     */
-    private function parseResourceAllowed(string $resource, array $data, ?string $location, array $allowed): array
-    {
-        $plan = [];
-        foreach ($data as $attrName => $meta) {
-            if ($attrName === 'locationName' || !is_array($meta)) {
-                continue;
-            }
-            if (!in_array($attrName, $allowed, true)) {
-                continue;
-            }
-            if (!isset($meta['type'])) {
-                continue;
-            }
-            $ident = $this->buildIdent($resource, $attrName, $location);
-            $fullPropertyName = $resource . '.' . $attrName;
-
-            $readable = $this->isReadable($meta);
-            $writeable = $this->isWriteable($meta);
-            // Force writeable for timer HOUR properties
-            // Matches: relativeHourToStart, absoluteHourToStop, timerHour, targetHour
-            if (preg_match('/hour.*to.*(start|stop)|^(timer|target)Hour$/i', $attrName)) {
-                $writeable = true;
-            }
-            $entry = [
-                'ident' => $ident,
-                'name' => $this->translateProperty($attrName, $resource, $location),
-                'type' => ThinQValue::variableType($meta),
-                'path' => $fullPropertyName,
-                'resource' => $resource,
-                'property' => $attrName,
-                'location' => $location,
-                'readable' => $readable,
-                'writeable' => $writeable,
-                'presentation' => $this->inferPresentation($meta, $attrName, $writeable),
-                'range' => $this->extractRange($meta),
-                'enum' => $this->extractEnum($meta),
-                'meta' => $meta
-            ];
+            // Zone lists (washer, oven, cooktop) carry the zone as a separate top-level key in commands
             if ($location === null && $this->topLevelLocation !== null) {
                 $entry['topLevelLocation'] = $this->topLevelLocation;
             }
@@ -303,7 +220,7 @@ class ThinQProfileParser
         }
         return $plan;
     }
-    
+
     /**
      * Build variable identifier following SDK naming patterns
      * 

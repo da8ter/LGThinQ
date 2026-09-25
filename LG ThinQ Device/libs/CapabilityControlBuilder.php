@@ -106,10 +106,10 @@ class CapabilityControlBuilder
                     }
                     $this->applyCoSendFromStatus($cfg, $payload);
                     $this->applyCoSendConst($cfg, $payload);
-                    return $payload;
+                    return self::inPart($cfg, $payload);
                 }
                 if (!empty($cfg['clampFromProfile'])) {
-                    $rng = $this->rangeFor($resource, $property, $extras, $cfg['locationWrap'] ?? null);
+                    $rng = $this->rangeFor($resource, $property, $extras, $cfg['locationWrap'] ?? null, $cfg['part'] ?? null);
                     if (is_array($rng) && is_numeric($value)) {
                         $value = ThinQValue::clamp((float)$value, $rng);
                     }
@@ -126,7 +126,7 @@ class CapabilityControlBuilder
                 }
                 $this->applyCoSendFromStatus($cfg, $payload);
                 $this->applyCoSendConst($cfg, $payload);
-                return $payload;
+                return self::inPart($cfg, $payload);
             }
         }
         return null;
@@ -138,11 +138,17 @@ class CapabilityControlBuilder
      *
      * @param array<string, mixed> $extras
      */
-    private function rangeFor(string $resource, string $property, array $extras, mixed $zone): ?array
+    private function rangeFor(string $resource, string $property, array $extras, mixed $zone, mixed $part = null): ?array
     {
         $selector = array_intersect_key($extras, array_flip(ThinQShape::SELECTORS));
-        return ThinQShape::range($this->profile, $resource, $property, $selector, is_string($zone) && $zone !== '' ? $zone : null)
+        return ThinQShape::range($this->profile, $resource, $property, $selector, is_string($zone) && $zone !== '' ? $zone : null, is_string($part) ? $part : null)
             ?? $this->varManager->findRangeFromProfile($resource, $property);
+    }
+
+    /** A command for a washtower part goes inside it: {"dryer": {…}}. */
+    private static function inPart(array $cfg, array $payload): array
+    {
+        return is_string($cfg['part'] ?? null) && $cfg['part'] !== '' ? [$cfg['part'] => $payload] : $payload;
     }
 
     /** @param array<string, mixed> $arr */

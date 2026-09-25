@@ -115,6 +115,18 @@ class CapabilityPlanBuilder
     {
         $ident = $autoEntry['ident'];
 
+        // How the value is found in the status: an element of a list (selector), a zone of a
+        // zone list, or a plain path (for washtower parts prefixed with the part)
+        $selector = is_array($autoEntry['selector'] ?? null) ? $autoEntry['selector'] : null;
+        $part = $autoEntry['part'] ?? null;
+        if ($selector !== null) {
+            $readCfg = ['array' => ['container' => ($part !== null ? $part . '.' : '') . $autoEntry['resource'], 'path' => $autoEntry['property'], 'where' => $selector]];
+        } elseif (($autoEntry['zone'] ?? null) !== null) {
+            $readCfg = ['zone' => ['name' => (string)$autoEntry['zone'], 'path' => $autoEntry['path']]];
+        } else {
+            $readCfg = ['sources' => [$autoEntry['path']]];
+        }
+
         // Special handling for Timer Control variables (*_STOP_TIMER, *_START_TIMER)
         // According to official SDK: These are READ-ONLY status fields, not writable controls
         $isTimerControl = preg_match('/_(?:STOP|START)_TIMER$/i', $ident);
@@ -125,10 +137,8 @@ class CapabilityPlanBuilder
                 'name' => $autoEntry['name'],
                 'type' => 'boolean',
                 'location' => $autoEntry['location'] ?? null,
-                'read' => [
-                    'sources' => [$autoEntry['path']],
-                    'valueMap' => ['SET' => true, 'UNSET' => false]
-                ],
+                'legacyIdent' => $autoEntry['legacyIdent'] ?? null,
+                'read' => $readCfg + ['valueMap' => ['SET' => true, 'UNSET' => false]],
                 'create' => [
                     'when' => 'statusHasAny',
                     'keys' => [$autoEntry['path']]
@@ -141,24 +151,12 @@ class CapabilityPlanBuilder
             ];
         }
 
-        // Build read config
-        if (isset($autoEntry['location']) && $autoEntry['location'] !== null && $autoEntry['location'] !== '') {
-            $readCfg = [
-                'array' => [
-                    'container' => $autoEntry['resource'],
-                    'path' => $autoEntry['property'],
-                    'where' => ['locationName' => (string)$autoEntry['location']]
-                ]
-            ];
-        } else {
-            $readCfg = ['sources' => [$autoEntry['path']]];
-        }
-
         $capability = [
             'ident' => $ident,
             'name' => $autoEntry['name'],
             'type' => $this->ipsTypeToCapType($autoEntry['type']),
             'location' => $autoEntry['location'] ?? null,
+            'legacyIdent' => $autoEntry['legacyIdent'] ?? null,
             'read' => $readCfg,
             'create' => ['when' => 'always', 'keys' => []],
             'action' => [
@@ -207,8 +205,8 @@ class CapabilityPlanBuilder
         $type = $meta['type'] ?? '';
         $resource = (string)$autoEntry['resource'];
         $property = (string)$autoEntry['property'];
-        $location = (isset($autoEntry['location']) && $autoEntry['location'] !== null && $autoEntry['location'] !== '')
-            ? (string)$autoEntry['location'] : null;
+        $selector = is_array($autoEntry['selector'] ?? null) ? $autoEntry['selector'] : null;
+        $part = $autoEntry['part'] ?? null;
 
         $coSend = null;
         $redirectedToTIU = false;
@@ -250,8 +248,13 @@ class CapabilityPlanBuilder
 
             $enumMap = [];
             $path = $autoEntry['path'];
+            // An element of a list is addressed by its selector: {"switchState": {"switchName": "SWITCH_1", …}}
+            $address = [];
+            foreach ($selector ?? [] as $key => $value) {
+                $address[($part !== null ? $part . '.' : '') . $resource . '.' . $key] = (string)$value;
+            }
             foreach ($autoEntry['enum'] as $val) {
-                $enumMap[(string)$val] = [$path => (string)$val];
+                $enumMap[(string)$val] = $address + [$path => (string)$val];
             }
 
             $result = ['enumMap' => $enumMap];
@@ -264,10 +267,12 @@ class CapabilityPlanBuilder
         $topLevelLoc = (isset($autoEntry['topLevelLocation']) && is_string($autoEntry['topLevelLocation']) && $autoEntry['topLevelLocation'] !== '')
             ? $autoEntry['topLevelLocation'] : null;
 
-        $buildAttr = function(array $base) use ($location, $topLevelLoc, $coSend) {
-            if ($location !== null) {
-                if (!isset($base['extras'])) { $base['extras'] = []; }
-                $base['extras']['locationName'] = $location;
+        $buildAttr = function(array $base) use ($selector, $part, $topLevelLoc, $coSend) {
+            if ($selector !== null) {
+                $base['extras'] = $selector + ($base['extras'] ?? []); // e.g. locationName FREEZER, switchName SWITCH_1, unit C
+            }
+            if ($part !== null) {
+                $base['part'] = (string)$part; // washtower: {"dryer": {…}}
             }
             if ($topLevelLoc !== null) {
                 $base['locationWrap'] = $topLevelLoc;

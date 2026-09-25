@@ -309,7 +309,8 @@ class CapabilityEngine
                 'shouldCreate' => $shouldCreate,
                 'presentation' => isset($cap['presentation']) && is_array($cap['presentation']) ? $cap['presentation'] : null,
                 'enableAction' => $shouldCreate && $this->shouldEnableAction($cap),
-                'location' => $cap['location'] ?? null // NEW: Location support
+                'location' => $cap['location'] ?? null,
+                'legacyIdent' => $cap['legacyIdent'] ?? null
             ];
 
             if ($shouldCreate) {

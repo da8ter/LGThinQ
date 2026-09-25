@@ -55,6 +55,7 @@ final class ThinQCleanup
             return null;
         }
         $plan = ($this->engine)()->buildPlan($type, $profile, $this->profiles->readLastStatus());
+        ThinQDeviceSetup::migrateLegacyIdents($this->ctx->instanceId, $plan); // renamed first, never deleted
         $valid = array_fill_keys(array_merge(array_map('strval', array_keys($plan)), ThinQDeviceSetup::GENERIC), true);
         return array_values(array_filter($this->variables(), static fn(array $v): bool => $v['ident'] !== '' && !isset($valid[$v['ident']])));
     }

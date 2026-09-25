@@ -203,21 +203,32 @@
         ]
     },
     "cooktop": {
-        "variablen": 7,
-        "gelesen": 0,
+        "variablen": 18,
+        "gelesen": 15,
         "warnungen": 0,
         "fehler": 0,
         "idents": [
-            "COOKING_ZONE_CURRENT_STATE",
             "ERROR_LAST",
-            "POWER_POWER_LEVEL",
+            "LEFT_FRONT_COOKING_ZONE_CURRENT_STATE",
+            "LEFT_FRONT_POWER_POWER_LEVEL",
+            "LEFT_FRONT_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED",
+            "LEFT_FRONT_TIMER_REMAIN_HOUR",
+            "LEFT_FRONT_TIMER_REMAIN_MINUTE",
+            "LEFT_REAR_COOKING_ZONE_CURRENT_STATE",
+            "LEFT_REAR_POWER_POWER_LEVEL",
+            "LEFT_REAR_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED",
+            "LEFT_REAR_TIMER_REMAIN_HOUR",
+            "LEFT_REAR_TIMER_REMAIN_MINUTE",
+            "OPERATION_OPERATION_MODE",
             "PUSH_LAST",
-            "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED",
-            "TIMER_REMAIN_HOUR",
-            "TIMER_REMAIN_MINUTE"
+            "RIGHT_FRONT_COOKING_ZONE_CURRENT_STATE",
+            "RIGHT_FRONT_POWER_POWER_LEVEL",
+            "RIGHT_FRONT_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED",
+            "RIGHT_FRONT_TIMER_REMAIN_HOUR",
+            "RIGHT_FRONT_TIMER_REMAIN_MINUTE"
         ],
         "befehle": [
-            "Cooktop - Power Off => keine Variable OPERATION_OPERATION_MODE"
+            "Cooktop - Power Off => gleich"
         ]
     },
     "curtain_ctrl": {
@@ -521,16 +532,19 @@
         "befehle": []
     },
     "light_switch": {
-        "variablen": 2,
-        "gelesen": 0,
+        "variablen": 5,
+        "gelesen": 3,
         "warnungen": 0,
         "fehler": 0,
         "idents": [
             "ERROR_LAST",
-            "PUSH_LAST"
+            "PUSH_LAST",
+            "SWITCH_1_SWITCH_STATE_CURRENT_SWITCH",
+            "SWITCH_2_SWITCH_STATE_CURRENT_SWITCH",
+            "SWITCH_3_SWITCH_STATE_CURRENT_SWITCH"
         ],
         "befehle": [
-            "Befehl => keine Variable SWITCH_1_SWITCH_STATE_CURRENT_SWITCH"
+            "Befehl => gleich"
         ]
     },
     "line_led": {
@@ -643,7 +657,7 @@
         "befehle": []
     },
     "oven": {
-        "variablen": 8,
+        "variablen": 9,
         "gelesen": 0,
         "warnungen": 0,
         "fehler": 0,
@@ -653,6 +667,7 @@
             "PUSH_LAST",
             "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED",
             "RUN_STATE_CURRENT_STATE",
+            "TEMPERATURE_TARGET_TEMPERATURE",
             "TIMER_REMAIN_HOUR",
             "TIMER_REMAIN_MINUTE",
             "TIMER_REMAIN_SECOND"
@@ -676,22 +691,31 @@
         ]
     },
     "plant_cultivator": {
-        "variablen": 11,
-        "gelesen": 0,
+        "variablen": 20,
+        "gelesen": 18,
         "warnungen": 0,
         "fehler": 0,
         "idents": [
             "ERROR_LAST",
-            "LIGHT_BRIGHTNESS",
-            "LIGHT_DURATION",
-            "LIGHT_END_HOUR",
-            "LIGHT_END_MINUTE",
-            "LIGHT_START_HOUR",
-            "LIGHT_START_MINUTE",
+            "LOWER_LIGHT_BRIGHTNESS",
+            "LOWER_LIGHT_DURATION",
+            "LOWER_LIGHT_END_HOUR",
+            "LOWER_LIGHT_END_MINUTE",
+            "LOWER_LIGHT_START_HOUR",
+            "LOWER_LIGHT_START_MINUTE",
+            "LOWER_RUN_STATE_CURRENT_STATE",
+            "LOWER_RUN_STATE_GROWTH_MODE",
+            "LOWER_RUN_STATE_WIND_VOLUME",
             "PUSH_LAST",
-            "RUN_STATE_CURRENT_STATE",
-            "RUN_STATE_GROWTH_MODE",
-            "RUN_STATE_WIND_VOLUME"
+            "UPPER_LIGHT_BRIGHTNESS",
+            "UPPER_LIGHT_DURATION",
+            "UPPER_LIGHT_END_HOUR",
+            "UPPER_LIGHT_END_MINUTE",
+            "UPPER_LIGHT_START_HOUR",
+            "UPPER_LIGHT_START_MINUTE",
+            "UPPER_RUN_STATE_CURRENT_STATE",
+            "UPPER_RUN_STATE_GROWTH_MODE",
+            "UPPER_RUN_STATE_WIND_VOLUME"
         ],
         "befehle": []
     },
@@ -902,18 +926,22 @@
         ]
     },
     "switch_strip": {
-        "variablen": 3,
-        "gelesen": 1,
+        "variablen": 7,
+        "gelesen": 5,
         "warnungen": 0,
         "fehler": 0,
         "idents": [
             "ERROR_LAST",
             "PUSH_LAST",
-            "RUN_STATE_CURRENT_STATE"
+            "RUN_STATE_CURRENT_STATE",
+            "SWITCH_1_SWITCH_STATE_CURRENT_SWITCH",
+            "SWITCH_2_SWITCH_STATE_CURRENT_SWITCH",
+            "SWITCH_3_SWITCH_STATE_CURRENT_SWITCH",
+            "SWITCH_USB_SWITCH_STATE_CURRENT_SWITCH"
         ],
         "befehle": [
             "Befehl => gleich",
-            "Befehl => keine Variable SWITCH_1_SWITCH_STATE_CURRENT_SWITCH"
+            "Befehl => gleich"
         ]
     },
     "sync_box": {
@@ -962,18 +990,29 @@
         ]
     },
     "system_boiler": {
-        "variablen": 9,
-        "gelesen": 7,
+        "variablen": 20,
+        "gelesen": 11,
         "warnungen": 0,
         "fehler": 0,
         "idents": [
             "BOILER_JOB_MODE_CURRENT_JOB_MODE",
             "ERROR_LAST",
+            "HOT_WATER_TEMPERATURE_IN_UNITS_CURRENT_TEMPERATURE",
+            "HOT_WATER_TEMPERATURE_IN_UNITS_TARGET_TEMPERATURE",
             "OPERATION_BOILER_OPERATION_MODE",
             "OPERATION_HOT_WATER_MODE",
             "OPERATION_ROOM_TEMP_MODE",
             "OPERATION_ROOM_WATER_MODE",
             "PUSH_LAST",
+            "ROOM_TEMPERATURE_IN_UNITS_AIR_COOL_TARGET_TEMPERATURE",
+            "ROOM_TEMPERATURE_IN_UNITS_AIR_CURRENT_TEMPERATURE",
+            "ROOM_TEMPERATURE_IN_UNITS_AIR_HEAT_TARGET_TEMPERATURE",
+            "ROOM_TEMPERATURE_IN_UNITS_CURRENT_TEMPERATURE",
+            "ROOM_TEMPERATURE_IN_UNITS_IN_WATER_CURRENT_TEMPERATURE",
+            "ROOM_TEMPERATURE_IN_UNITS_OUT_WATER_CURRENT_TEMPERATURE",
+            "ROOM_TEMPERATURE_IN_UNITS_TARGET_TEMPERATURE",
+            "ROOM_TEMPERATURE_IN_UNITS_WATER_COOL_TARGET_TEMPERATURE",
+            "ROOM_TEMPERATURE_IN_UNITS_WATER_HEAT_TARGET_TEMPERATURE",
             "TEMPERATURE_CURRENT_TEMPERATURE",
             "TEMPERATURE_TARGET_TEMPERATURE"
         ],
@@ -1063,16 +1102,33 @@
         ]
     },
     "washtower": {
-        "variablen": 2,
-        "gelesen": 0,
+        "variablen": 19,
+        "gelesen": 15,
         "warnungen": 0,
         "fehler": 0,
         "idents": [
+            "DRYER_OPERATION_DRYER_OPERATION_MODE",
+            "DRYER_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED",
+            "DRYER_RUN_STATE_CURRENT_STATE",
+            "DRYER_TIMER_REMAIN_HOUR",
+            "DRYER_TIMER_REMAIN_MINUTE",
+            "DRYER_TIMER_TOTAL_HOUR",
+            "DRYER_TIMER_TOTAL_MINUTE",
             "ERROR_LAST",
-            "PUSH_LAST"
+            "PUSH_LAST",
+            "WASHER_CYCLE_CYCLE_COUNT",
+            "WASHER_OPERATION_WASHER_OPERATION_MODE",
+            "WASHER_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED",
+            "WASHER_RUN_STATE_CURRENT_STATE",
+            "WASHER_TIMER_RELATIVE_HOUR_TO_START",
+            "WASHER_TIMER_RELATIVE_MINUTE_TO_START",
+            "WASHER_TIMER_REMAIN_HOUR",
+            "WASHER_TIMER_REMAIN_MINUTE",
+            "WASHER_TIMER_TOTAL_HOUR",
+            "WASHER_TIMER_TOTAL_MINUTE"
         ],
         "befehle": [
-            "WashTower - Start drying => keine Variable DRYER_OPERATION_DRYER_OPERATION_MODE"
+            "WashTower - Start drying => gleich"
         ]
     },
     "washtower_dryer": {

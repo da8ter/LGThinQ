@@ -91,7 +91,7 @@ World::quiet();
 @RequestAction(World::varId($f, 'FREEZER_TEMPERATURE_TARGET_TEMPERATURE'), -30);
 check((World::$cloud->calls('POST devices/{id}/control')[0]['body']['temperatureInUnits']['targetTemperatureC'] ?? null) === -21, 'außerhalb des Bereichs: auf die Grenze des Gefrierfachs (-21), nicht des Kühlfachs');
 
-section('F8 Mehrzonen- und Mehrkanalgeräte');
+section('F8 Mehrzonen- und Mehrkanalgeräte (behoben)');
 $missing = [];
 foreach (['cooktop' => ['RIGHT_FRONT', 'LEFT_REAR'], 'plant_cultivator' => ['LOWER'], 'light_switch' => ['SWITCH_1', 'SWITCH_2', 'SWITCH_3'],
     'switch_strip' => ['SWITCH_1', 'SWITCH_USB'], 'washtower' => ['WASHER', 'DRYER']] as $t => $markers) {
@@ -104,7 +104,41 @@ foreach (['cooktop' => ['RIGHT_FRONT', 'LEFT_REAR'], 'plant_cultivator' => ['LOW
         }
     }
 }
-befund('F8', $missing === [], 'Jede Zone und jeder Kanal bekommt Variablen', 'ohne Variablen: ' . implode(', ', $missing));
+check($missing === [], 'jede Zone und jeder Kanal bekommt Variablen' . ($missing === [] ? '' : ' (ohne: ' . implode(', ', $missing) . ')'));
+
+World::start();
+[$ck, $ckid] = World::example('cooktop');
+$push($ckid, ['location' => ['locationName' => 'RIGHT_FRONT'], 'power' => ['powerLevel' => 7]]);
+check(World::value($ck, 'RIGHT_FRONT_POWER_POWER_LEVEL') === 7 && World::value($ck, 'LEFT_FRONT_POWER_POWER_LEVEL') === 3, 'Kochfeld: der Bericht einer Zone setzt nur deren Variable');
+World::quiet();
+@RequestAction(World::varId($ck, 'LEFT_REAR_POWER_POWER_LEVEL'), 4);
+$sent = World::$cloud->calls('POST devices/{id}/control')[0] ?? [];
+check(($sent['status'] ?? 0) === 200 && ($sent['body']['location']['locationName'] ?? '') === 'LEFT_REAR' && ($sent['body']['power']['powerLevel'] ?? null) === 4,
+    'Kochfeld: Befehl mit der Zone als location, LG nimmt ihn an: ' . json_encode($sent['body'] ?? null));
+// An installation of the old version: the first zone without prefix
+$ids = [];
+foreach (['POWER_POWER_LEVEL', 'TIMER_REMAIN_HOUR'] as $legacy) {
+    $vid = World::varId($ck, 'LEFT_FRONT_' . $legacy);
+    IPS_SetIdent($vid, $legacy);
+    $ids[$legacy] = $vid;
+}
+LGTQD_CleanupVariables($ck, true);
+check(World::varId($ck, 'LEFT_FRONT_POWER_POWER_LEVEL') === $ids['POWER_POWER_LEVEL'] && World::varId($ck, 'LEFT_FRONT_TIMER_REMAIN_HOUR') === $ids['TIMER_REMAIN_HOUR'],
+    'alte Idents der ersten Zone werden umbenannt (IDs und Historie bleiben), auch Aufräumen löscht sie nicht');
+
+World::start();
+[$ls, $lsid] = World::example('light_switch');
+World::quiet();
+@RequestAction(World::varId($ls, 'SWITCH_2_SWITCH_STATE_CURRENT_SWITCH'), 'ON');
+$sent = World::$cloud->calls('POST devices/{id}/control')[0] ?? [];
+check(($sent['status'] ?? 0) === 200 && sameJson($sent['body'] ?? [], ['switchState' => ['switchName' => 'SWITCH_2', 'currentSwitch' => 'ON']]), 'Lichtschalter: Befehl mit switchName');
+$push($lsid, ['switchState' => [['switchName' => 'SWITCH_3', 'currentSwitch' => 'OFF']]]);
+check(World::value($ls, 'SWITCH_3_SWITCH_STATE_CURRENT_SWITCH') === 'OFF' && World::value($ls, 'SWITCH_1_SWITCH_STATE_CURRENT_SWITCH') === 'ON', 'Lichtschalter: der Bericht eines Kanals setzt nur dessen Variable');
+
+World::start();
+[$wt, $wtid] = World::example('washtower');
+$push($wtid, ['dryer' => ['runState' => ['currentState' => 'RUNNING']]]);
+check(World::value($wt, 'DRYER_RUN_STATE_CURRENT_STATE') === 'RUNNING' && World::value($wt, 'WASHER_RUN_STATE_CURRENT_STATE') === 'POWER_OFF', 'WashTower: Trockner und Waschmaschine getrennt');
 
 section('F9 Energie (behoben)');
 World::start();
