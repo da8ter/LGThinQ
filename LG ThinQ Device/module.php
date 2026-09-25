@@ -832,26 +832,6 @@ class LGThinQDevice extends IPSModule
         $builder->applyPresentation($vid, $ident, $presentation, $flatProfile, $type);
     }
 
-    private function translatePresentationPayload(array $payload): array
-    {
-        $builder = new ThinQPresentationBuilder(
-            $this->InstanceID,
-            fn(string $s) => $this->Translate($s),
-            fn(string $tag, string $msg) => $this->SendDebug($tag, $msg, 0)
-        );
-        return $builder->translatePresentationPayload($payload);
-    }
-
-    private function applyProfileFallback(int $vid, string $ident, array $presentation, string $type): void
-    {
-        $builder = new ThinQPresentationBuilder(
-            $this->InstanceID,
-            fn(string $s) => $this->Translate($s),
-            fn(string $tag, string $msg) => $this->SendDebug($tag, $msg, 0)
-        );
-        $builder->applyProfileFallback($vid, $ident, $presentation, $type);
-    }
-
     private function doAutoSubscribe(string $deviceId): void
     {
         if ($deviceId === '') {
@@ -876,15 +856,6 @@ class LGThinQDevice extends IPSModule
             $this->logThrowable('AutoSubscribe', $e);
         }
     }
-
-    private function ensureVariable(int $parentId, string $ident, string $name, int $type, string $profile = ''): int
-    {
-        // Use MaintainVariable for automatic creation/update
-        $vid = $this->MaintainVariable($ident, $this->t($name), $type, $profile, 0, true);
-        return $vid;
-    }
-
-
 
     private function getVarId(string $ident): int
     {
@@ -953,29 +924,14 @@ class LGThinQDevice extends IPSModule
         return $this->util()->flatten($data, $prefix);
     }
 
-    private function firstNumericByPaths(array $flat, array $paths): ?float
-    {
-        return $this->util()->firstNumericByPaths($flat, $paths);
-    }
-
     private function updateReferences(): void
     {
         $this->util()->updateReferences();
     }
 
-    private function maskText(string $s): string
-    {
-        return $this->util()->maskText($s);
-    }
-
     private function anonymizeArray(array $data): array
     {
         return $this->util()->anonymizeArray($data);
-    }
-
-    private function anonymizeText(string $s): string
-    {
-        return $this->util()->anonymizeText($s);
     }
 
     private function logThrowable(string $context, \Throwable $e): void

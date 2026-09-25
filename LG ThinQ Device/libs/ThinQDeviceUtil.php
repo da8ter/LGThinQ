@@ -60,29 +60,6 @@ class ThinQDeviceUtil
         return $result;
     }
 
-    public function firstNumericByPaths(array $flat, array $paths): ?float
-    {
-        foreach ($paths as $path) {
-            $path = (string)$path;
-            if ($path === '') {
-                continue;
-            }
-            $candidates = [$path, 'property.' . $path, 'value.' . $path, 'profile.' . $path];
-            for ($i = 0; $i <= 4; $i++) {
-                $candidates[] = 'property.' . $i . '.' . $path;
-                $candidates[] = 'value.property.' . $i . '.' . $path;
-                $candidates[] = 'profile.property.' . $i . '.' . $path;
-                $candidates[] = 'profile.value.property.' . $i . '.' . $path;
-            }
-            foreach ($candidates as $candidate) {
-                if (array_key_exists($candidate, $flat) && is_numeric($flat[$candidate])) {
-                    return (float)$flat[$candidate];
-                }
-            }
-        }
-        return null;
-    }
-
     public function updateReferences(): void
     {
         $references = [];
@@ -96,20 +73,6 @@ class ThinQDeviceUtil
         }
     }
 
-    public function maskText(string $s): string
-    {
-        $s = trim($s);
-        if ($s === '') return '';
-        if (strlen($s) <= 4) return substr($s, 0, 1) . '***' . substr($s, -1);
-        return substr($s, 0, 2) . '***' . substr($s, -2);
-    }
-
-    /**
-     * Recursively anonymize sensitive strings in an array structure.
-     *
-     * @param array<mixed> $data
-     * @return array<mixed>
-     */
     public function anonymizeArray(array $data): array
     {
         $out = [];

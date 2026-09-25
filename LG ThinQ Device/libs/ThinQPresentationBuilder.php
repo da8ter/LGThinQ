@@ -6,17 +6,15 @@ declare(strict_types=1);
  * ThinQPresentationBuilder
  *
  * Extracted from LG ThinQ Device/module.php.
- * Handles applyPresentation, translatePresentationPayload, applyProfileFallback.
+ * Builds and applies the presentation of a variable for the kinds the parser produces:
+ * switch, slider, buttons and value.
  */
 class ThinQPresentationBuilder
 {
     private const PRES_VALUE    = '{3319437D-7CDE-699D-750A-3C6A3841FA75}';
     private const PRES_SWITCH   = '{60AE6B26-B3E2-BDB1-A3A1-BE232940664B}';
     private const PRES_SLIDER   = '{6B9CAEEC-5958-C223-30F7-BD36569FC57A}';
-    private const PRES_DATETIME = '{497C4845-27FA-6E4F-AE37-5D951D3BDBF9}';
     private const PRES_BUTTONS  = '{52D9E126-D7D2-2CBB-5E62-4CF7BA7C5D82}';
-
-    private const PROFILE_PREFIX = 'LGTQD.';
 
     /** @var callable */
     private $translateCallback;
@@ -60,12 +58,6 @@ class ThinQPresentationBuilder
             $min = $range['min'] ?? null;
             $max = $range['max'] ?? null;
             $step = $range['step'] ?? null;
-            if ((!is_numeric($min) || !is_numeric($max) || !is_numeric($step)) && isset($presentation['rangeFromProfile'])) {
-                $rfp = $presentation['rangeFromProfile'];
-                $min = $min ?? $this->firstNumericByPaths($flatProfile, (array)($rfp['min'] ?? []));
-                $max = $max ?? $this->firstNumericByPaths($flatProfile, (array)($rfp['max'] ?? []));
-                $step = $step ?? $this->firstNumericByPaths($flatProfile, (array)($rfp['step'] ?? []));
-            }
             if (is_numeric($min)) { $payload['MIN'] = (float)$min; }
             if (is_numeric($max)) { $payload['MAX'] = (float)$max; }
             if (!is_numeric($step) || (float)$step === 0.0) { $step = 1.0; }
@@ -89,27 +81,6 @@ class ThinQPresentationBuilder
             if (array_key_exists('gradientType', $presentation) || array_key_exists('gradient_type', $presentation)) {
                 $payload['GRADIENT_TYPE'] = (int)($presentation['gradientType'] ?? $presentation['gradient_type']);
             }
-        } elseif ($kind === 'enumeration') {
-            if (!defined('VARIABLE_PRESENTATION_ENUMERATION')) {
-                $this->dbg('Presentation', 'Enumeration presentation not available in this IP-Symcon version; ident=' . $ident);
-                return;
-            }
-            $payload['PRESENTATION'] = VARIABLE_PRESENTATION_ENUMERATION;
-            $options = [];
-            if (isset($presentation['options']) && is_array($presentation['options'])) {
-                foreach ($presentation['options'] as $op) {
-                    if (!is_array($op)) continue;
-                    if (!array_key_exists('value', $op) || !array_key_exists('caption', $op)) continue;
-                    $options[] = [
-                        'Value'      => (int)$op['value'],
-                        'Caption'    => $this->t((string)$op['caption']),
-                        'IconActive' => false,
-                        'IconValue'  => '',
-                        'Color'      => isset($op['color']) ? (int)$op['color'] : -1
-                    ];
-                }
-            }
-            if (!empty($options)) { $payload['OPTIONS'] = $options; }
         } elseif ($kind === 'buttons') {
             $payload['PRESENTATION'] = self::PRES_BUTTONS;
             $payload['ICON'] = '';
@@ -155,19 +126,6 @@ class ThinQPresentationBuilder
             if (array_key_exists('intervalsActive', $presentation)) { $payload['INTERVALS_ACTIVE'] = (bool)$presentation['intervalsActive']; }
             if (array_key_exists('intervals', $presentation) && is_array($presentation['intervals'])) {
                 $payload['INTERVALS'] = $presentation['intervals'];
-            }
-            if (isset($presentation['options']) && is_array($presentation['options']) && !isset($payload['OPTIONS'])) {
-                $options = [];
-                foreach ($presentation['options'] as $op) {
-                    if (!is_array($op) || !array_key_exists('value', $op) || !array_key_exists('caption', $op)) continue;
-                    $value = $op['value'];
-                    if ($type === 'STRING' && !is_string($value)) { $value = (string)$value; }
-                    elseif ($type !== 'STRING' && !is_int($value)) { $value = (int)$value; }
-                    $options[] = ['Value' => $value, 'Caption' => $this->t((string)$op['caption']),
-                        'IconActive' => false, 'IconValue' => '', 'ColorActive' => false,
-                        'ColorValue' => -1, 'Color' => -1, 'ColorDisplay' => -1];
-                }
-                if (!empty($options)) { $payload['OPTIONS'] = $options; }
             }
             if (strtoupper((string)$type) === 'BOOLEAN' && (isset($presentation['captionOn']) || isset($presentation['captionOff'])) && !isset($payload['OPTIONS'])) {
                 $payload['OPTIONS'] = [
@@ -273,66 +231,5 @@ class ThinQPresentationBuilder
             unset($interval);
         }
         return $payload;
-    }
-
-    public function applyProfileFallback(int $vid, string $ident, array $presentation, string $type): void
-    {
-        $varInfo = @IPS_GetVariable($vid);
-        if (!is_array($varInfo)) {
-            return;
-        }
-        $profileName = self::PROFILE_PREFIX . $this->instanceId . '.' . $ident;
-        $vt = match (strtoupper($type)) {
-            'BOOLEAN' => VARIABLETYPE_BOOLEAN,
-            'INTEGER' => VARIABLETYPE_INTEGER,
-            'FLOAT'   => VARIABLETYPE_FLOAT,
-            default   => VARIABLETYPE_STRING
-        };
-        if (@IPS_VariableProfileExists($profileName)) {
-            @IPS_SetVariableCustomProfile($vid, '');
-            @IPS_DeleteVariableProfile($profileName);
-        }
-        @IPS_CreateVariableProfile($profileName, $vt);
-        @IPS_SetVariableProfileIcon($profileName, '');
-        @IPS_SetVariableProfileText($profileName, '', '');
-        if ($vt === VARIABLETYPE_BOOLEAN) {
-            @IPS_SetVariableProfileAssociation($profileName, 0, $presentation['CAPTION_OFF'] ?? $this->t('Off'), '', -1);
-            @IPS_SetVariableProfileAssociation($profileName, 1, $presentation['CAPTION_ON'] ?? $this->t('On'), '', -1);
-        } elseif ($vt === VARIABLETYPE_INTEGER || $vt === VARIABLETYPE_FLOAT) {
-            $min  = isset($presentation['MIN']) ? (float)$presentation['MIN'] : 0.0;
-            $max  = isset($presentation['MAX']) ? (float)$presentation['MAX'] : 0.0;
-            $step = isset($presentation['STEP_SIZE']) ? (float)$presentation['STEP_SIZE'] : 1.0;
-            @IPS_SetVariableProfileValues($profileName, $min, $max, $step);
-            if (isset($presentation['DIGITS'])) { @IPS_SetVariableProfileDigits($profileName, (int)$presentation['DIGITS']); }
-            if (isset($presentation['SUFFIX'])) { @IPS_SetVariableProfileText($profileName, '', (string)$presentation['SUFFIX']); }
-            if (isset($presentation['OPTIONS']) && is_array($presentation['OPTIONS'])) {
-                foreach ($presentation['OPTIONS'] as $option) {
-                    if (!isset($option['Value'], $option['Caption'])) continue;
-                    @IPS_SetVariableProfileAssociation($profileName, (int)$option['Value'], (string)$option['Caption'], '', (int)($option['Color'] ?? -1));
-                }
-            }
-        }
-        @IPS_SetVariableCustomProfile($vid, $profileName);
-    }
-
-    private function firstNumericByPaths(array $flat, array $paths): ?float
-    {
-        foreach ($paths as $path) {
-            $path = (string)$path;
-            if ($path === '') continue;
-            $candidates = [$path, 'property.' . $path, 'value.' . $path, 'profile.' . $path];
-            for ($i = 0; $i <= 4; $i++) {
-                $candidates[] = 'property.' . $i . '.' . $path;
-                $candidates[] = 'value.property.' . $i . '.' . $path;
-                $candidates[] = 'profile.property.' . $i . '.' . $path;
-                $candidates[] = 'profile.value.property.' . $i . '.' . $path;
-            }
-            foreach ($candidates as $candidate) {
-                if (array_key_exists($candidate, $flat) && is_numeric($flat[$candidate])) {
-                    return (float)$flat[$candidate];
-                }
-            }
-        }
-        return null;
     }
 }
