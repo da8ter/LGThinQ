@@ -33,18 +33,4 @@ final class ThinQDeviceRepository
             $this->module->SaveDevicesCache($devices);
         }
     }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    public function findById(string $deviceId): ?array
-    {
-        foreach ($this->getAll() as $device) {
-            $id = (string)($device['deviceId'] ?? ($device['device_id'] ?? ''));
-            if ($id === $deviceId) {
-                return $device;
-            }
-        }
-        return null;
-    }
 }

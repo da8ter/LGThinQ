@@ -9,16 +9,13 @@ final class ThinQEventManager
 
     private ThinQHttpClient $httpClient;
     private ThinQEventSubscriptionRepository $repository;
-    private IPSModule $module;
     private ThinQBridgeConfig $config;
 
     public function __construct(
-        IPSModule $module,
         ThinQBridgeConfig $config,
         ThinQHttpClient $httpClient,
         ThinQEventSubscriptionRepository $repository
     ) {
-        $this->module = $module;
         $this->config = $config;
         $this->httpClient = $httpClient;
         $this->repository = $repository;
@@ -99,18 +96,5 @@ final class ThinQEventManager
         }
         $window = min($this->config->normalizedEventRenewLeadMinutes() * 60 + self::CHECK_PERIOD, intdiv($this->config->normalizedEventTtlHours() * 3600, 2));
         return (int)($entry['expiresAt'] ?? 0) - ThinQClock::now() <= $window || (string)($entry['clientId'] ?? '') !== $this->config->clientId;
-    }
-
-    /**
-     * @return array<string, array<string, mixed>>
-     */
-    public function listSubscriptions(): array
-    {
-        return $this->repository->getAll();
-    }
-
-    public function clear(): void
-    {
-        $this->repository->saveAll([]);
     }
 }

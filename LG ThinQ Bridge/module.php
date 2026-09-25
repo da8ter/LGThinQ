@@ -21,9 +21,7 @@ class LGThinQBridge extends IPSModule
     use ThinQModuleTrait;
 
     public const API_KEY = 'v6GFvkweNo7DK7yD3ylIZ9w52aKBU0eJ7wLXkSR3';
-    private const DATA_FLOW_GUID = '{A1F438B3-2A68-4A2B-8FDB-7460F1B8B854}';
     private const CHILD_INTERFACE_GUID = '{5E9D1B64-0F44-4F21-9D74-09C5BB90FB2F}';
-    private const MQTT_MODULE_GUID = '{F7A0DD2E-7684-95C0-64C2-D2A9DC47577B}';
     private const DEVICE_MODULE_GUID = '{B5CF9E2D-7B7C-4A0A-9C0E-7E5A0B8E2E9A}';
 
     private ?ThinQBridgeConfig $config = null;
@@ -597,7 +595,7 @@ class LGThinQBridge extends IPSModule
         $this->deviceRepository = new ThinQDeviceRepository($this);
         $this->subscriptionRepository = new ThinQEventSubscriptionRepository($this);
         $this->httpClient = new ThinQHttpClient($this, $this->config, self::API_KEY);
-        $this->eventManager = new ThinQEventManager($this, $this->config, $this->httpClient, $this->subscriptionRepository);
+        $this->eventManager = new ThinQEventManager($this->config, $this->httpClient, $this->subscriptionRepository);
         $this->eventPipeline = new ThinQEventPipeline();
         $this->eventPipeline->onEvent(function (string $deviceId, array $payload): void {
             $this->sendToChildren('Event', $deviceId, ['Event' => $payload]);
@@ -678,21 +676,6 @@ class LGThinQBridge extends IPSModule
         // A short fixed check period; what is due follows from the stored expiry times (ThinQEventManager).
         $errors = $this->config->validate();
         $this->SetTimerInterval('EventRenewTimer', empty($errors) ? ThinQEventManager::CHECK_PERIOD * 1000 : 0);
-    }
-
-    private function ensureMqttParent(): void
-    {
-        if (!(bool)$this->ReadPropertyBoolean('UseMQTT')) {
-            return;
-        }
-        $inst = @IPS_GetInstance($this->InstanceID);
-        $parentId = is_array($inst) ? (int)($inst['ConnectionID'] ?? 0) : 0;
-        if ($parentId > 0) {
-            return;
-        }
-        if (method_exists($this, 'ConnectParent')) {
-            $this->ConnectParent(self::MQTT_MODULE_GUID);
-        }
     }
 
     private function debugMqttParentInfo(): void

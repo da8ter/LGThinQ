@@ -94,11 +94,6 @@ final class ThinQBridgeConfig
         return $errors;
     }
 
-    public function isValid(): bool
-    {
-        return empty($this->validate());
-    }
-
     /** The MQTT topic filter with {ClientID} filled in; empty means no filtering. */
     public function topicFilter(): string
     {
