@@ -82,6 +82,8 @@ final class ThinQBridgeConfig
         }
         if ($this->countryCode === '') {
             $errors[] = 'CountryCode is missing.';
+        } elseif (self::resolveRegion($this->countryCode) === '') {
+            $errors[] = 'CountryCode ' . $this->countryCode . ' is not supported by LG ThinQ Connect.';
         }
         if ($this->eventTtlHours < 1 || $this->eventTtlHours > 24) {
             $errors[] = 'EventTTL must be between 1 and 24 hours.';
@@ -114,22 +116,29 @@ final class ThinQBridgeConfig
         return 'https://api-' . strtolower($region) . '.lgthinq.com/';
     }
 
+    /** LG region per country, as in LG's SDK (pythinqconnect, country.py). */
+    private const REGIONS = [
+        'EIC' => 'AE AF AL AM AO AT AZ BA BE BF BG BH BJ BY CD CF CG CH CI CM CV CY CZ DE DJ DK DZ EE EG ES'
+            . ' ET FI FR GA GB GE GH GM GN GQ GR HR HU IE IL IQ IR IS IT JO KE KG KW KZ LB LR LT LU LV LY'
+            . ' MA MD ME MK ML MR MT MU MW NE NG NL NO OM PK PL PS PT QA RO RS RU RW SA SD SE SI SK SL SN'
+            . ' SO ST SY TD TG TN TR TZ UA UG UZ XK YE ZA ZM',
+        'AIC' => 'AG AR AW BB BO BR BS BZ CA CL CO CR CU DM DO EC GD GT GY HN HT JM KN LC MX NI PA PE PR PY'
+            . ' SR SV TT US UY VC VE',
+        'KIC' => 'AU BD CN HK ID IN JP KH KR LA LK MM MY NP NZ PH SG TH TW VN',
+    ];
+
+    /** EIC, AIC or KIC; '' for a country LG ThinQ Connect does not serve. */
     public static function resolveRegion(string $countryCode): string
     {
-        $country = strtoupper($countryCode);
-        $eic = ['DE','AT','CH','FR','IT','ES','GB','IE','NL','BE','DK','SE','NO','FI','PL','PT','GR','CZ','HU','RO','BG','HR','SK','SI','LT','LV','EE','LU','MT','CY','IS','RU','UA','TR','ZA','EG','SA','AE','IL','IN'];
-        $aic = ['US','CA','AR','BR','CL','CO','MX','PE','UY','VE','PR','EC','PA','CR','DO','GT','HN','SV','NI','BO','PY'];
-        $kic = ['JP','KR','AU','NZ','CN','HK','TW','SG','TH','VN','MY','ID','PH','MM','KH','LA','BD','LK','PK','NP'];
-        if (in_array($country, $eic, true)) {
-            return 'EIC';
+        $country = strtoupper(trim($countryCode));
+        if (preg_match('/^[A-Z]{2}$/', $country) === 1) {
+            foreach (self::REGIONS as $region => $countries) {
+                if (str_contains(' ' . $countries . ' ', ' ' . $country . ' ')) {
+                    return $region;
+                }
+            }
         }
-        if (in_array($country, $aic, true)) {
-            return 'AIC';
-        }
-        if (in_array($country, $kic, true)) {
-            return 'KIC';
-        }
-        return 'KIC';
+        return '';
     }
 
     public function normalizedEventTtlHours(): int

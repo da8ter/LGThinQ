@@ -125,7 +125,7 @@ $used = Kernel::$instances[World::$bridge]['connection'];
 befund('W1', $used === $other, 'Assistent nimmt den MQTT-Client aus MQTTClientID',
     sprintf('eingestellt #%d, verbunden #%d — der Assistent liest IPS_GetInstance()[\'ModuleID\'], Symcon liefert die GUID unter ModuleInfo', $other, $used));
 
-section('N1 Ländertabelle');
+section('N1 Ländertabelle (behoben)');
 $sdk = json_decode((string)file_get_contents(__DIR__ . '/fixtures/sdk_regions.json'), true)['regions'];
 $wrong = [];
 $total = 0;
@@ -137,9 +137,9 @@ foreach ($sdk as $region => $countries) {
         }
     }
 }
-$unknown = ThinQBridgeConfig::resolveRegion('XX');
-befund('N1', $wrong === [] && $unknown !== 'KIC', 'Region je Land wie LGs SDK (pythinqconnect country.py)',
-    sprintf('%d von %d Ländern falsch, u. a. %s; unbekanntes Land wird still %s', count($wrong), $total, implode(', ', array_slice($wrong, 0, 5)), $unknown));
+check($wrong === [], sprintf('Region je Land wie LGs SDK (%d Länder)', $total) . ($wrong === [] ? '' : ': ' . implode(', ', array_slice($wrong, 0, 5))));
+World::start(['CountryCode' => 'XX']);
+check(ThinQBridgeConfig::resolveRegion('XX') === '' && Kernel::$instances[World::$bridge]['status'] === IS_INACTIVE, 'unbekanntes Land: keine Region, die Bridge meldet Status 104 statt still KIC zu nehmen');
 
 section('N4 Exportierte Funktionen');
 // The module API: form buttons, script functions and the timer targets (RenewEvents, InitialSetup, UpdateEnergy).

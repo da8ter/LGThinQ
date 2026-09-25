@@ -32,6 +32,6 @@
     "status": [
         { "code": 101, "icon": "inactive", "caption": "Creating" },
         { "code": 102, "icon": "active", "caption": "Ready" },
-        { "code": 104, "icon": "error", "caption": "Please check: PAT" }
+        { "code": 104, "icon": "error", "caption": "Please check: PAT and country code" }
     ]
 }
