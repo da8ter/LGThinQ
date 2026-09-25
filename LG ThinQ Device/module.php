@@ -7,6 +7,7 @@ require_once __DIR__ . '/libs/CapabilityEngine.php';
 require_once __DIR__ . '/libs/ThinQPresentationBuilder.php';
 require_once __DIR__ . '/libs/ThinQEnergyManager.php';
 require_once __DIR__ . '/libs/ThinQSupportBundle.php';
+require_once __DIR__ . '/libs/ThinQShape.php';
 require_once __DIR__ . '/libs/ThinQDeviceProfileManager.php';
 require_once __DIR__ . '/libs/ThinQDeviceUtil.php';
 

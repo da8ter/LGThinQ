@@ -25,38 +25,12 @@ class ThinQDeviceProfileManager
         $this->flattenCallback    = $flattenCallback;
     }
 
+    /** The device profile in the stored form (ThinQShape::wrapProfile), [] when LG gave none. */
     public function fetchDeviceProfile(string $deviceId): array
     {
         try {
-            $raw  = ($this->sendActionCallback)('GetProfile', ['DeviceID' => $deviceId]);
-            $data = json_decode((string)$raw, true);
-            if (!is_array($data)) {
-                return [];
-            }
-            // Normalize to a profile object that preserves property + error + notification if present
-            // sendAction('GetProfile') may already return the inner 'profile' JSON or wrap it in 'response'
-            $profile = [];
-            // Case A: wrapper contains 'response'
-            if (isset($data['response']) && is_array($data['response'])) {
-                $profile = $data['response'];
-            } elseif (isset($data['property']) || isset($data['error']) || isset($data['notification'])) {
-                // Case B: data looks like a full profile object with keys like 'property', 'error', 'notification'
-                $profile = $data;
-            } elseif (isset($data['profile']) && is_array($data['profile'])) {
-                // Case C: wrapper contains 'profile'
-                $profile = $data['profile'];
-            } else {
-                // Case D: legacy: treat entire payload as property content
-                $profile = ['property' => $data];
-            }
-            // Ensure structure types are arrays
-            if (!isset($profile['property']) || !is_array($profile['property'])) {
-                // some devices might return 'property' wrapped in index 0
-                if (isset($profile[0]) && is_array($profile[0])) {
-                    $profile['property'] = $profile[0];
-                }
-            }
-            return $profile;
+            $raw = ($this->sendActionCallback)('GetProfile', ['DeviceID' => $deviceId]);
+            return ThinQShape::wrapProfile(json_decode((string)$raw, true)) ?? [];
         } catch (\Throwable $e) {
             $this->ctx->debug('FetchProfile', $e->getMessage());
             return [];
@@ -125,11 +99,10 @@ class ThinQDeviceProfileManager
         return '';
     }
 
+    /** The stored profile; copies an earlier version stored without the property wrapper are repaired. */
     public function readStoredProfile(): array
     {
-        $raw     = (string)$this->ctx->attributeString('LastProfile');
-        $profile = json_decode($raw, true);
-        return is_array($profile) ? $profile : [];
+        return ThinQShape::wrapProfile(json_decode((string)$this->ctx->attributeString('LastProfile'), true)) ?? [];
     }
 
     /**
@@ -166,37 +139,11 @@ class ThinQDeviceProfileManager
         return false;
     }
 
-    /**
-     * Fetch fresh profile from API.
-     *
-     * @return array<string, mixed>
-     */
+    /** Fresh profile from the API in the stored form, [] on failure. */
     public function fetchProfileFromAPI(): array
     {
-        try {
-            $deviceId = trim((string)$this->ctx->propertyString('DeviceID'));
-            if ($deviceId === '') {
-                return [];
-            }
-            $response = ($this->sendActionCallback)('GetProfile', ['DeviceID' => $deviceId]);
-            $data     = json_decode($response, true);
-            if (isset($data['profile']) && is_array($data['profile'])) {
-                $this->ctx->debug('fetchProfileFromAPI', 'Profile successfully fetched from API (profile)');
-                return $data['profile'];
-            }
-            if (isset($data['property']) && is_array($data['property'])) {
-                $this->ctx->debug('fetchProfileFromAPI', 'Profile successfully fetched from API (property)');
-                return $data['property'];
-            }
-            if (is_array($data)) {
-                $this->ctx->debug('fetchProfileFromAPI', 'Profile fetched from API (raw array)');
-                return $data;
-            }
-            return [];
-        } catch (\Throwable $e) {
-            $this->ctx->debug('fetchProfileFromAPI', 'Failed: ' . $e->getMessage());
-            return [];
-        }
+        $deviceId = trim($this->ctx->propertyString('DeviceID'));
+        return $deviceId === '' ? [] : $this->fetchDeviceProfile($deviceId);
     }
 
     public function readLastStatus(): array

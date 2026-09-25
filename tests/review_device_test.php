@@ -47,7 +47,7 @@ befund('F3', $type === 'DEVICE_WASHER' && isset($prof['property']) && $val === '
     sprintf('nach Ausfall: DeviceType "%s", LastProfile %s, Push-Wert "%s"; nur GET profile gestört: Aufräumen löschte %d von %d Variablen',
         $type, json_encode($prof), $val, $lost, $n));
 
-section('F5 Profil nach einem Push');
+section('F5 Profil nach einem Push (behoben)');
 World::start();
 [$w, $wid] = World::example('washer');
 $push($wid, $washerRun);
@@ -55,16 +55,16 @@ $prof = json_decode((string)World::attr($w, 'LastProfile'), true) ?: [];
 World::quiet();
 RequestAction(World::varId($w, 'OPERATION_WASHER_OPERATION_MODE'), 'START');
 $body = World::$cloud->calls('POST devices/{id}/control')[0]['body'] ?? null;
+check(isset($prof['property'], $prof['error'], $prof['notification']) && sameJson($body, $lgCommand('washer')), 'nach einem Push bleibt das Profil vollständig, START geht mit location raus');
 World::start();
 [$ac, $acid] = World::liveAc();
-$push($acid, ['operation' => ['airConOperationMode' => 'POWER_ON']]);
+$stripped = json_decode((string)World::attr($ac, 'LastProfile'), true)['property'];
+Kernel::$instances[$ac]['attributes']['LastProfile'] = (string)json_encode($stripped); // the state of the live AC
 World::quiet();
 RequestAction(World::varId($ac, 'TEMPERATURE_TARGET_TEMPERATURE'), 24);
 $acBody = World::$cloud->calls('POST devices/{id}/control')[0]['body'] ?? null;
-befund('F5', isset($prof['property']) && sameJson($body, $lgCommand('washer')) && sameJson($acBody, ['temperature' => ['unit' => 'C', 'targetTemperature' => 24]]),
-    'Nach einem Push mit unbekanntem Schlüssel bleibt das Profil vollständig',
-    sprintf('LastProfile beginnt mit %s; START sendet %s; Klimaanlage 24 °C sendet %s', implode(',', array_slice(array_keys($prof), 0, 3)),
-        json_encode($body), json_encode($acBody)));
+check(sameJson($acBody, ['temperature' => ['unit' => 'C', 'targetTemperature' => 24]]) && World::$cloud->calls('GET devices/{id}/profile') === [],
+    'eine gespeicherte Kopie ohne Hülle wird beim Lesen repariert, 24 °C geht ohne neuen Profilabruf mit unit raus: ' . json_encode($acBody));
 
 section('F7 Grenzen je Fach');
 World::start();
