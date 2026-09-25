@@ -127,7 +127,14 @@ for ($i = 0; $i < 5; $i++) {
     Kernel::advance(60);
 }
 $n = count(World::$cloud->calls('GET devices/{id}/profile'));
-check($n <= 1, sprintf('Pushes mit Schlüsseln außerhalb des Profils holen es höchstens einmal neu (%d× GET profile bei 5 Pushes; Klimaanlage: airQualitySensor fehlt im Profil)', $n));
+check($n === 0, sprintf('Pushes mit Profilschlüsseln holen das Profil nicht neu (%d× GET profile bei 5 Pushes), auch wenn der gespeicherte Status fremde Schlüssel hat', $n));
+World::quiet();
+for ($i = 0; $i < 5; $i++) {
+    $push($acid, ['airQualitySensor' => ['monitoringEnabled' => 'ON_WORKING'], 'temperature' => ['currentTemperature' => 22 + $i]]);
+    Kernel::advance(60);
+}
+$n = count(World::$cloud->calls('GET devices/{id}/profile'));
+check($n === 1 && World::value($ac, 'TEMPERATURE_CURRENT_TEMPERATURE') === 26.0, sprintf('Berichte mit airQualitySensor (steht in keinem Profil): einmal neu geholt, dann gemerkt (%d× GET profile bei 5 Pushes)', $n));
 
 section('F11 Selbstheilung nach Störung beim Anlegen');
 World::start();
