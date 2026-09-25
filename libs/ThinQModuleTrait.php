@@ -87,9 +87,4 @@ trait ThinQModuleTrait
     {
         $this->RegisterTimer($name, $milliseconds, $script);
     }
-
-    public function publicMaintainReferences(array $references): void
-    {
-        $this->MaintainReferences($references);
-    }
 }

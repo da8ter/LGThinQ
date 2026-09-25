@@ -17,14 +17,6 @@ class LGThinQDevice extends IPSModule
     private const GATEWAY_MODULE_GUID = '{FCD02091-9189-0B0A-0C70-D607F1941C05}';
     private const DATA_FLOW_GUID      = '{A1F438B3-2A68-4A2B-8FDB-7460F1B8B854}';
 
-    private const PRES_VALUE    = '{3319437D-7CDE-699D-750A-3C6A3841FA75}';
-    private const PRES_SWITCH   = '{60AE6B26-B3E2-BDB1-A3A1-BE232940664B}';
-    private const PRES_SLIDER   = '{6B9CAEEC-5958-C223-30F7-BD36569FC57A}';
-    private const PRES_DATETIME = '{497C4845-27FA-6E4F-AE37-5D951D3BDBF9}';
-    private const PRES_BUTTONS  = '{52D9E126-D7D2-2CBB-5E62-4CF7BA7C5D82}';
-
-    private const PROFILE_PREFIX = 'LGTQD.';
-
 
     public function Create()
     {
@@ -36,7 +28,6 @@ class LGThinQDevice extends IPSModule
         $this->RegisterAttributeString('LastStatus', '');
         $this->RegisterAttributeString('DeviceType', '');
         $this->RegisterAttributeString('LastProfile', '');
-        $this->RegisterAttributeString('LastPlan', '[]');
         $this->RegisterAttributeString('EnergyProfile', '');
         $this->RegisterAttributeInteger('LastSelfHealTs', 0);
         // Timer registered at 0 (disabled); interval is set in ApplyChanges when needed
@@ -142,9 +133,7 @@ class LGThinQDevice extends IPSModule
         parent::ApplyChanges();
         // Best Practice: Avoid heavy work before KR_READY. Re-run on IPS_KERNELSTARTED
         if ($this->isKernelReady() === false) {
-            if (method_exists($this, 'RegisterMessage')) {
-                $this->RegisterMessage(0, IPS_KERNELSTARTED);
-            }
+            $this->RegisterMessage(0, IPS_KERNELSTARTED);
             return;
         }
 
@@ -172,7 +161,7 @@ class LGThinQDevice extends IPSModule
 
         // One-time initial status fetch (HTTP) BEFORE creating variables so that
         // auto-discovery with create=statusHasAny can actually create variables
-        $hasParent = !method_exists($this, 'HasActiveParent') || $this->HasActiveParent();
+        $hasParent = $this->HasActiveParent();
         if ($hasParent) {
             try {
                 $this->UpdateStatus();
@@ -202,7 +191,7 @@ class LGThinQDevice extends IPSModule
         try {
             $deviceID = trim((string)$this->ReadPropertyString('DeviceID'));
             if ($deviceID !== '') {
-                $hasParent = !method_exists($this, 'HasActiveParent') || $this->HasActiveParent();
+                $hasParent = $this->HasActiveParent();
                 if ($hasParent) {
                     $this->doAutoSubscribe($deviceID);
                 }
@@ -210,13 +199,6 @@ class LGThinQDevice extends IPSModule
         } catch (\Throwable $e) {
             $this->logThrowable('AutoSubscribe', $e);
         }
-
-        // Kill any leftover FinalizeSetup timer from previous module versions
-        if (method_exists($this, 'SetTimerInterval')) {
-            @$this->SetTimerInterval('FinalizeSetup', 0);
-        }
-
-        $this->updateReferences();
     }
 
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
@@ -235,10 +217,8 @@ class LGThinQDevice extends IPSModule
         }
 
         // Ensure one-shot timers do not turn into periodic ones
-        if (method_exists($this, 'SetTimerInterval')) {
-            // These timers should only fire once; disable after running UpdateStatus
-            @$this->SetTimerInterval('InitialUpdateStatus', 0);
-        }
+        // These timers should only fire once; disable after running UpdateStatus
+        @$this->SetTimerInterval('InitialUpdateStatus', 0);
 
         try {
             $payload = $this->sendAction('GetStatus', ['DeviceID' => $deviceId]);
@@ -284,24 +264,13 @@ class LGThinQDevice extends IPSModule
         }
     }
 
-    public function FinalizeSetup(): void
-    {
-        // Legacy method kept only to stop timers from previous module versions.
-        // All setup work is now done directly in ApplyChanges().
-        if (method_exists($this, 'SetTimerInterval')) {
-            @$this->SetTimerInterval('FinalizeSetup', 0);
-        }
-    }
-
     /**
      * Deferred initial setup: fetches status + creates variables once the parent is active.
      * Called by the InitialUpdateStatus one-shot timer when the parent was not ready at ApplyChanges time.
      */
     public function InitialSetup(): void
     {
-        if (method_exists($this, 'SetTimerInterval')) {
-            @$this->SetTimerInterval('InitialUpdateStatus', 0);
-        }
+        @$this->SetTimerInterval('InitialUpdateStatus', 0);
         try {
             $this->UpdateStatus();
         } catch (\Throwable $e) {
@@ -439,7 +408,7 @@ class LGThinQDevice extends IPSModule
             $this->SendDebug('ReceiveData', sprintf('self-heal check: type=%s profileEmpty=%s cooldown=%s',
                 $type !== '' ? $type : '(empty)', empty($profile) ? 'yes' : 'no',
                 $this->selfHealCooldownElapsed() ? 'elapsed' : 'active'), 0);
-            $hasParent = !method_exists($this, 'HasActiveParent') || $this->HasActiveParent();
+            $hasParent = $this->HasActiveParent();
             if ($this->selfHealCooldownElapsed() && $hasParent && trim((string)$this->ReadPropertyString('DeviceID')) !== '') {
                 $this->WriteAttributeInteger('LastSelfHealTs', ThinQClock::now());
                 try {
@@ -487,15 +456,9 @@ class LGThinQDevice extends IPSModule
         return '';
     }
 
-    public function EnsureConnected(): void
-    {
-        // ConnectParent is called in Create() – do NOT call it here
-        // because ConnectParent() triggers ApplyChanges() and causes an infinite loop.
-    }
-
     private function sendAction(string $action, array $params = []): string
     {
-        if (method_exists($this, 'HasActiveParent') && !$this->HasActiveParent()) {
+        if (!$this->HasActiveParent()) {
             $this->SendDebug('sendAction', sprintf('Parent inactive but trying %s anyway', $action), 0);
         }
 
@@ -729,7 +692,7 @@ class LGThinQDevice extends IPSModule
             }
 
             // Enable action only on creation if defined
-            if ($justCreated && ($entry['enableAction'] ?? false) && method_exists($this, 'EnableAction')) {
+            if ($justCreated && ($entry['enableAction'] ?? false)) {
                 try {
                     $this->EnableAction((string)$ident);
                 } catch (\Throwable $e) {
@@ -743,7 +706,7 @@ class LGThinQDevice extends IPSModule
             $identsToEnable = $engine->listIdentsToEnableOnSetup();
             foreach ($identsToEnable as $ident) {
                 $vid = $this->getVarId((string)$ident);
-                if ($vid > 0 && method_exists($this, 'EnableAction')) {
+                if ($vid > 0) {
                     try {
                         $this->EnableAction((string)$ident);
                     } catch (\Throwable $e) {
@@ -846,7 +809,7 @@ class LGThinQDevice extends IPSModule
         if ($deviceID === '') {
             return;
         }
-        if (method_exists($this, 'HasActiveParent') && !$this->HasActiveParent()) {
+        if (!$this->HasActiveParent()) {
             // Parent not active; skip automatic retries
             return;
         }
@@ -922,11 +885,6 @@ class LGThinQDevice extends IPSModule
     private function flatten(array $data, string $prefix = ''): array
     {
         return $this->util()->flatten($data, $prefix);
-    }
-
-    private function updateReferences(): void
-    {
-        $this->util()->updateReferences();
     }
 
     private function anonymizeArray(array $data): array

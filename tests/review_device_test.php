@@ -183,19 +183,11 @@ $push($acid, ['sleepTimer' => ['relativeStopTimer' => 'UNSET']]);
 $h = World::value($ac, 'SLEEP_TIMER_RELATIVE_HOUR_TO_STOP');
 befund('N2', $h === 0.0, 'Sleep-Timer UNSET: Stunden auf 0', 'SLEEP_TIMER_RELATIVE_HOUR_TO_STOP bleibt ' . json_encode($h) . ' — Integer-Zugriff auf eine Float-Variable');
 
-section('N3 MaintainReferences');
+section('N3 MaintainReferences (behoben)');
 World::start();
 [$w] = World::example('washer');
-$fatal = '';
-if (method_exists('LGThinQDevice', 'publicMaintainReferences')) {
-    try {
-        LGTQD_publicMaintainReferences($w, [World::$bridge]);
-    } catch (\Throwable $e) {
-        $fatal = $e->getMessage();
-    }
-}
-befund('N3', $fatal === '' && !in_array(World::$bridge, Kernel::$instances[$w]['references'], true),
-    'Kein Aufruf einer SDK-Methode, die es nicht gibt (und keine Referenz auf die Bridge, sonst Status 101 beim Reload)', $fatal);
+check(!method_exists('LGThinQDevice', 'publicMaintainReferences') && !method_exists('LGThinQBridge', 'publicMaintainReferences')
+    && !in_array(World::$bridge, Kernel::$instances[$w]['references'], true), 'kein Aufruf der SDK-Methode MaintainReferences, die es nicht gibt, und keine Referenz auf die Bridge (sonst Status 101 beim Reload)');
 
 section('N5 MaintainVariable liefert false (behoben)');
 World::start();

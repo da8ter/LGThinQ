@@ -6,8 +6,8 @@ declare(strict_types=1);
  * ThinQDeviceUtil
  *
  * Extracted from LG ThinQ Device/module.php.
- * Pure utility methods: value setting, array flattening, anonymization, reference management,
- * deep merging, and throwable logging.
+ * Pure utility methods: value setting, array flattening, anonymization, deep merging, and
+ * throwable logging.
  */
 class ThinQDeviceUtil
 {
@@ -58,19 +58,6 @@ class ThinQDeviceUtil
             }
         }
         return $result;
-    }
-
-    public function updateReferences(): void
-    {
-        $references = [];
-        $inst       = @IPS_GetInstance($this->instanceId);
-        $parentId   = is_array($inst) ? (int)($inst['ConnectionID'] ?? 0) : 0;
-        if ($parentId > 0) {
-            $references[] = $parentId;
-        }
-        if (method_exists($this->module, 'MaintainReferences')) {
-            $this->module->publicMaintainReferences($references);
-        }
     }
 
     public function anonymizeArray(array $data): array
