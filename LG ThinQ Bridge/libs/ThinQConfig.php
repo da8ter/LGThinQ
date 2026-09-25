@@ -11,8 +11,6 @@ final class ThinQBridgeConfig
     public string $countryCode;
     public string $clientId;
     public bool $debug;
-    public bool $useMqtt;
-    public int $mqttClientId;
     public string $mqttTopicFilter;
     public bool $ignoreRetained;
     public int $eventTtlHours;
@@ -26,8 +24,6 @@ final class ThinQBridgeConfig
         string $countryCode,
         string $clientId,
         bool $debug,
-        bool $useMqtt,
-        int $mqttClientId,
         string $mqttTopicFilter,
         bool $ignoreRetained,
         int $eventTtlHours,
@@ -37,8 +33,6 @@ final class ThinQBridgeConfig
         $this->countryCode = $countryCode;
         $this->clientId = $clientId;
         $this->debug = $debug;
-        $this->useMqtt = $useMqtt;
-        $this->mqttClientId = $mqttClientId;
         $this->mqttTopicFilter = $mqttTopicFilter;
         $this->ignoreRetained = $ignoreRetained;
         $this->eventTtlHours = $eventTtlHours;
@@ -50,8 +44,6 @@ final class ThinQBridgeConfig
         string $countryCode,
         string $clientId,
         bool $debug,
-        bool $useMqtt,
-        int $mqttClientId,
         string $mqttTopicFilter,
         bool $ignoreRetained,
         int $eventTtlHours,
@@ -62,13 +54,19 @@ final class ThinQBridgeConfig
             $countryCode,
             $clientId,
             $debug,
-            $useMqtt,
-            $mqttClientId,
             $mqttTopicFilter,
             $ignoreRetained,
             $eventTtlHours,
             $eventRenewLeadMin
         );
+    }
+
+    /** The same configuration under another client ID (certificate requests, MQTT setup). */
+    public function withClientId(string $clientId): self
+    {
+        $copy = clone $this;
+        $copy->clientId = $clientId;
+        return $copy;
     }
 
     /**

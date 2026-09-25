@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../libs/ThinQModuleTrait.php';
 require_once __DIR__ . '/libs/ThinQHelpers.php';
 require_once __DIR__ . '/libs/ThinQConfig.php';
+require_once __DIR__ . '/libs/ThinQClientId.php';
 require_once __DIR__ . '/libs/ThinQRedactor.php';
 require_once __DIR__ . '/libs/ThinQHttpClient.php';
 require_once __DIR__ . '/libs/ThinQApi.php';
@@ -72,8 +73,6 @@ class LGThinQBridge extends IPSModule
         if ($this->ReadAttributeString('AccessTokenBackup') !== '') {
             $this->WriteAttributeString('AccessTokenBackup', '');
         }
-        // Initialize default ClientID attribute on first run (without modifying properties)
-        $this->ensureDefaultClientID();
         $this->bootServices();
 
         $errors = $this->config->validate();
@@ -116,16 +115,7 @@ class LGThinQBridge extends IPSModule
 
         $propClientId = trim((string)$this->ReadPropertyString('ClientID'));
         $attrClientId = trim((string)$this->ReadAttributeString('ClientID'));
-        $effectiveId = $propClientId !== '' ? $propClientId : $attrClientId;
-        // For display only: if nothing set, show a generated default (do not persist here)
-        if ($effectiveId === '') {
-            try {
-                $rand5 = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
-            } catch (\Throwable $e) {
-                $rand5 = str_pad((string)mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
-            }
-            $effectiveId = 'Symcon' . $rand5;
-        }
+        $effectiveId = $attrClientId !== '' ? $attrClientId : $propClientId;
 
         if (isset($form['elements']) && is_array($form['elements'])) {
             foreach ($form['elements'] as &$el) {
@@ -140,24 +130,6 @@ class LGThinQBridge extends IPSModule
         }
 
         return json_encode($form, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    }
-
-    /**
-     * Initialize a default ClientID attribute on first run (without modifying properties).
-     * The user can override this via the property in the configuration form.
-     */
-    private function ensureDefaultClientID(): void
-    {
-        $propCID = trim((string)$this->ReadPropertyString('ClientID'));
-        $attrCID = trim((string)$this->ReadAttributeString('ClientID'));
-        if ($propCID === '' && $attrCID === '') {
-            try {
-                $rand5 = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
-            } catch (\Throwable $e) {
-                $rand5 = str_pad((string)mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
-            }
-            $this->WriteAttributeString('ClientID', 'Symcon' . $rand5);
-        }
     }
 
     public function ForwardData($JSONString)
@@ -355,60 +327,33 @@ class LGThinQBridge extends IPSModule
 
     private function createBridgeConfig(): ThinQBridgeConfig
     {
-        $accessToken = trim($this->ReadPropertyString('AccessToken'));
-        $countryCode = strtoupper(trim($this->ReadPropertyString('CountryCode')));
-        $debug = (bool)$this->ReadPropertyBoolean('Debug');
-        $useMqtt = (bool)$this->ReadPropertyBoolean('UseMQTT');
-        $mqttClientId = (int)$this->ReadPropertyInteger('MQTTClientID');
-        $mqttTopicFilter = $this->ReadPropertyString('MQTTTopicFilter');
-        $ignoreRetained = (bool)$this->ReadPropertyBoolean('IgnoreRetained');
-        $eventTtlHours = (int)$this->ReadPropertyInteger('EventTTLHrs');
-        $eventRenewLeadMin = (int)$this->ReadPropertyInteger('EventRenewLeadMin');
-
-        $clientIdProperty = trim($this->ReadPropertyString('ClientID'));
-        $clientIdAttr = trim($this->ReadAttributeString('ClientID'));
-        $clientId = $clientIdProperty !== '' ? $clientIdProperty : $clientIdAttr;
-        if ($clientId === '') {
-            // First installation: generate 'Symcon' + 5-digit random number
-            try {
-                $rand5 = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
-            } catch (\Throwable $e) {
-                // Fallback for environments without random_int
-                $rand5 = str_pad((string)mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
-            }
-            $clientId = 'Symcon' . $rand5;
-            $this->WriteAttributeString('ClientID', $clientId);
-        } elseif ($clientIdProperty !== '' && $clientIdProperty !== $clientIdAttr) {
-            $this->WriteAttributeString('ClientID', $clientIdProperty);
-            $clientId = $clientIdProperty;
-        }
-
-        // Prefer MQTT parent ClientID to keep HTTP x-client-id aligned with certificate CN
-        $instInfo = @IPS_GetInstance($this->InstanceID);
-        $parentId = is_array($instInfo) ? (int)($instInfo['ConnectionID'] ?? 0) : 0;
-        if ($parentId > 0) {
-            $parentClientId = trim((string)IPS_GetProperty($parentId, 'ClientID'));
-            if ($parentClientId !== '') {
-                if ($clientId !== $parentClientId) {
-                    // Reflect parent ClientID via attribute only; avoid mutating properties here
-                    $this->WriteAttributeString('ClientID', $parentClientId);
-                    $clientId = $parentClientId;
-                }
-            }
-        }
-
         return ThinQBridgeConfig::create(
-            $accessToken,
-            $countryCode,
-            $clientId,
-            $debug,
-            $useMqtt,
-            $mqttClientId,
-            $mqttTopicFilter,
-            $ignoreRetained,
-            $eventTtlHours,
-            $eventRenewLeadMin
+            trim($this->ReadPropertyString('AccessToken')),
+            strtoupper(trim($this->ReadPropertyString('CountryCode'))),
+            $this->resolveClientId(),
+            (bool)$this->ReadPropertyBoolean('Debug'),
+            $this->ReadPropertyString('MQTTTopicFilter'),
+            (bool)$this->ReadPropertyBoolean('IgnoreRetained'),
+            (int)$this->ReadPropertyInteger('EventTTLHrs'),
+            (int)$this->ReadPropertyInteger('EventRenewLeadMin')
         );
+    }
+
+    /**
+     * The ClientID of the connected MQTT Client (it is the certificate CN and the topic LG publishes
+     * to), else the property, else the stored attribute, else a new one. Kept in the attribute.
+     */
+    private function resolveClientId(): string
+    {
+        $clientId = ThinQClientId::ofParent($this->InstanceID);
+        foreach ([$this->ReadPropertyString('ClientID'), $this->ReadAttributeString('ClientID')] as $candidate) {
+            $clientId = $clientId !== '' ? $clientId : trim((string)$candidate);
+        }
+        $clientId = $clientId !== '' ? $clientId : ThinQClientId::generate();
+        if ($clientId !== $this->ReadAttributeString('ClientID')) {
+            $this->WriteAttributeString('ClientID', $clientId);
+        }
+        return $clientId;
     }
 
     private function ensureBooted(): void

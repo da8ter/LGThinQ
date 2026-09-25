@@ -37,27 +37,10 @@ class ThinQMqttCertBuilder
             throw new \RuntimeException($this->t('OpenSSL is not supported (openssl_* functions missing)'));
         }
 
-        $clientId = trim((string)$this->ctx->attributeString('ClientID'));
-        if ($clientId === '') {
-            $clientId = trim((string)$this->ctx->propertyString('ClientID'));
-            if ($clientId === '') {
-                $clientId = 'client-' . (string)$this->instanceId;
-            }
-        }
-        // Subject CN: prefer MQTT ClientID from parent if available
-        $subjectCN = $clientId;
-        $instInfo  = @IPS_GetInstance($this->instanceId);
-        if (is_array($instInfo)) {
-            $parentId = (int)($instInfo['ConnectionID'] ?? 0);
-            if ($parentId > 0) {
-                $parentClientId = trim((string)@IPS_GetProperty($parentId, 'ClientID'));
-                if ($parentClientId !== '') {
-                    $subjectCN = $parentClientId;
-                }
-            }
-        }
-        $subjectCN = preg_replace('/[^A-Za-z0-9._-]/', '_', (string)$subjectCN);
-        if (!is_string($subjectCN) || trim($subjectCN) === '') {
+        $baseCfg   = ($this->createConfigCallback)();
+        $clientId  = (string)$baseCfg->clientId;
+        $subjectCN = ThinQClientId::sanitize($clientId);
+        if ($subjectCN === '') {
             $subjectCN = 'client-' . (string)$this->instanceId;
         }
         if ($this->ctx->debugEnabled()) {
@@ -168,19 +151,7 @@ class ThinQMqttCertBuilder
         $lgCertOut       = '';
         $lgSubscriptions = null;
         try {
-            $baseCfg = ($this->createConfigCallback)();
-            $tmpCfg  = ThinQBridgeConfig::create(
-                $baseCfg->accessToken,
-                $baseCfg->countryCode,
-                $subjectCN,
-                $baseCfg->debug,
-                $baseCfg->useMqtt,
-                $baseCfg->mqttClientId,
-                $baseCfg->mqttTopicFilter,
-                $baseCfg->ignoreRetained,
-                $baseCfg->eventTtlHours,
-                $baseCfg->eventRenewLeadMin
-            );
+            $tmpCfg  = $baseCfg->withClientId($subjectCN);
             $tmpHttp = new ThinQHttpClient($this->ctx, $tmpCfg, $this->apiKey);
 
             $csrPemForApi = '';

@@ -315,18 +315,7 @@ class ThinQMqttSetupWizard
 
             // 7) Post-setup: register client idempotently with final ClientID (subjectCN)
             try {
-                $tmpCfg2 = ThinQBridgeConfig::create(
-                    $this->config->accessToken,
-                    $this->config->countryCode,
-                    $subjectCN,
-                    $this->config->debug,
-                    $this->config->useMqtt,
-                    $this->config->mqttClientId,
-                    $this->config->mqttTopicFilter,
-                    $this->config->ignoreRetained,
-                    $this->config->eventTtlHours,
-                    $this->config->eventRenewLeadMin
-                );
+                $tmpCfg2 = $this->config->withClientId($subjectCN);
                 $http2 = new ThinQHttpClient($this->ctx, $tmpCfg2, $this->apiKey);
                 try {
                     $http2->request('POST', 'client', ['body' => ['type' => 'MQTT', 'service-code' => 'SVC202', 'device-type' => '607']]);
@@ -349,49 +338,11 @@ class ThinQMqttSetupWizard
      */
     private function generateMqttClientCertMaterial(): array
     {
-        $clientId = trim((string)$this->ctx->attributeString('ClientID'));
-        if ($clientId === '') {
-            $propId = trim((string)$this->ctx->propertyString('ClientID'));
-            if ($propId !== '') {
-                $clientId = $propId;
-            } else {
-                try {
-                    $rand5 = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
-                } catch (\Throwable $e) {
-                    $rand5 = str_pad((string)mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
-                }
-                $clientId = 'Symcon' . $rand5;
-            }
-            $this->ctx->writeAttributeString('ClientID', $clientId);
+        $subjectCN = ThinQClientId::sanitize($this->config->clientId);
+        if ($subjectCN === '') {
+            $subjectCN = ThinQClientId::generate();
         }
-        $subjectCN = $clientId;
-        $instInfo = @IPS_GetInstance($this->instanceId);
-        if (is_array($instInfo)) {
-            $parentId = (int)($instInfo['ConnectionID'] ?? 0);
-            if ($parentId > 0) {
-                $parentClientId = trim((string)@IPS_GetProperty($parentId, 'ClientID'));
-                if ($parentClientId !== '') {
-                    $subjectCN = $parentClientId;
-                }
-            }
-        }
-        $subjectCN = preg_replace('/[^A-Za-z0-9._-]/', '_', (string)$subjectCN);
-        if (!is_string($subjectCN) || trim($subjectCN) === '') {
-            $subjectCN = 'Symcon00000';
-        }
-        $tmpCfg = ThinQBridgeConfig::create(
-            $this->config->accessToken,
-            $this->config->countryCode,
-            $subjectCN,
-            $this->config->debug,
-            $this->config->useMqtt,
-            $this->config->mqttClientId,
-            $this->config->mqttTopicFilter,
-            $this->config->ignoreRetained,
-            $this->config->eventTtlHours,
-            $this->config->eventRenewLeadMin
-        );
-        $tmpHttp = new ThinQHttpClient($this->ctx, $tmpCfg, $this->apiKey);
+        $tmpHttp = new ThinQHttpClient($this->ctx, $this->config->withClientId($subjectCN), $this->apiKey);
         $certMgr = new ThinQCertificateManager($this->instanceId);
         return $certMgr->requestLGSignedCert($tmpHttp, $subjectCN);
     }
