@@ -1,0 +1,1214 @@
+{
+    "air_conditioner": {
+        "variablen": 39,
+        "gelesen": 25,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "AIR_CON_JOB_MODE_CURRENT_JOB_MODE",
+            "AIR_FLOW_WIND_STRENGTH",
+            "AIR_FLOW_WIND_STRENGTH_DETAIL",
+            "AIR_QUALITY_SENSOR_HUMIDITY",
+            "AIR_QUALITY_SENSOR_MONITORING_ENABLED",
+            "AIR_QUALITY_SENSOR_PM1",
+            "AIR_QUALITY_SENSOR_PM10",
+            "AIR_QUALITY_SENSOR_PM2",
+            "AIR_QUALITY_SENSOR_TOTAL_POLLUTION",
+            "AIR_QUALITY_SENSOR_TOTAL_POLLUTION_LEVEL",
+            "DISPLAY_LIGHT",
+            "ERROR_LAST",
+            "FILTER_INFO_FILTER_LIFETIME",
+            "FILTER_INFO_FILTER_REMAIN_PERCENT",
+            "FILTER_INFO_USED_TIME",
+            "OPERATION_AIR_CLEAN_OPERATION_MODE",
+            "OPERATION_AIR_CON_OPERATION_MODE",
+            "POWER_SAVE_POWER_SAVE_ENABLED",
+            "PUSH_LAST",
+            "RUN_STATE_CURRENT_STATE",
+            "SLEEP_TIMER_RELATIVE_HOUR_TO_STOP",
+            "SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP",
+            "SLEEP_TIMER_RELATIVE_STOP_TIMER",
+            "TEMPERATURE_CURRENT_TEMPERATURE",
+            "TEMPERATURE_TARGET_TEMPERATURE",
+            "TIMER_RELATIVE_HOUR_TO_START",
+            "TIMER_RELATIVE_HOUR_TO_STOP",
+            "TIMER_RELATIVE_MINUTE_TO_START",
+            "TIMER_RELATIVE_MINUTE_TO_STOP",
+            "TWO_SET_TEMPERATURE_COOL_TARGET_TEMPERATURE",
+            "TWO_SET_TEMPERATURE_CURRENT_TEMPERATURE",
+            "TWO_SET_TEMPERATURE_HEAT_TARGET_TEMPERATURE",
+            "TWO_SET_TEMPERATURE_TWO_SET_ENABLED",
+            "WIND_DIRECTION_AIR_GUIDE_WIND",
+            "WIND_DIRECTION_AUTO_FIT_WIND",
+            "WIND_DIRECTION_CONCENTRATION_WIND",
+            "WIND_DIRECTION_FOREST_WIND",
+            "WIND_DIRECTION_HIGH_CEILING_WIND",
+            "WIND_DIRECTION_SWIRL_WIND"
+        ],
+        "befehle": [
+            "Air Conditioner - Set On Timer => LG-Beispiel passt nicht zum eigenen Profil (timer.absoluteHourToStart nicht im Profil)"
+        ]
+    },
+    "air_purifier": {
+        "variablen": 23,
+        "gelesen": 19,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "AIR_FLOW_WIND_STRENGTH",
+            "AIR_PURIFIER_JOB_MODE_CURRENT_JOB_MODE",
+            "AIR_QUALITY_SENSOR_MONITORING_ENABLED",
+            "AIR_QUALITY_SENSOR_ODER",
+            "AIR_QUALITY_SENSOR_ODOR",
+            "AIR_QUALITY_SENSOR_ODOR_LEVEL",
+            "AIR_QUALITY_SENSOR_PM1",
+            "AIR_QUALITY_SENSOR_PM10",
+            "AIR_QUALITY_SENSOR_PM2",
+            "AIR_QUALITY_SENSOR_TOTAL_POLLUTION",
+            "AIR_QUALITY_SENSOR_TOTAL_POLLUTION_LEVEL",
+            "ERROR_LAST",
+            "OPERATION_AIR_PURIFIER_OPERATION_MODE",
+            "PUSH_LAST",
+            "SLEEP_TIMER_RELATIVE_HOUR_TO_STOP",
+            "SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP",
+            "SLEEP_TIMER_RELATIVE_STOP_TIMER",
+            "TIMER_ABSOLUTE_HOUR_TO_START",
+            "TIMER_ABSOLUTE_HOUR_TO_STOP",
+            "TIMER_ABSOLUTE_MINUTE_TO_START",
+            "TIMER_ABSOLUTE_MINUTE_TO_STOP",
+            "TIMER_ABSOLUTE_START_TIMER",
+            "TIMER_ABSOLUTE_STOP_TIMER"
+        ],
+        "befehle": [
+            "Air Purifier - Run mode => gleich"
+        ]
+    },
+    "air_purifier_fan": {
+        "variablen": 29,
+        "gelesen": 21,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "AIR_FAN_JOB_MODE_CURRENT_JOB_MODE",
+            "AIR_FLOW_WARM_MODE",
+            "AIR_FLOW_WIND_ANGLE",
+            "AIR_FLOW_WIND_STRENGTH",
+            "AIR_FLOW_WIND_TEMPERATURE",
+            "AIR_QUALITY_SENSOR_HUMIDITY",
+            "AIR_QUALITY_SENSOR_MONITORING_ENABLED",
+            "AIR_QUALITY_SENSOR_ODOR",
+            "AIR_QUALITY_SENSOR_ODOR_LEVEL",
+            "AIR_QUALITY_SENSOR_PM1",
+            "AIR_QUALITY_SENSOR_PM10",
+            "AIR_QUALITY_SENSOR_PM2",
+            "AIR_QUALITY_SENSOR_TEMPERATURE",
+            "AIR_QUALITY_SENSOR_TOTAL_POLLUTION",
+            "AIR_QUALITY_SENSOR_TOTAL_POLLUTION_LEVEL",
+            "DISPLAY_LIGHT",
+            "ERROR_LAST",
+            "MISC_UV_NANO",
+            "OPERATION_AIR_FAN_OPERATION_MODE",
+            "PUSH_LAST",
+            "SLEEP_TIMER_RELATIVE_HOUR_TO_STOP",
+            "SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP",
+            "SLEEP_TIMER_RELATIVE_STOP_TIMER",
+            "TIMER_ABSOLUTE_HOUR_TO_START",
+            "TIMER_ABSOLUTE_HOUR_TO_STOP",
+            "TIMER_ABSOLUTE_MINUTE_TO_START",
+            "TIMER_ABSOLUTE_MINUTE_TO_STOP",
+            "TIMER_ABSOLUTE_START_TIMER",
+            "TIMER_ABSOLUTE_STOP_TIMER"
+        ],
+        "befehle": [
+            "Air Purifier Fan - Run mode => gleich"
+        ]
+    },
+    "blind_motor": {
+        "variablen": 6,
+        "gelesen": 3,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "MOTOR_MOTOR_DIRECTION",
+            "OPEN_CLOSE_STATE_CURRENT_STATE",
+            "OPEN_CLOSE_STATE_LEVEL",
+            "OPERATION_OPERATION_MODE",
+            "PUSH_LAST"
+        ],
+        "befehle": [
+            "Befehl => gleich"
+        ]
+    },
+    "bulb_color": {
+        "variablen": 8,
+        "gelesen": 6,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "COLOR_LIGHT_BRIGHTNESS",
+            "COLOR_LIGHT_HUE",
+            "COLOR_LIGHT_SATURATION",
+            "ERROR_LAST",
+            "MODE_LIGHT_MODE",
+            "PUSH_LAST",
+            "RUN_STATE_CURRENT_STATE",
+            "WHITE_LIGHT_BRIGHTNESS"
+        ],
+        "befehle": [
+            "Befehl => gleich"
+        ]
+    },
+    "bulb_white": {
+        "variablen": 5,
+        "gelesen": 3,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "PUSH_LAST",
+            "RUN_STATE_CURRENT_STATE",
+            "WHITE_LIGHT_BRIGHTNESS",
+            "WHITE_LIGHT_COLOR_TEMPERATURE"
+        ],
+        "befehle": [
+            "Befehl => gleich"
+        ]
+    },
+    "button": {
+        "variablen": 3,
+        "gelesen": 1,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "BATTERY_PERCENT",
+            "ERROR_LAST",
+            "PUSH_LAST"
+        ],
+        "befehle": []
+    },
+    "ceiling_fan": {
+        "variablen": 4,
+        "gelesen": 2,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "AIR_FLOW_WIND_STRENGTH",
+            "ERROR_LAST",
+            "OPERATION_CEILINGFAN_OPERATION_MODE",
+            "PUSH_LAST"
+        ],
+        "befehle": [
+            "Ceiling Fan - Run mode => gleich"
+        ]
+    },
+    "cooktop": {
+        "variablen": 7,
+        "gelesen": 0,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "COOKING_ZONE_CURRENT_STATE",
+            "ERROR_LAST",
+            "POWER_POWER_LEVEL",
+            "PUSH_LAST",
+            "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED",
+            "TIMER_REMAIN_HOUR",
+            "TIMER_REMAIN_MINUTE"
+        ],
+        "befehle": [
+            "Cooktop - Power Off => LG-Beispiel passt nicht zum eigenen Profil (location fehlt, das Profil hat 3 Zonen)"
+        ]
+    },
+    "curtain_ctrl": {
+        "variablen": 6,
+        "gelesen": 4,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "CALIBRATION_RAIL_CALIBRATION",
+            "ERROR_LAST",
+            "MOTOR_MOTOR_DIRECTION",
+            "OPEN_CLOSE_STATE_CURRENT_STATE",
+            "OPEN_CLOSE_STATE_LEVEL",
+            "PUSH_LAST"
+        ],
+        "befehle": [
+            "Befehl => gleich"
+        ]
+    },
+    "dehumidifier": {
+        "variablen": 13,
+        "gelesen": 7,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "AIR_FLOW_WIND_STRENGTH",
+            "DEHUMIDIFIER_JOB_MODE_CURRENT_JOB_MODE",
+            "ERROR_LAST",
+            "HUMIDITY_CURRENT_HUMIDITY",
+            "HUMIDITY_TARGET_HUMIDITY",
+            "OPERATION_DEHUMIDIFIER_OPERATION_MODE",
+            "PUSH_LAST",
+            "TIMER_ABSOLUTE_HOUR_TO_START",
+            "TIMER_ABSOLUTE_HOUR_TO_STOP",
+            "TIMER_ABSOLUTE_MINUTE_TO_START",
+            "TIMER_ABSOLUTE_MINUTE_TO_STOP",
+            "TIMER_ABSOLUTE_START_TIMER",
+            "TIMER_ABSOLUTE_STOP_TIMER"
+        ],
+        "befehle": [
+            "Humidifier- Run mode => LG-Beispiel passt nicht zum eigenen Profil (Ressource humidifierJobMode nicht im Profil)"
+        ]
+    },
+    "dish_washer": {
+        "variablen": 17,
+        "gelesen": 14,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "DISH_WASHING_COURSE_CURRENT_DISH_WASHING_COURSE",
+            "DISH_WASHING_STATUS_RINSE_REFILL",
+            "DOOR_STATUS_DOOR_STATE",
+            "ERROR_LAST",
+            "PREFERENCE_CLEAN_LREMINDER",
+            "PREFERENCE_M_CREMINDER",
+            "PREFERENCE_RINSE_LEVEL",
+            "PREFERENCE_SIGNAL_LEVEL",
+            "PREFERENCE_SOFTENING_LEVEL",
+            "PUSH_LAST",
+            "RUN_STATE_CURRENT_STATE",
+            "TIMER_RELATIVE_HOUR_TO_START",
+            "TIMER_RELATIVE_MINUTE_TO_START",
+            "TIMER_REMAIN_HOUR",
+            "TIMER_REMAIN_MINUTE",
+            "TIMER_TOTAL_HOUR",
+            "TIMER_TOTAL_MINUTE"
+        ],
+        "befehle": [
+            "Dish Washer - Run mode => LG-Beispiel passt nicht zum eigenen Profil (Ressource operation nicht im Profil)"
+        ]
+    },
+    "door_lock": {
+        "variablen": 4,
+        "gelesen": 2,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "BATTERY_PERCENT",
+            "DOOR_STATE_CURRENT_STATE",
+            "ERROR_LAST",
+            "PUSH_LAST"
+        ],
+        "befehle": [
+            "Befehl => gleich"
+        ]
+    },
+    "door_sensor": {
+        "variablen": 4,
+        "gelesen": 2,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "BATTERY_PERCENT",
+            "DOOR_STATE_CURRENT_STATE",
+            "ERROR_LAST",
+            "PUSH_LAST"
+        ],
+        "befehle": []
+    },
+    "doorbell": {
+        "variablen": 3,
+        "gelesen": 1,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "CHIME_VOLUME",
+            "ERROR_LAST",
+            "PUSH_LAST"
+        ],
+        "befehle": [
+            "Befehl => gleich"
+        ]
+    },
+    "dryer": {
+        "variablen": 11,
+        "gelesen": 8,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "OPERATION_DRYER_OPERATION_MODE",
+            "PUSH_LAST",
+            "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED",
+            "RUN_STATE_CURRENT_STATE",
+            "TIMER_RELATIVE_HOUR_TO_STOP",
+            "TIMER_RELATIVE_MINUTE_TO_STOP",
+            "TIMER_REMAIN_HOUR",
+            "TIMER_REMAIN_MINUTE",
+            "TIMER_TOTAL_HOUR",
+            "TIMER_TOTAL_MINUTE"
+        ],
+        "befehle": [
+            "Dryer - Start drying => gleich"
+        ]
+    },
+    "fire_sensor": {
+        "variablen": 5,
+        "gelesen": 3,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "BATTERY_PERCENT",
+            "DETECT_STATE_COVER_STATE",
+            "DETECT_STATE_SMOKE_STATE",
+            "ERROR_LAST",
+            "PUSH_LAST"
+        ],
+        "befehle": []
+    },
+    "gas_sensor": {
+        "variablen": 3,
+        "gelesen": 1,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "DETECT_STATE_GAS_STATE",
+            "ERROR_LAST",
+            "PUSH_LAST"
+        ],
+        "befehle": []
+    },
+    "home_brew": {
+        "variablen": 15,
+        "gelesen": 11,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "PUSH_LAST",
+            "RECIPE_BEER_REMAIN",
+            "RECIPE_FLAVOR_CAPSULE1",
+            "RECIPE_FLAVOR_CAPSULE2",
+            "RECIPE_FLAVOR_INFO",
+            "RECIPE_HOP_OIL_CAPSULE1",
+            "RECIPE_HOP_OIL_CAPSULE2",
+            "RECIPE_HOP_OIL_INFO",
+            "RECIPE_RECIPE_NAME",
+            "RECIPE_WORT_INFO",
+            "RECIPE_YEAST_INFO",
+            "RUN_STATE_CURRENT_STATE",
+            "TIMER_ELAPSED_DAY_STATE",
+            "TIMER_ELAPSED_DAY_TOTAL"
+        ],
+        "befehle": []
+    },
+    "home_camera": {
+        "variablen": 3,
+        "gelesen": 1,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "MODE_PRIVATE_MODE",
+            "PUSH_LAST"
+        ],
+        "befehle": [
+            "Befehl => gleich"
+        ]
+    },
+    "hood": {
+        "variablen": 7,
+        "gelesen": 5,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "LAMP_LAMP_BRIGHTNESS",
+            "OPERATION_HOOD_OPERATION_MODE",
+            "PUSH_LAST",
+            "TIMER_REMAIN_MINUTE",
+            "TIMER_REMAIN_SECOND",
+            "VENTILATION_FAN_SPEED"
+        ],
+        "befehle": [
+            "Hood - Lamp Brightness => gleich (Teil; LG bündelt 2 Eigenschaften)"
+        ]
+    },
+    "humidifier": {
+        "variablen": 29,
+        "gelesen": 21,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "AIR_FLOW_WIND_STRENGTH",
+            "AIR_QUALITY_SENSOR_HUMIDITY",
+            "AIR_QUALITY_SENSOR_MONITORING_ENABLED",
+            "AIR_QUALITY_SENSOR_PM1",
+            "AIR_QUALITY_SENSOR_PM10",
+            "AIR_QUALITY_SENSOR_PM2",
+            "AIR_QUALITY_SENSOR_TEMPERATURE",
+            "AIR_QUALITY_SENSOR_TOTAL_POLLUTION",
+            "AIR_QUALITY_SENSOR_TOTAL_POLLUTION_LEVEL",
+            "DISPLAY_LIGHT",
+            "ERROR_LAST",
+            "HUMIDIFIER_JOB_MODE_CURRENT_JOB_MODE",
+            "HUMIDITY_TARGET_HUMIDITY",
+            "HUMIDITY_WARM_MODE",
+            "MOOD_LAMP_MOOD_LAMP_STATE",
+            "OPERATION_AUTO_MODE",
+            "OPERATION_HUMIDIFIER_OPERATION_MODE",
+            "OPERATION_HYGIENE_DRY_MODE",
+            "OPERATION_SLEEP_MODE",
+            "PUSH_LAST",
+            "SLEEP_TIMER_RELATIVE_HOUR_TO_STOP",
+            "SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP",
+            "SLEEP_TIMER_RELATIVE_STOP_TIMER",
+            "TIMER_ABSOLUTE_HOUR_TO_START",
+            "TIMER_ABSOLUTE_HOUR_TO_STOP",
+            "TIMER_ABSOLUTE_MINUTE_TO_START",
+            "TIMER_ABSOLUTE_MINUTE_TO_STOP",
+            "TIMER_ABSOLUTE_START_TIMER",
+            "TIMER_ABSOLUTE_STOP_TIMER"
+        ],
+        "befehle": [
+            "Humidifier- Run mode => gleich"
+        ]
+    },
+    "idu": {
+        "variablen": 19,
+        "gelesen": 17,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "AIR_FLOW_WIND_DIRECTION",
+            "AIR_FLOW_WIND_STRENGTH",
+            "ALARM_FILTER_REPLACEMENT_ALARM",
+            "ERROR_LAST",
+            "JOB_MODE_HEATER_JOB_MODE",
+            "JOB_MODE_IDU_JOB_MODE",
+            "LOCK_FAN_LOCK",
+            "LOCK_LOCK",
+            "LOCK_MODE_LOCK",
+            "LOCK_TEMPERATURE_LOCK",
+            "OPERATION_HEATER_OPERATION_MODE",
+            "OPERATION_IDU_OPERATION_MODE",
+            "OUTDOOR_HEATER_OUTDOOR_HEATER",
+            "OUTDOOR_HEATER_OUTDOOR_HEAT_PUMP",
+            "POWER_SAVE_POWER_SAVE_ENABLED",
+            "POWER_SAVE_POWER_SAVE_STEP",
+            "PUSH_LAST",
+            "TEMPERATURE_CURRENT_TEMPERATURE",
+            "TEMPERATURE_TARGET_TEMPERATURE"
+        ],
+        "befehle": [
+            "Befehl => gleich (Teil; LG bündelt 10 Eigenschaften)"
+        ]
+    },
+    "kimchi_refrigerator": {
+        "variablen": 6,
+        "gelesen": 4,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "BOTTOM_TEMPERATURE_TARGET_TEMPERATURE",
+            "ERROR_LAST",
+            "MIDDLE_TEMPERATURE_TARGET_TEMPERATURE",
+            "PUSH_LAST",
+            "REFRIGERATION_ONE_TOUCH_FILTER",
+            "TOP_TEMPERATURE_TARGET_TEMPERATURE"
+        ],
+        "befehle": []
+    },
+    "light_switch": {
+        "variablen": 2,
+        "gelesen": 0,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "PUSH_LAST"
+        ],
+        "befehle": [
+            "Befehl => keine Variable SWITCH_1_SWITCH_STATE_CURRENT_SWITCH"
+        ]
+    },
+    "line_led": {
+        "variablen": 8,
+        "gelesen": 6,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "COLOR_LIGHT_BRIGHTNESS",
+            "COLOR_LIGHT_HUE",
+            "COLOR_LIGHT_SATURATION",
+            "ERROR_LAST",
+            "MODE_LIGHT_MODE",
+            "PUSH_LAST",
+            "RUN_STATE_CURRENT_STATE",
+            "WHITE_LIGHT_BRIGHTNESS"
+        ],
+        "befehle": [
+            "Befehl => gleich"
+        ]
+    },
+    "main_washcombo": {
+        "variablen": 12,
+        "gelesen": 9,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "CYCLE_CYCLE_COUNT",
+            "ERROR_LAST",
+            "OPERATION_WASHER_OPERATION_MODE",
+            "PUSH_LAST",
+            "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED",
+            "RUN_STATE_CURRENT_STATE",
+            "TIMER_RELATIVE_HOUR_TO_STOP",
+            "TIMER_RELATIVE_MINUTE_TO_STOP",
+            "TIMER_REMAIN_HOUR",
+            "TIMER_REMAIN_MINUTE",
+            "TIMER_TOTAL_HOUR",
+            "TIMER_TOTAL_MINUTE"
+        ],
+        "befehle": [
+            "Main WashCombo - Operation => gleich"
+        ]
+    },
+    "microwave_oven": {
+        "variablen": 7,
+        "gelesen": 5,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "LAMP_LAMP_BRIGHTNESS",
+            "PUSH_LAST",
+            "RUN_STATE_CURRENT_STATE",
+            "TIMER_REMAIN_MINUTE",
+            "TIMER_REMAIN_SECOND",
+            "VENTILATION_FAN_SPEED"
+        ],
+        "befehle": [
+            "Microwave Oven => LG-Beispiel passt nicht zum eigenen Profil (lamp.lampBrightness nicht schreibbar)"
+        ]
+    },
+    "mini_washcombo": {
+        "variablen": 12,
+        "gelesen": 9,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "CYCLE_CYCLE_COUNT",
+            "ERROR_LAST",
+            "OPERATION_WASHER_OPERATION_MODE",
+            "PUSH_LAST",
+            "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED",
+            "RUN_STATE_CURRENT_STATE",
+            "TIMER_RELATIVE_HOUR_TO_STOP",
+            "TIMER_RELATIVE_MINUTE_TO_STOP",
+            "TIMER_REMAIN_HOUR",
+            "TIMER_REMAIN_MINUTE",
+            "TIMER_TOTAL_HOUR",
+            "TIMER_TOTAL_MINUTE"
+        ],
+        "befehle": [
+            "Mini WashCombo - Operation => gleich"
+        ]
+    },
+    "motion_sensor": {
+        "variablen": 3,
+        "gelesen": 1,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "BATTERY_PERCENT",
+            "ERROR_LAST",
+            "PUSH_LAST"
+        ],
+        "befehle": []
+    },
+    "odu": {
+        "variablen": 5,
+        "gelesen": 3,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "INFO_CAPACITY",
+            "INFO_MODEL_NAME",
+            "OPERATION_OPERATION_MODE",
+            "PUSH_LAST"
+        ],
+        "befehle": []
+    },
+    "oven": {
+        "variablen": 8,
+        "gelesen": 0,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "OPERATION_OVEN_OPERATION_MODE",
+            "PUSH_LAST",
+            "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED",
+            "RUN_STATE_CURRENT_STATE",
+            "TIMER_REMAIN_HOUR",
+            "TIMER_REMAIN_MINUTE",
+            "TIMER_REMAIN_SECOND"
+        ],
+        "befehle": [
+            "Oven - Operation => LG-Beispiel passt nicht zum eigenen Profil (Zone LOWER nicht im Profil)"
+        ]
+    },
+    "pet_peeder": {
+        "variablen": 3,
+        "gelesen": 1,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "FEED_AMOUNT",
+            "PUSH_LAST"
+        ],
+        "befehle": [
+            "Befehl => gleich"
+        ]
+    },
+    "plant_cultivator": {
+        "variablen": 11,
+        "gelesen": 0,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "LIGHT_BRIGHTNESS",
+            "LIGHT_DURATION",
+            "LIGHT_END_HOUR",
+            "LIGHT_END_MINUTE",
+            "LIGHT_START_HOUR",
+            "LIGHT_START_MINUTE",
+            "PUSH_LAST",
+            "RUN_STATE_CURRENT_STATE",
+            "RUN_STATE_GROWTH_MODE",
+            "RUN_STATE_WIND_VOLUME"
+        ],
+        "befehle": []
+    },
+    "plug": {
+        "variablen": 6,
+        "gelesen": 4,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ELECTRICITY_CURRENT",
+            "ELECTRICITY_POWER",
+            "ELECTRICITY_VOLTAGE",
+            "ERROR_LAST",
+            "PUSH_LAST",
+            "RUN_STATE_CURRENT_STATE"
+        ],
+        "befehle": [
+            "Befehl => gleich"
+        ]
+    },
+    "plug_mini": {
+        "variablen": 9,
+        "gelesen": 7,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ELECTRICITY_CURRENT",
+            "ELECTRICITY_POWER",
+            "ELECTRICITY_VOLTAGE",
+            "ERROR_LAST",
+            "PUSH_LAST",
+            "RUN_STATE_CURRENT_STATE",
+            "SWITCH_STATE_CURRENT_SWITCH",
+            "SWITCH_STATE_INDICATE_LIGHT",
+            "SWITCH_STATE_KID_LOCK"
+        ],
+        "befehle": [
+            "Befehl => gleich"
+        ]
+    },
+    "push_pull_door_lock": {
+        "variablen": 4,
+        "gelesen": 2,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "BATTERY_PERCENT",
+            "DOOR_STATE_CURRENT_STATE",
+            "ERROR_LAST",
+            "PUSH_LAST"
+        ],
+        "befehle": [
+            "Befehl => gleich"
+        ]
+    },
+    "refrigerator": {
+        "variablen": 9,
+        "gelesen": 6,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "DOOR_STATUS_DOOR_STATE",
+            "ERROR_LAST",
+            "FREEZER_TEMPERATURE_TARGET_TEMPERATURE",
+            "FRIDGE_TEMPERATURE_TARGET_TEMPERATURE",
+            "PUSH_LAST",
+            "REFRIGERATION_EXPRESS_MODE",
+            "REFRIGERATION_EXPRESS_MODE_NAME",
+            "REFRIGERATION_FRESH_AIR_FILTER",
+            "WATER_FILTER_INFO_USED_TIME"
+        ],
+        "befehle": [
+            "Refrigerator - Power Save On => LG-Beispiel passt nicht zum eigenen Profil (Ressource powerSave nicht im Profil)"
+        ]
+    },
+    "robot_cleaner": {
+        "variablen": 11,
+        "gelesen": 3,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "BATTERY_LEVEL",
+            "BATTERY_PERCENT",
+            "ERROR_LAST",
+            "OPERATION_CLEAN_OPERATION_MODE",
+            "PUSH_LAST",
+            "ROBOT_CLEANER_JOB_MODE_CURRENT_JOB_MODE",
+            "RUN_STATE_CURRENT_STATE",
+            "TIMER_ABSOLUTE_HOUR_TO_START",
+            "TIMER_ABSOLUTE_MINUTE_TO_START",
+            "TIMER_RUNNING_HOUR",
+            "TIMER_RUNNING_MINUTE"
+        ],
+        "befehle": [
+            "Robot Cleaner - Run mode => gleich"
+        ]
+    },
+    "signage": {
+        "variablen": 26,
+        "gelesen": 24,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "AUDIO_SOUND_BALANCE",
+            "AUDIO_SOUND_MODE",
+            "AUDIO_VOLUME",
+            "AUDIO_VOLUME_MUTE",
+            "DISPLAY_BACKLIGHT",
+            "DISPLAY_BRIGHTNESS",
+            "DISPLAY_COLOR",
+            "DISPLAY_CONTRAST",
+            "DISPLAY_INPUT",
+            "DISPLAY_ISM",
+            "DISPLAY_LANGUAGE",
+            "DISPLAY_PICTURE_MODE",
+            "DISPLAY_SHARPNESS",
+            "DISPLAY_TINT",
+            "ERROR_LAST",
+            "INFO_OS_TYPE",
+            "POWER_ENERGY_SAVING_MODE",
+            "POWER_NO_IR_POWER_OFF",
+            "POWER_NO_SIGNAL_POWER_OFF",
+            "POWER_PM_MODE",
+            "POWER_POWER",
+            "POWER_POWER_ON_DELAY",
+            "POWER_POWER_ON_STATUS",
+            "POWER_SCREEN",
+            "POWER_WOL",
+            "PUSH_LAST"
+        ],
+        "befehle": [
+            "Befehl => gleich"
+        ]
+    },
+    "siren": {
+        "variablen": 5,
+        "gelesen": 3,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ALARM_TIME",
+            "ALARM_VOLUME",
+            "ERROR_LAST",
+            "PUSH_LAST",
+            "SWITCH_STATE_CURRENT_SWITCH"
+        ],
+        "befehle": [
+            "Befehl => gleich"
+        ]
+    },
+    "starlight": {
+        "variablen": 12,
+        "gelesen": 10,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "COLOR_LIGHT_BRIGHTNESS",
+            "COLOR_LIGHT_HUE",
+            "COLOR_LIGHT_SATURATION",
+            "ERROR_LAST",
+            "LASER_LIGHT_BRIGHTNESS",
+            "LASER_LIGHT_MOTOR_SPEED",
+            "MODE_LIGHT_MODE",
+            "MODE_SCENE_MODE",
+            "PUSH_LAST",
+            "RUN_STATE_CURRENT_STATE",
+            "SWITCH_STATE_SWITCH_COLOR",
+            "SWITCH_STATE_SWITCH_LASER"
+        ],
+        "befehle": [
+            "Befehl => gleich"
+        ]
+    },
+    "stick_cleaner": {
+        "variablen": 5,
+        "gelesen": 3,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "BATTERY_LEVEL",
+            "ERROR_LAST",
+            "PUSH_LAST",
+            "RUN_STATE_CURRENT_STATE",
+            "STICK_CLEANER_JOB_MODE_CURRENT_JOB_MODE"
+        ],
+        "befehle": []
+    },
+    "styler": {
+        "variablen": 11,
+        "gelesen": 8,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "OPERATION_STYLER_OPERATION_MODE",
+            "PUSH_LAST",
+            "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED",
+            "RUN_STATE_CURRENT_STATE",
+            "TIMER_RELATIVE_HOUR_TO_STOP",
+            "TIMER_RELATIVE_MINUTE_TO_STOP",
+            "TIMER_REMAIN_HOUR",
+            "TIMER_REMAIN_MINUTE",
+            "TIMER_TOTAL_HOUR",
+            "TIMER_TOTAL_MINUTE"
+        ],
+        "befehle": [
+            "Styler - Run mode => gleich"
+        ]
+    },
+    "switch_strip": {
+        "variablen": 3,
+        "gelesen": 1,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "PUSH_LAST",
+            "RUN_STATE_CURRENT_STATE"
+        ],
+        "befehle": [
+            "Befehl => gleich",
+            "Befehl => keine Variable SWITCH_1_SWITCH_STATE_CURRENT_SWITCH"
+        ]
+    },
+    "sync_box": {
+        "variablen": 14,
+        "gelesen": 12,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "COLOR_LIGHT_BRIGHTNESS",
+            "COLOR_LIGHT_HUE",
+            "COLOR_LIGHT_SATURATION",
+            "ERROR_LAST",
+            "INPUT_HDMI_SWITCH",
+            "LAYOUT_LIGHT_DIRECTION",
+            "LAYOUT_LIGHT_POSITION",
+            "MODE_LIGHT_MODE",
+            "MODE_MUSIC_MODE",
+            "PUSH_LAST",
+            "RUN_STATE_CURRENT_STATE",
+            "VIDEO_COLOR_MODE",
+            "VIDEO_INTENSITY",
+            "VIDEO_VIDEO_SCENE"
+        ],
+        "befehle": [
+            "Befehl => gleich (Teil; LG bündelt 3 Eigenschaften)"
+        ]
+    },
+    "sync_box_sub": {
+        "variablen": 9,
+        "gelesen": 7,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "COLOR_LIGHT_BRIGHTNESS",
+            "COLOR_LIGHT_HUE",
+            "COLOR_LIGHT_SATURATION",
+            "ERROR_LAST",
+            "MODE_LIGHT_MODE",
+            "PUSH_LAST",
+            "RUN_STATE_CURRENT_STATE",
+            "WHITE_LIGHT_BRIGHTNESS",
+            "WHITE_LIGHT_COLOR_TEMPERATURE"
+        ],
+        "befehle": [
+            "Befehl => gleich"
+        ]
+    },
+    "system_boiler": {
+        "variablen": 9,
+        "gelesen": 7,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "BOILER_JOB_MODE_CURRENT_JOB_MODE",
+            "ERROR_LAST",
+            "OPERATION_BOILER_OPERATION_MODE",
+            "OPERATION_HOT_WATER_MODE",
+            "OPERATION_ROOM_TEMP_MODE",
+            "OPERATION_ROOM_WATER_MODE",
+            "PUSH_LAST",
+            "TEMPERATURE_CURRENT_TEMPERATURE",
+            "TEMPERATURE_TARGET_TEMPERATURE"
+        ],
+        "befehle": [
+            "System Boiler - Power ON => gleich"
+        ]
+    },
+    "temperature_humidity_sensor": {
+        "variablen": 5,
+        "gelesen": 3,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "BATTERY_PERCENT",
+            "ERROR_LAST",
+            "HUMIDITY_CURRENT_HUMIDITY",
+            "PUSH_LAST",
+            "TEMPERATURE_CURRENT_TEMPERATURE"
+        ],
+        "befehle": []
+    },
+    "thermo_hygrometer": {
+        "variablen": 5,
+        "gelesen": 3,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "BATTERY_PERCENT",
+            "ERROR_LAST",
+            "HUMIDITY_CURRENT_HUMIDITY",
+            "PUSH_LAST",
+            "TEMPERATURE_CURRENT_TEMPERATURE"
+        ],
+        "befehle": []
+    },
+    "ventilator": {
+        "variablen": 19,
+        "gelesen": 11,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "AIR_FLOW_WIND_STRENGTH",
+            "AIR_QUALITY_SENSOR_CO2",
+            "AIR_QUALITY_SENSOR_PM1",
+            "AIR_QUALITY_SENSOR_PM10",
+            "AIR_QUALITY_SENSOR_PM2",
+            "ERROR_LAST",
+            "OPERATION_VENT_OPERATION_MODE",
+            "PUSH_LAST",
+            "SLEEP_TIMER_RELATIVE_HOUR_TO_STOP",
+            "SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP",
+            "SLEEP_TIMER_RELATIVE_STOP_TIMER",
+            "TEMPERATURE_CURRENT_TEMPERATURE",
+            "TIMER_ABSOLUTE_HOUR_TO_START",
+            "TIMER_ABSOLUTE_HOUR_TO_STOP",
+            "TIMER_ABSOLUTE_MINUTE_TO_START",
+            "TIMER_ABSOLUTE_MINUTE_TO_STOP",
+            "TIMER_ABSOLUTE_START_TIMER",
+            "TIMER_ABSOLUTE_STOP_TIMER",
+            "VENT_JOB_MODE_CURRENT_JOB_MODE"
+        ],
+        "befehle": [
+            "Ventilation - Auto mode => gleich"
+        ]
+    },
+    "washer": {
+        "variablen": 12,
+        "gelesen": 7,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "CYCLE_CYCLE_COUNT",
+            "ERROR_LAST",
+            "OPERATION_WASHER_OPERATION_MODE",
+            "PUSH_LAST",
+            "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED",
+            "RUN_STATE_CURRENT_STATE",
+            "TIMER_RELATIVE_HOUR_TO_START",
+            "TIMER_RELATIVE_MINUTE_TO_START",
+            "TIMER_REMAIN_HOUR",
+            "TIMER_REMAIN_MINUTE",
+            "TIMER_TOTAL_HOUR",
+            "TIMER_TOTAL_MINUTE"
+        ],
+        "befehle": [
+            "Washer - Start washing => gleich"
+        ]
+    },
+    "washtower": {
+        "variablen": 2,
+        "gelesen": 0,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "PUSH_LAST"
+        ],
+        "befehle": [
+            "WashTower - Start drying => keine Variable DRYER_OPERATION_DRYER_OPERATION_MODE"
+        ]
+    },
+    "washtower_dryer": {
+        "variablen": 11,
+        "gelesen": 8,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "OPERATION_DRYER_OPERATION_MODE",
+            "PUSH_LAST",
+            "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED",
+            "RUN_STATE_CURRENT_STATE",
+            "TIMER_RELATIVE_HOUR_TO_STOP",
+            "TIMER_RELATIVE_MINUTE_TO_STOP",
+            "TIMER_REMAIN_HOUR",
+            "TIMER_REMAIN_MINUTE",
+            "TIMER_TOTAL_HOUR",
+            "TIMER_TOTAL_MINUTE"
+        ],
+        "befehle": [
+            "WashTower Dryer - Power OFF => gleich"
+        ]
+    },
+    "washtower_washer": {
+        "variablen": 12,
+        "gelesen": 9,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "CYCLE_CYCLE_COUNT",
+            "ERROR_LAST",
+            "OPERATION_WASHER_OPERATION_MODE",
+            "PUSH_LAST",
+            "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED",
+            "RUN_STATE_CURRENT_STATE",
+            "TIMER_RELATIVE_HOUR_TO_STOP",
+            "TIMER_RELATIVE_MINUTE_TO_STOP",
+            "TIMER_REMAIN_HOUR",
+            "TIMER_REMAIN_MINUTE",
+            "TIMER_TOTAL_HOUR",
+            "TIMER_TOTAL_MINUTE"
+        ],
+        "befehle": [
+            "WashTower (Washer) - Start washing => gleich"
+        ]
+    },
+    "water_heater": {
+        "variablen": 6,
+        "gelesen": 4,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "OPERATION_WATER_HEATER_OPERATION_MODE",
+            "PUSH_LAST",
+            "TEMPERATURE_CURRENT_TEMPERATURE",
+            "TEMPERATURE_TARGET_TEMPERATURE",
+            "WATER_HEATER_JOB_MODE_CURRENT_JOB_MODE"
+        ],
+        "befehle": [
+            "Water Heater - Run mode => gleich"
+        ]
+    },
+    "water_leak_sensor": {
+        "variablen": 4,
+        "gelesen": 2,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "BATTERY_PERCENT",
+            "DETECT_STATE_LEAK_STATE",
+            "ERROR_LAST",
+            "PUSH_LAST"
+        ],
+        "befehle": []
+    },
+    "water_purifier": {
+        "variablen": 4,
+        "gelesen": 1,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "PUSH_LAST",
+            "RUN_STATE_COCK_STATE",
+            "WATER_INFO_WATER_TYPE"
+        ],
+        "befehle": []
+    },
+    "wine_cellar": {
+        "variablen": 5,
+        "gelesen": 2,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "ERROR_LAST",
+            "OPERATION_LIGHT_STATUS",
+            "PUSH_LAST",
+            "WINE_LOWER_TEMPERATURE_TARGET_TEMPERATURE",
+            "WINE_UPPER_TEMPERATURE_TARGET_TEMPERATURE"
+        ],
+        "befehle": [
+            "Wine Cellar - light Brightness => gleich"
+        ]
+    },
+    "live_ac": {
+        "variablen": 23,
+        "gelesen": 15,
+        "warnungen": 0,
+        "fehler": 0,
+        "idents": [
+            "AIR_CON_JOB_MODE_CURRENT_JOB_MODE",
+            "AIR_FLOW_WIND_STRENGTH",
+            "AIR_FLOW_WIND_STRENGTH_DETAIL",
+            "ERROR_LAST",
+            "FILTER_INFO_FILTER_LIFETIME",
+            "FILTER_INFO_USED_TIME",
+            "OPERATION_AIR_CON_OPERATION_MODE",
+            "POWER_SAVE_POWER_SAVE_ENABLED",
+            "PUSH_LAST",
+            "RUN_STATE_CURRENT_STATE",
+            "SLEEP_TIMER_RELATIVE_HOUR_TO_STOP",
+            "SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP",
+            "SLEEP_TIMER_RELATIVE_STOP_TIMER",
+            "TEMPERATURE_CURRENT_TEMPERATURE",
+            "TEMPERATURE_TARGET_TEMPERATURE",
+            "TIMER_RELATIVE_HOUR_TO_START",
+            "TIMER_RELATIVE_HOUR_TO_STOP",
+            "TIMER_RELATIVE_MINUTE_TO_START",
+            "TIMER_RELATIVE_MINUTE_TO_STOP",
+            "TIMER_RELATIVE_START_TIMER",
+            "TIMER_RELATIVE_STOP_TIMER",
+            "WIND_DIRECTION_ROTATE_LEFT_RIGHT",
+            "WIND_DIRECTION_ROTATE_UP_DOWN"
+        ],
+        "befehle": []
+    }
+}

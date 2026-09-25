@@ -1,0 +1,576 @@
+{
+    "_quelle": {
+        "geraet": "LG Klimaanlage RAC_056905_WW am Symcon-9.1-Docker (Instanz 28624), gelesen am 2026-09-25 aus settings.json",
+        "profil": "Attribut LastProfile. Dort lag es schon OHNE die property-Hülle (fetchProfileFromAPI entfernt sie, Befund F5); hier wieder eingehüllt, wie GET devices/{id}/profile es liefert. Ob die echte Antwort zusätzlich notification/error enthält, ist nicht bekannt.",
+        "status": "Attribut LastStatus (Stand nach GetStatus und Pushes).",
+        "anonymisiert": "deviceId ersetzt; sonst unverändert."
+    },
+    "device": {
+        "deviceId": "live-ac-0000000000000000000000000000000000000000000000000000000001",
+        "deviceInfo": {
+            "deviceType": "DEVICE_AIR_CONDITIONER",
+            "modelName": "RAC_056905_WW",
+            "alias": "Klimaanlage",
+            "reportable": true
+        }
+    },
+    "profile": {
+        "property": {
+            "runState": {
+                "currentState": {
+                    "type": "enum",
+                    "mode": [
+                        "r"
+                    ],
+                    "value": {
+                        "r": [
+                            "NORMAL",
+                            "ERROR"
+                        ]
+                    }
+                }
+            },
+            "airConJobMode": {
+                "currentJobMode": {
+                    "type": "enum",
+                    "mode": [
+                        "r",
+                        "w"
+                    ],
+                    "value": {
+                        "r": [
+                            "COOL",
+                            "AUTO",
+                            "HEAT",
+                            "AIR_DRY",
+                            "FAN"
+                        ],
+                        "w": [
+                            "COOL",
+                            "AUTO",
+                            "HEAT",
+                            "AIR_DRY",
+                            "FAN"
+                        ]
+                    }
+                }
+            },
+            "operation": {
+                "airConOperationMode": {
+                    "type": "enum",
+                    "mode": [
+                        "r",
+                        "w"
+                    ],
+                    "value": {
+                        "r": [
+                            "POWER_OFF",
+                            "POWER_ON"
+                        ],
+                        "w": [
+                            "POWER_OFF",
+                            "POWER_ON"
+                        ]
+                    }
+                }
+            },
+            "powerSave": {
+                "powerSaveEnabled": {
+                    "type": "boolean",
+                    "mode": [
+                        "r",
+                        "w"
+                    ],
+                    "value": {
+                        "r": [
+                            false,
+                            true
+                        ],
+                        "w": [
+                            false,
+                            true
+                        ]
+                    }
+                }
+            },
+            "temperature": {
+                "currentTemperature": {
+                    "type": "number",
+                    "mode": [
+                        "r"
+                    ]
+                },
+                "unit": {
+                    "type": "enum",
+                    "mode": [
+                        "r"
+                    ],
+                    "value": {
+                        "r": [
+                            "C"
+                        ]
+                    }
+                },
+                "minTargetTemperature": {
+                    "type": "number",
+                    "mode": [
+                        "r"
+                    ]
+                },
+                "maxTargetTemperature": {
+                    "type": "number",
+                    "mode": [
+                        "r"
+                    ]
+                },
+                "heatTargetTemperature": {
+                    "type": "range",
+                    "mode": [
+                        "w"
+                    ],
+                    "value": {
+                        "w": {
+                            "max": 30,
+                            "min": 16,
+                            "step": 0.5
+                        }
+                    }
+                },
+                "coolTargetTemperature": {
+                    "type": "range",
+                    "mode": [
+                        "w"
+                    ],
+                    "value": {
+                        "w": {
+                            "max": 30,
+                            "min": 18,
+                            "step": 0.5
+                        }
+                    }
+                },
+                "autoTargetTemperature": {
+                    "type": "range",
+                    "mode": [
+                        "w"
+                    ],
+                    "value": {
+                        "w": {
+                            "max": 30,
+                            "min": 18,
+                            "step": 0.5
+                        }
+                    }
+                },
+                "targetTemperature": {
+                    "type": "range",
+                    "mode": [
+                        "r",
+                        "w"
+                    ],
+                    "value": {
+                        "r": {
+                            "max": 30,
+                            "min": 16,
+                            "step": 0.5
+                        },
+                        "w": {
+                            "max": 30,
+                            "min": 18,
+                            "step": 0.5
+                        }
+                    }
+                }
+            },
+            "temperatureInUnits": [
+                {
+                    "currentTemperature": {
+                        "type": "number",
+                        "mode": [
+                            "r"
+                        ]
+                    },
+                    "targetTemperature": {
+                        "type": "number",
+                        "mode": [
+                            "r"
+                        ]
+                    },
+                    "minTargetTemperature": {
+                        "type": "number",
+                        "mode": [
+                            "r"
+                        ]
+                    },
+                    "maxTargetTemperature": {
+                        "type": "number",
+                        "mode": [
+                            "r"
+                        ]
+                    },
+                    "coolTargetTemperature": {
+                        "type": "range",
+                        "mode": [
+                            "w"
+                        ],
+                        "value": {
+                            "w": {
+                                "max": 30,
+                                "min": 18,
+                                "step": 0.5
+                            }
+                        }
+                    },
+                    "heatTargetTemperature": {
+                        "type": "range",
+                        "mode": [
+                            "w"
+                        ],
+                        "value": {
+                            "w": {
+                                "max": 30,
+                                "min": 16,
+                                "step": 0.5
+                            }
+                        }
+                    },
+                    "autoTargetTemperature": {
+                        "type": "range",
+                        "mode": [
+                            "w"
+                        ],
+                        "value": {
+                            "w": {
+                                "max": 30,
+                                "min": 18,
+                                "step": 0.5
+                            }
+                        }
+                    },
+                    "unit": "C"
+                },
+                {
+                    "currentTemperature": {
+                        "type": "number",
+                        "mode": [
+                            "r"
+                        ]
+                    },
+                    "targetTemperature": {
+                        "type": "number",
+                        "mode": [
+                            "r"
+                        ]
+                    },
+                    "minTargetTemperature": {
+                        "type": "number",
+                        "mode": [
+                            "r"
+                        ]
+                    },
+                    "maxTargetTemperature": {
+                        "type": "number",
+                        "mode": [
+                            "r"
+                        ]
+                    },
+                    "coolTargetTemperature": {
+                        "type": "range",
+                        "mode": [
+                            "w"
+                        ],
+                        "value": {
+                            "w": {
+                                "max": 86,
+                                "min": 64,
+                                "step": 1
+                            }
+                        }
+                    },
+                    "heatTargetTemperature": {
+                        "type": "range",
+                        "mode": [
+                            "w"
+                        ],
+                        "value": {
+                            "w": {
+                                "max": 86,
+                                "min": 60,
+                                "step": 1
+                            }
+                        }
+                    },
+                    "autoTargetTemperature": {
+                        "type": "range",
+                        "mode": [
+                            "w"
+                        ],
+                        "value": {
+                            "w": {
+                                "max": 86,
+                                "min": 64,
+                                "step": 1
+                            }
+                        }
+                    },
+                    "unit": "F"
+                }
+            ],
+            "filterInfo": {
+                "filterLifetime": {
+                    "type": "number",
+                    "mode": [
+                        "r"
+                    ]
+                },
+                "usedTime": {
+                    "type": "number",
+                    "mode": [
+                        "r"
+                    ]
+                }
+            },
+            "airFlow": {
+                "windStrength": {
+                    "type": "enum",
+                    "mode": [
+                        "r",
+                        "w"
+                    ],
+                    "value": {
+                        "r": [
+                            "LOW",
+                            "MID",
+                            "HIGH",
+                            "AUTO"
+                        ],
+                        "w": [
+                            "LOW",
+                            "MID",
+                            "HIGH",
+                            "AUTO"
+                        ]
+                    }
+                },
+                "windStrengthDetail": {
+                    "type": "enum",
+                    "mode": [
+                        "r",
+                        "w"
+                    ],
+                    "value": {
+                        "r": [
+                            "NATURE",
+                            "LOW",
+                            "MID",
+                            "HIGH"
+                        ],
+                        "w": [
+                            "NATURE",
+                            "LOW",
+                            "MID",
+                            "HIGH"
+                        ]
+                    }
+                }
+            },
+            "windDirection": {
+                "rotateUpDown": {
+                    "type": "boolean",
+                    "mode": [
+                        "r",
+                        "w"
+                    ],
+                    "value": {
+                        "r": [
+                            true,
+                            false
+                        ],
+                        "w": [
+                            true,
+                            false
+                        ]
+                    }
+                },
+                "rotateLeftRight": {
+                    "type": "boolean",
+                    "mode": [
+                        "r",
+                        "w"
+                    ],
+                    "value": {
+                        "r": [
+                            true,
+                            false
+                        ],
+                        "w": [
+                            true,
+                            false
+                        ]
+                    }
+                }
+            },
+            "timer": {
+                "relativeHourToStop": {
+                    "type": "number",
+                    "mode": [
+                        "r",
+                        "w"
+                    ]
+                },
+                "relativeMinuteToStop": {
+                    "type": "number",
+                    "mode": [
+                        "r",
+                        "w"
+                    ]
+                },
+                "relativeStopTimer": {
+                    "type": "enum",
+                    "mode": [
+                        "r",
+                        "w"
+                    ],
+                    "value": {
+                        "r": [
+                            "SET",
+                            "UNSET"
+                        ],
+                        "w": [
+                            "UNSET"
+                        ]
+                    }
+                },
+                "relativeHourToStart": {
+                    "type": "number",
+                    "mode": [
+                        "r",
+                        "w"
+                    ]
+                },
+                "relativeMinuteToStart": {
+                    "type": "number",
+                    "mode": [
+                        "r",
+                        "w"
+                    ]
+                },
+                "relativeStartTimer": {
+                    "type": "enum",
+                    "mode": [
+                        "r",
+                        "w"
+                    ],
+                    "value": {
+                        "r": [
+                            "SET",
+                            "UNSET"
+                        ],
+                        "w": [
+                            "UNSET"
+                        ]
+                    }
+                }
+            },
+            "sleepTimer": {
+                "relativeHourToStop": {
+                    "type": "number",
+                    "mode": [
+                        "r",
+                        "w"
+                    ]
+                },
+                "relativeMinuteToStop": {
+                    "type": "number",
+                    "mode": [
+                        "r",
+                        "w"
+                    ]
+                },
+                "relativeStopTimer": {
+                    "type": "enum",
+                    "mode": [
+                        "r",
+                        "w"
+                    ],
+                    "value": {
+                        "r": [
+                            "SET",
+                            "UNSET"
+                        ],
+                        "w": [
+                            "UNSET"
+                        ]
+                    }
+                }
+            }
+        }
+    },
+    "status": {
+        "runState": {
+            "currentState": "NORMAL"
+        },
+        "airConJobMode": {
+            "currentJobMode": "COOL"
+        },
+        "powerSave": {
+            "powerSaveEnabled": false
+        },
+        "temperature": {
+            "currentTemperature": 21,
+            "targetTemperature": 23,
+            "unit": "C"
+        },
+        "temperatureInUnits": [
+            {
+                "currentTemperature": 21,
+                "targetTemperature": 23,
+                "unit": "C"
+            },
+            {
+                "currentTemperature": 70,
+                "targetTemperature": 74,
+                "unit": "F"
+            }
+        ],
+        "filterInfo": {
+            "filterLifetime": 541,
+            "usedTime": 179
+        },
+        "airFlow": {
+            "windStrength": "MID",
+            "windStrengthDetail": "LOW_MID"
+        },
+        "windDirection": {
+            "rotateUpDown": true,
+            "rotateLeftRight": true
+        },
+        "operation": {
+            "airConOperationMode": "POWER_OFF"
+        },
+        "timer": {
+            "relativeStartTimer": "UNSET",
+            "relativeStopTimer": "UNSET",
+            "relativeHourToStart": null,
+            "relativeMinuteToStart": null,
+            "relativeHourToStop": null,
+            "relativeMinuteToStop": null
+        },
+        "sleepTimer": {
+            "relativeStopTimer": "UNSET",
+            "relativeHourToStop": null,
+            "relativeMinuteToStop": null
+        },
+        "airQualitySensor": {
+            "monitoringEnabled": "ON_WORKING"
+        }
+    },
+    "energyProfile": {
+        "resultCode": "0000",
+        "result": {
+            "property": [
+                "energyUsage"
+            ]
+        }
+    }
+}
