@@ -1180,7 +1180,7 @@
         ]
     },
     "live_ac": {
-        "variablen": 23,
+        "variablen": 26,
         "gelesen": 15,
         "warnungen": 0,
         "fehler": 0,
@@ -1188,6 +1188,9 @@
             "AIR_CON_JOB_MODE_CURRENT_JOB_MODE",
             "AIR_FLOW_WIND_STRENGTH",
             "AIR_FLOW_WIND_STRENGTH_DETAIL",
+            "ENERGY_LAST_MONTH",
+            "ENERGY_THIS_MONTH",
+            "ENERGY_YESTERDAY",
             "ERROR_LAST",
             "FILTER_INFO_FILTER_LIFETIME",
             "FILTER_INFO_USED_TIME",

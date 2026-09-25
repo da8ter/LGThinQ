@@ -97,20 +97,22 @@ foreach (['cooktop' => ['RIGHT_FRONT', 'LEFT_REAR'], 'plant_cultivator' => ['LOW
 }
 befund('F8', $missing === [], 'Jede Zone und jeder Kanal bekommt Variablen', 'ohne Variablen: ' . implode(', ', $missing));
 
-section('F9 Energie');
+section('F9 Energie (behoben)');
 World::start();
-[$ac] = World::liveAc();
+[$ac, $acid] = World::liveAc();
 $energy = array_values(array_intersect(['ENERGY_YESTERDAY', 'ENERGY_THIS_MONTH', 'ENERGY_LAST_MONTH'], World::idents($ac)));
-$timer = World::timer($ac, 'UpdateEnergy');
-$timerWarn = count(World::warningsLike('/Timer UpdateEnergy does not exist/'));
+check(count($energy) === 3, 'das Energieprofil {result: {property: [energyUsage]}} ergibt die drei Energievariablen');
+check((World::timer($ac, 'UpdateEnergy')['interval'] ?? 0) === 6 * 3600 * 1000 && World::warningsLike('/Timer UpdateEnergy/') === [], 'Timer UpdateEnergy aus Create(), alle 6 h, ohne Warnung');
 World::quiet();
 LGTQD_UpdateEnergy($ac);
 $usage = World::$cloud->calls('GET devices/energy/{id}/usage');
 $periods = array_values(array_unique(array_map(static fn(array $r): string => (string)($r['query']['period'] ?? ''), $usage)));
-befund('F9', count($energy) === 3 && ($timer['interval'] ?? 0) > 0 && $timerWarn === 0 && $usage !== [] && array_diff($periods, ['DAILY', 'MONTHLY']) === [],
-    'Energie: result.property erkannt, Timer registriert, Abfrage mit DAILY/MONTHLY',
-    sprintf('Energievariablen %d/3, Timer %s, %d× "Timer UpdateEnergy does not exist" beim Einrichten, %d Verbrauchsabfragen %s',
-        count($energy), $timer === null ? 'nicht registriert' : $timer['interval'] . ' ms', $timerWarn, count($usage), json_encode($periods)));
+sort($periods);
+check(count($usage) === 3 && $periods === ['DAILY', 'MONTHLY'] && array_filter($usage, static fn(array $r): bool => $r['status'] !== 200) === [], 'Verbrauchsabfragen mit period DAILY/MONTHLY, alle angenommen');
+check(World::value($ac, 'ENERGY_YESTERDAY') > 0.0, 'Verbrauch aus result.dataList[].useAmount');
+World::$cloud->fail('GET devices/energy/{id}/profile', 503);
+IPS_ApplyChanges($ac);
+check(count(array_intersect(['ENERGY_YESTERDAY', 'ENERGY_THIS_MONTH', 'ENERGY_LAST_MONTH'], World::idents($ac))) === 3, 'ein Ausfall beim Energieprofil löscht die Energievariablen nicht');
 
 section('F10 Profilabruf je Push');
 World::start();
@@ -304,11 +306,13 @@ foreach (glob($root . '/*/locale.json') as $file) {
 }
 befund('N11', $dups === [], 'locale.json ohne doppelte Schlüssel', count($dups) . ' doppelt, u. a. ' . implode(', ', array_slice($dups, 0, 4)));
 
-section('N12 Energiewerte sofort');
+section('N12 Energiewerte sofort (behoben)');
 World::start();
 [$ac] = World::liveAc();
-$v = World::value($ac, 'ENERGY_YESTERDAY');
-befund('N12', is_float($v) && $v > 0, 'Energiewerte gleich nach dem Einrichten, nicht erst nach 6 h', 'ENERGY_YESTERDAY ' . json_encode($v));
+check(is_float(World::value($ac, 'ENERGY_YESTERDAY')) && World::value($ac, 'ENERGY_YESTERDAY') > 0.0, 'Energiewerte gleich nach dem Einrichten, nicht erst nach 6 h');
+World::quiet();
+IPS_ApplyChanges($ac);
+check(World::$cloud->calls('GET devices/energy/{id}/usage') === [], 'ein weiteres ApplyChanges innerhalb von 6 h fragt den Verbrauch nicht erneut ab');
 
 /** Keys that occur twice in the same JSON object ("path.key"). */
 function jsonDuplicateKeys(string $json): array

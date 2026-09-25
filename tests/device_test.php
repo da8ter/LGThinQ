@@ -159,6 +159,6 @@ unlink($tmp);
 check(in_array('20_profile_response.json', $names, true) && in_array('40_variables.json', $names, true), 'Inhalt: ' . implode(', ', $names));
 check(!str_contains($all, $wid) && !str_contains($all, World::$cloud->pat), 'deviceId und PAT sind im Paket anonymisiert');
 
-check(World::warningsLike('/^(?!.*Timer UpdateEnergy does not exist)/') === [], 'keine Warnungen außer dem bekannten Energie-Timer (F9): ' . implode(' | ', World::warningsLike('/^(?!.*Timer UpdateEnergy does not exist)/')));
+check(Kernel::$warnings === [], 'keine Warnungen' . (Kernel::$warnings === [] ? '' : ': ' . implode(' | ', Kernel::$warnings)));
 
 done();

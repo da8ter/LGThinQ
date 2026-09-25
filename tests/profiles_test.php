@@ -133,7 +133,7 @@ foreach ($types as $type) {
     [$inst, $did] = $type === 'live_ac' ? World::liveAc() : World::example($type);
     $idents = array_values(array_diff(World::idents($inst), GENERIC));
     $read = readCoverage($inst);
-    $warnings = array_values(array_filter(Kernel::$warnings, static fn(string $w): bool => !str_contains($w, 'Timer UpdateEnergy does not exist')));
+    $warnings = Kernel::$warnings;
     $errors = array_map(static fn(array $l): string => $l['text'], array_values(array_filter(Kernel::$log, static fn(array $l): bool => $l['type'] === 'ERROR')));
     foreach (array_merge($warnings, $errors) as $w) {
         $unexpected[] = $type . ': ' . $w;
@@ -172,7 +172,7 @@ foreach ($rows as $r) {
 echo "\nBefehlsbeispiele: " . implode(', ', array_map(static fn(string $k, int $n): string => "$k $n", array_keys($stats), $stats)) . "\n\n";
 
 check(count(array_filter($rows, static fn(array $r): bool => $r['variablen'] === 0)) === 0, 'jeder Typ bekommt mindestens eine Variable (ERROR_LAST/PUSH_LAST zählen mit)');
-check($unexpected === [], 'keine Warnungen und Fehler beim Einrichten (außer dem bekannten Energie-Timer, F9)' . ($unexpected === [] ? '' : ":\n  " . implode("\n  ", array_slice($unexpected, 0, 20))));
+check($unexpected === [], 'keine Warnungen und Fehler beim Einrichten' . ($unexpected === [] ? '' : ":\n  " . implode("\n  ", array_slice($unexpected, 0, 20))));
 
 $golden = is_file(GOLDEN) ? json_decode((string)file_get_contents(GOLDEN), true) : null;
 if (in_array('--golden', $argv, true) || !is_array($golden)) {

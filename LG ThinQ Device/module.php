@@ -41,6 +41,7 @@ class LGThinQDevice extends IPSModule
         $this->RegisterAttributeInteger('LastSelfHealTs', 0);
         // Timer registered at 0 (disabled); interval is set in ApplyChanges when needed
         $this->RegisterTimer('InitialUpdateStatus', 0, 'LGTQD_InitialSetup($_IPS[\'TARGET\']);');
+        $this->RegisterTimer('UpdateEnergy', 0, 'LGTQD_UpdateEnergy($_IPS[\'TARGET\']);');
         $this->ConnectParent(self::GATEWAY_MODULE_GUID);
     }
 
@@ -573,10 +574,16 @@ class LGThinQDevice extends IPSModule
 
         // Energy API: fetch energy profile and create variables if supported
         try {
-            $energyProfile = $this->fetchEnergyProfile($deviceId);
-            $this->WriteAttributeString('EnergyProfile', json_encode($energyProfile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-            $this->setupEnergyVariables();
-            $this->scheduleEnergyTimer();
+            $energyProfile = $this->energy()->fetchEnergyProfile($deviceId);
+            if ($energyProfile !== null) { // null: the call failed, keep the known state and the ENERGY_* variables
+                $this->WriteAttributeString('EnergyProfile', json_encode($energyProfile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
+            $this->energy()->setupEnergyVariables();
+            $this->energy()->scheduleEnergyTimer();
+            // First values right away instead of after the first 6 h timer interval
+            if ($this->energy()->getEnergyProperties() !== [] && ThinQClock::now() - (int)$this->GetBuffer('EnergyFetchedAt') >= 6 * 3600) {
+                $this->UpdateEnergy();
+            }
         } catch (\Throwable $e) {
             $this->logThrowable('SetupEnergy', $e);
         }
@@ -998,59 +1005,20 @@ class LGThinQDevice extends IPSModule
 
     // ── Energy API ──────────────────────────────────────────────────────
 
-    private function fetchEnergyProfile(string $deviceId): array
+    private function energy(): ThinQEnergyManager
     {
-        $em = new ThinQEnergyManager(
+        return new ThinQEnergyManager(
             $this, $this->InstanceID,
             fn(string $a, array $p = []) => $this->sendAction($a, $p),
             fn(string $ident) => $this->getVarId($ident),
             fn(int $vid, string $ident, array $pres, array $fp, string $type) => $this->applyPresentation($vid, $ident, $pres, $fp, $type)
         );
-        return $em->fetchEnergyProfile($deviceId);
-    }
-
-    private function getEnergyProperties(): array
-    {
-        $em = new ThinQEnergyManager(
-            $this, $this->InstanceID,
-            fn(string $a, array $p = []) => $this->sendAction($a, $p),
-            fn(string $ident) => $this->getVarId($ident),
-            fn(int $vid, string $ident, array $pres, array $fp, string $type) => $this->applyPresentation($vid, $ident, $pres, $fp, $type)
-        );
-        return $em->getEnergyProperties();
-    }
-
-    private function setupEnergyVariables(): void
-    {
-        $em = new ThinQEnergyManager(
-            $this, $this->InstanceID,
-            fn(string $a, array $p = []) => $this->sendAction($a, $p),
-            fn(string $ident) => $this->getVarId($ident),
-            fn(int $vid, string $ident, array $pres, array $fp, string $type) => $this->applyPresentation($vid, $ident, $pres, $fp, $type)
-        );
-        $em->setupEnergyVariables();
-    }
-
-    private function scheduleEnergyTimer(): void
-    {
-        $em = new ThinQEnergyManager(
-            $this, $this->InstanceID,
-            fn(string $a, array $p = []) => $this->sendAction($a, $p),
-            fn(string $ident) => $this->getVarId($ident),
-            fn(int $vid, string $ident, array $pres, array $fp, string $type) => $this->applyPresentation($vid, $ident, $pres, $fp, $type)
-        );
-        $em->scheduleEnergyTimer();
     }
 
     public function UpdateEnergy(): void
     {
-        $em = new ThinQEnergyManager(
-            $this, $this->InstanceID,
-            fn(string $a, array $p = []) => $this->sendAction($a, $p),
-            fn(string $ident) => $this->getVarId($ident),
-            fn(int $vid, string $ident, array $pres, array $fp, string $type) => $this->applyPresentation($vid, $ident, $pres, $fp, $type)
-        );
-        $em->execute();
+        $this->energy()->execute();
+        $this->SetBuffer('EnergyFetchedAt', (string)ThinQClock::now());
     }
 
 

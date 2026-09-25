@@ -29,18 +29,19 @@ class ThinQEnergyManager
         $this->applyPresentationCallback = $applyPresentationCallback;
     }
 
-    public function fetchEnergyProfile(string $deviceId): array
+    /**
+     * The energy profile; [] when LG answers that the device has no energy data (1221), null when
+     * the call failed otherwise; then the caller keeps what it knows, so an outage deletes nothing.
+     */
+    public function fetchEnergyProfile(string $deviceId): ?array
     {
         try {
             $raw = ($this->sendActionCallback)('GetEnergyProfile', ['DeviceID' => $deviceId]);
             $data = json_decode((string)$raw, true);
-            if (!is_array($data)) {
-                return [];
-            }
-            return $data;
+            return is_array($data) ? $data : null;
         } catch (\Throwable $e) {
             $this->module->publicSendDebug('FetchEnergyProfile', 'Failed: ' . $e->getMessage(), 0);
-            return [];
+            return preg_match('/API error 1221\b/', $e->getMessage()) === 1 ? [] : null;
         }
     }
 
@@ -58,9 +59,11 @@ class ThinQEnergyManager
         if (!is_array($result)) {
             return [];
         }
-        $dataKey = $result['dataKey'] ?? null;
-        if (is_array($dataKey)) {
-            return $dataKey;
+        // LG answers {"resultCode":"0000","result":{"property":["energyUsage"]}} (measured)
+        foreach (['property', 'dataKey'] as $key) {
+            if (isset($result[$key]) && is_array($result[$key])) {
+                return array_values(array_filter($result[$key], 'is_string'));
+            }
         }
         if (isset($result[0]) && is_string($result[0])) {
             return $result;
@@ -92,14 +95,10 @@ class ThinQEnergyManager
         }
     }
 
+    /** The timer is registered in the module's Create(); here it is only switched on (every 6 h) or off. */
     public function scheduleEnergyTimer(): void
     {
-        $energyProps = $this->getEnergyProperties();
-        if (empty($energyProps)) {
-            $this->module->publicSetTimerInterval('UpdateEnergy', 0);
-            return;
-        }
-        $this->module->publicRegisterTimer('UpdateEnergy', 6 * 3600 * 1000, 'LGTQD_UpdateEnergy($_IPS["TARGET"]);');
+        $this->module->publicSetTimerInterval('UpdateEnergy', empty($this->getEnergyProperties()) ? 0 : 6 * 3600 * 1000);
     }
 
     public function execute(): void
@@ -123,21 +122,21 @@ class ThinQEnergyManager
 
         $property = $energyProps[0];
 
-        $yesterdayWh = $this->fetchEnergyUsage($deviceId, $property, 'daily',
+        $yesterdayWh = $this->fetchEnergyUsage($deviceId, $property, 'DAILY',
             $yesterday->format('Ymd'), $yesterday->format('Ymd'));
         if ($yesterdayWh !== null) {
             $vid = ($this->getVarIdCallback)('ENERGY_YESTERDAY');
             if ($vid > 0) { @SetValueFloat($vid, $yesterdayWh); }
         }
 
-        $thisMonthWh = $this->fetchEnergyUsage($deviceId, $property, 'monthly',
+        $thisMonthWh = $this->fetchEnergyUsage($deviceId, $property, 'MONTHLY',
             $today->format('Ym'), $today->format('Ym'));
         if ($thisMonthWh !== null) {
             $vid = ($this->getVarIdCallback)('ENERGY_THIS_MONTH');
             if ($vid > 0) { @SetValueFloat($vid, $thisMonthWh); }
         }
 
-        $lastMonthWh = $this->fetchEnergyUsage($deviceId, $property, 'monthly',
+        $lastMonthWh = $this->fetchEnergyUsage($deviceId, $property, 'MONTHLY',
             $lastMonth->format('Ym'), $lastMonth->format('Ym'));
         if ($lastMonthWh !== null) {
             $vid = ($this->getVarIdCallback)('ENERGY_LAST_MONTH');
@@ -164,10 +163,12 @@ class ThinQEnergyManager
             if (!is_array($result)) { return null; }
             $dataList = $result['dataList'] ?? [];
             if (!is_array($dataList)) { return null; }
-            $total = 0.0;
+            // Spec: result.dataList[{usedDate, useAmount}]; no numeric entry means no value, not 0
+            $total = null;
             foreach ($dataList as $entry) {
-                if (is_array($entry) && isset($entry[$property])) {
-                    $total += (float)$entry[$property];
+                $amount = is_array($entry) ? ($entry['useAmount'] ?? ($entry[$property] ?? null)) : null;
+                if (is_numeric($amount)) {
+                    $total = ($total ?? 0.0) + (float)$amount;
                 }
             }
             return $total;
