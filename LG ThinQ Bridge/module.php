@@ -14,6 +14,7 @@ require_once __DIR__ . '/libs/ThinQForwardHandler.php';
 require_once __DIR__ . '/libs/ThinQEventPipeline.php';
 require_once __DIR__ . '/libs/ThinQMqttRouter.php';
 require_once __DIR__ . '/libs/ThinQCertificateManager.php';
+require_once __DIR__ . '/libs/ThinQMqttInstances.php';
 require_once __DIR__ . '/libs/ThinQMqttSetupWizard.php';
 require_once __DIR__ . '/libs/ThinQMqttCertBuilder.php';
 
@@ -375,34 +376,14 @@ class LGThinQBridge extends IPSModule
         if (!(bool)$this->ReadPropertyBoolean('Debug')) {
             return;
         }
-        $parentId = self::connectionOf($this->InstanceID);
-        $ioId = $parentId > 0 ? self::connectionOf($parentId) : 0;
+        $parentId = ThinQMqttInstances::connectionOf($this->InstanceID);
+        $ioId = $parentId > 0 ? ThinQMqttInstances::connectionOf($parentId) : 0;
         $this->SendDebug('MQTT', 'Bridge #' . $this->InstanceID . ', MQTT parent #' . $parentId . ', IO #' . $ioId, 0);
         foreach (['Parent' => $parentId, 'IO' => $ioId] as $role => $id) {
             if ($id > 0) {
-                $this->SendDebug('MQTT', $role . ' ' . self::describeInstance($id), 0);
+                $this->SendDebug('MQTT', $role . ' ' . ThinQMqttInstances::describe($id), 0);
             }
         }
-    }
-
-    private static function connectionOf(int $instanceId): int
-    {
-        $info = @IPS_GetInstance($instanceId);
-        return is_array($info) ? (int)($info['ConnectionID'] ?? 0) : 0;
-    }
-
-    /** Module, status and configuration keys of an instance; values only for keys that never hold a secret. */
-    private static function describeInstance(int $instanceId): string
-    {
-        $info = @IPS_GetInstance($instanceId);
-        $config = json_decode((string)@IPS_GetConfiguration($instanceId), true);
-        $keys = [];
-        foreach (is_array($config) ? $config : [] as $key => $value) {
-            $keys[] = in_array($key, ['ClientID', 'Host', 'Port', 'Open', 'UseSSL', 'KeepAliveInterval', 'Subscriptions'], true)
-                ? $key . '=' . json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : (string)$key;
-        }
-        return sprintf('#%d module=%s status=%s config: %s', $instanceId, is_array($info) ? (string)($info['ModuleInfo']['ModuleID'] ?? '') : '',
-            is_array($info) ? (string)($info['InstanceStatus'] ?? '') : '', implode(', ', $keys));
     }
 
     /**
@@ -503,14 +484,8 @@ class LGThinQBridge extends IPSModule
     {
         $this->ensureBooted();
         try {
-            $result = (new ThinQMqttSetupWizard(
-                $this->moduleContext(),
-                $this->InstanceID,
-                self::API_KEY,
-                $this->config,
-                $this->httpClient,
-                fn() => $this->debugMqttParentInfo()
-            ))->run();
+            $result = (new ThinQMqttSetupWizard($this->moduleContext(), self::API_KEY, $this->config, $this->api,
+                fn() => $this->debugMqttParentInfo()))->run();
             echo rtrim($this->t('Done'), '.') . ".\n" . 'Client Socket ID: ' . $result['ioId'] . "\n" . 'MQTT Client ID:   ' . $result['mqttId'] . "\n";
             $this->NotifyUser($this->t('MQTT connection configured') . ' (ClientID=' . $result['clientId'] . ', Host=' . $result['host'] . ':' . $result['port'] . ').');
         } catch (Throwable $e) {
