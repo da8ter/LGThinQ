@@ -21,14 +21,14 @@ final class ThinQEventManager
         $this->repository = $repository;
     }
 
-    public function subscribe(string $deviceId): bool
+    public function subscribe(string $deviceId, bool $force = false): bool
     {
         try {
             // Idempotency guard: if a current subscription exists and is not close to expiry, skip re-subscribing
             $leadSeconds = $this->config->normalizedEventRenewLeadMinutes() * 60;
             $subs = $this->repository->getAll();
             $current = $subs[$deviceId] ?? null;
-            if (is_array($current)) {
+            if (!$force && is_array($current)) {
                 $expiresAt = (int)($current['expiresAt'] ?? 0);
                 if ($expiresAt > 0 && $expiresAt > (ThinQClock::now() + $leadSeconds)) {
                     // Still valid beyond renew lead window; no API call needed

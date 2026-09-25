@@ -94,9 +94,15 @@ check(World::$cloud->requests[0]['body'] === ['expire' => ['unit' => 'HOUR', 'ti
 check((World::$cloud->eventSubs[$washer]['expiresAt'] ?? 0) === Kernel::now() + 86400, 'Cloud: Event-Abo läuft in 24 h ab');
 check((int)(json_decode((string)World::attr(World::$bridge, 'EventSubscriptions'), true)[$washer]['expiresAt'] ?? 0) === Kernel::now() + 86400, 'Bridge merkt sich den Ablauf');
 World::quiet();
-check(LGTQ_SubscribeDevice(World::$bridge, $washer, true, true) === true, 'zweites SubscribeDevice: weiterhin Erfolg');
+check(LGTQ_SubscribeDevice(World::$bridge, $washer, true, true) === true && World::$cloud->requests === [], 'zweites SubscribeDevice gleich danach: Erfolg ohne Anfrage (Abo gültig, Push in der Abkühlzeit)');
+Kernel::advance(31 * 60);
+World::quiet();
+check(LGTQ_SubscribeDevice(World::$bridge, $washer, true, true) === true, 'nach der Abkühlzeit (30 min): weiterhin Erfolg');
 $paths = array_map(static fn(array $r): string => $r['method'] . ' ' . $r['path'] . ' ' . $r['status'], World::$cloud->requests);
 check($paths === ['POST push/devices 400', 'POST push/' . $washer . '/subscribe 404'], 'kein neues Event-Abo; Push antwortet "already subscribed" (4001/1207) und gilt als erledigt');
+World::quiet();
+LGTQ_RenewAll(World::$bridge);
+check(array_map(static fn(array $r): string => $r['method'] . ' ' . $r['path'], World::$cloud->requests) === ['POST event/' . $washer . '/subscribe'], 'RenewAll erneuert das Event-Abo sofort');
 check(LGTQ_UnsubscribeDevice(World::$bridge, $washer, true, true) === true && World::$cloud->eventSubs === [] && World::$cloud->pushSubs === [], 'UnsubscribeDevice räumt beide Abos in der Cloud');
 check(json_decode((string)World::attr(World::$bridge, 'EventSubscriptions'), true) === [], 'und in der Bridge');
 

@@ -47,14 +47,14 @@ class LGThinQBridge extends IPSModule
         $this->RegisterPropertyBoolean('IgnoreRetained', true);
         $this->RegisterPropertyInteger('EventTTLHrs', 24);
         $this->RegisterPropertyInteger('EventRenewLeadMin', 5);
-        // Reduce push subscribe requests: cooldown in minutes
+        // Minimum minutes between two push registrations of the same kind (unless forced)
         $this->RegisterPropertyInteger('PushCooldownMin', 30);
 
         $this->RegisterAttributeString('ClientID', '');
         $this->RegisterAttributeString('AccessTokenBackup', ''); // no longer written, only cleared (held a PAT copy)
         $this->RegisterAttributeString('Devices', '[]');
         $this->RegisterAttributeString('EventSubscriptions', '{}');
-        // Push subscribe throttling metadata
+        // Push subscribe bookkeeping: last POST push/devices, and per device {at, clientId} of the last push/{id}/subscribe
         $this->RegisterAttributeInteger('PushRegisteredAt', 0);
         $this->RegisterAttributeString('PushDeviceSubs', '{}');
         $this->RegisterTimer('EventRenewTimer', 0, 'LGTQ_RenewEvents($_IPS[\'TARGET\']);');
@@ -233,7 +233,7 @@ class LGThinQBridge extends IPSModule
                     if ($deviceId === '') {
                         throw new Exception('DeviceID missing');
                     }
-                    $ok = $this->eventManager->subscribe($deviceId);
+                    $ok = $this->eventManager->subscribe($deviceId, true);
                     return json_encode(['success' => $ok], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 case 'GetEnergyProfile':
                     $deviceId = (string)($buffer['DeviceID'] ?? '');
@@ -325,15 +325,9 @@ class LGThinQBridge extends IPSModule
                     continue;
                 }
                 $total++;
-                if ($this->SubscribeDevice($deviceId, true, true)) {
+                if ($this->trySubscribeDevice($deviceId, true, true, true)['ok']) {
                     $ok++;
                 }
-            }
-
-            try {
-                $this->httpClient->request('POST', 'push/devices');
-            } catch (Throwable $e) {
-                $this->SendDebug('SubscribeAll Push', $e->getMessage(), 0);
             }
 
             $this->NotifyUser(sprintf($this->t('SubscribeAll: %d/%d devices subscribed'), $ok, $total));
@@ -372,6 +366,8 @@ class LGThinQBridge extends IPSModule
                 $this->SendDebug('UnsubscribeAll Push', $e->getMessage(), 0);
             }
             $this->subscriptionRepository->saveAll([]);
+            $this->WriteAttributeInteger('PushRegisteredAt', 0);
+            $this->WriteAttributeString('PushDeviceSubs', '{}');
             $this->NotifyUser(sprintf($this->t('UnsubscribeAll: %d/%d devices unsubscribed'), $ok, $total));
         } catch (Throwable $e) {
             $this->SendDebug('UnsubscribeAll', $e->getMessage(), 0);
@@ -390,7 +386,7 @@ class LGThinQBridge extends IPSModule
                 if ($deviceId === '') {
                     continue;
                 }
-                if ($this->eventManager->subscribe((string)$deviceId)) {
+                if ($this->eventManager->subscribe((string)$deviceId, true)) {
                     $ok++;
                 }
             }
@@ -410,33 +406,19 @@ class LGThinQBridge extends IPSModule
             $this->SendDebug('RenewEvents', $e->getMessage(), 0);
         }
 
-        // Renew push subscriptions for all known devices
-        try {
-            $subs = $this->subscriptionRepository->getAll();
-            $deviceIds = array_filter(array_keys($subs), static fn(string $id): bool => $id !== '');
-            if (count($deviceIds) > 0) {
-                try {
-                    $this->httpClient->request('POST', 'push/devices');
-                    $this->SendDebug('RenewEvents', 'push/devices OK', 0);
-                } catch (Throwable $e2) {
-                    $this->SendDebug('RenewEvents', 'push/devices error: ' . $e2->getMessage(), 0);
-                }
+        // Push subscriptions do not expire; re-assert them once a day as a safety net.
+        if (ThinQClock::now() - (int)$this->ReadAttributeInteger('PushRegisteredAt') >= 86400) {
+            $deviceIds = array_filter(array_map('strval', array_keys($this->subscriptionRepository->getAll())), static fn(string $id): bool => $id !== '');
+            if ($deviceIds !== []) {
+                $this->registerPushClient(true);
                 foreach ($deviceIds as $deviceId) {
                     try {
-                        $this->httpClient->request('POST', 'push/' . rawurlencode((string)$deviceId) . '/subscribe');
-                        $this->SendDebug('RenewEvents', 'Push renewed for ' . $deviceId, 0);
-                    } catch (Throwable $e3) {
-                        $msg = $e3->getMessage();
-                        if (stripos($msg, 'already subscribed') !== false) {
-                            $this->SendDebug('RenewEvents', 'Push already subscribed (OK) for ' . $deviceId, 0);
-                        } else {
-                            $this->SendDebug('RenewEvents', 'Push renew failed for ' . $deviceId . ': ' . $msg, 0);
-                        }
+                        $this->subscribePush($deviceId, true);
+                    } catch (Throwable $e) {
+                        $this->SendDebug('RenewEvents', 'Push renew failed for ' . $deviceId . ': ' . $e->getMessage(), 0);
                     }
                 }
             }
-        } catch (Throwable $e) {
-            $this->SendDebug('RenewEvents', 'Push renewal error: ' . $e->getMessage(), 0);
         }
     }
 
@@ -450,46 +432,90 @@ class LGThinQBridge extends IPSModule
     /**
      * @return array{ok: bool, errors: array<int, string>}
      */
-    private function trySubscribeDevice(string $DeviceID, bool $Push, bool $Event): array
+    private function trySubscribeDevice(string $DeviceID, bool $Push, bool $Event, bool $force = false): array
     {
         $ok = true;
         $errors = [];
         if ($Event) {
-            $success = $this->eventManager->subscribe($DeviceID);
-            if ($success) {
-                $this->SendDebug('Event Subscribe', 'OK for ' . $DeviceID, 0);
-            } else {
-                $this->SendDebug('Event Subscribe', 'FAILED for ' . $DeviceID, 0);
-            }
+            $success = $this->eventManager->subscribe($DeviceID, $force);
+            $this->SendDebug('Event Subscribe', ($success ? 'OK' : 'FAILED') . ' for ' . $DeviceID, 0);
             if (!$success) {
                 $errors[] = 'Event subscription failed';
+                $ok = false;
             }
-            $ok = $success && $ok;
         }
         if ($Push) {
+            $this->registerPushClient($force);
             try {
-                // Ensure this client is registered as push recipient (idempotent)
-                try {
-                    $this->httpClient->request('POST', 'push/devices');
-                    $this->SendDebug('Push Subscribe', 'push/devices OK', 0);
-                } catch (Throwable $e2) {
-                    $this->SendDebug('Push Subscribe', 'push/devices error: ' . $e2->getMessage(), 0);
-                }
-                $this->httpClient->request('POST', 'push/' . rawurlencode($DeviceID) . '/subscribe');
-                $this->SendDebug('Push Subscribe', 'OK for ' . $DeviceID, 0);
+                $this->subscribePush($DeviceID, $force);
             } catch (Throwable $e) {
-                $msg = $e->getMessage();
-                if (stripos($msg, 'already subscribed') !== false) {
-                    // Idempotent: consider already subscribed as success
-                    $this->SendDebug('Push Subscribe', 'Already subscribed: treating as OK', 0);
-                } else {
-                    $this->SendDebug('Push Subscribe', $msg, 0);
-                    $errors[] = 'Push subscribe failed: ' . $msg;
-                    $ok = false;
-                }
+                $this->SendDebug('Push Subscribe', $e->getMessage(), 0);
+                $errors[] = 'Push subscribe failed: ' . $e->getMessage();
+                $ok = false;
             }
         }
         return ['ok' => $ok, 'errors' => $errors];
+    }
+
+    /** POST push/devices registers this client as push recipient; repeated at most once per cooldown unless forced. */
+    private function registerPushClient(bool $force): void
+    {
+        $at = (int)$this->ReadAttributeInteger('PushRegisteredAt');
+        if (!$force && $at > 0 && ThinQClock::now() - $at < $this->pushCooldownSeconds()) {
+            return;
+        }
+        try {
+            $this->httpClient->request('POST', 'push/devices');
+            $this->SendDebug('Push Subscribe', 'push/devices OK', 0);
+        } catch (Throwable $e) {
+            if (!self::isAlreadySubscribed($e)) {
+                $this->SendDebug('Push Subscribe', 'push/devices error: ' . $e->getMessage(), 0);
+                return;
+            }
+            $this->SendDebug('Push Subscribe', 'push/devices already registered (OK)', 0);
+        }
+        $this->WriteAttributeInteger('PushRegisteredAt', ThinQClock::now());
+    }
+
+    /** POST push/{id}/subscribe, at most once per cooldown and client ID unless forced; throws on real errors. */
+    private function subscribePush(string $deviceId, bool $force): void
+    {
+        $subs = $this->pushSubscriptions();
+        $entry = $subs[$deviceId] ?? null;
+        if (!$force && is_array($entry) && (string)($entry['clientId'] ?? '') === $this->config->clientId
+            && ThinQClock::now() - (int)($entry['at'] ?? 0) < $this->pushCooldownSeconds()) {
+            return;
+        }
+        try {
+            $this->httpClient->request('POST', 'push/' . rawurlencode($deviceId) . '/subscribe');
+            $this->SendDebug('Push Subscribe', 'OK for ' . $deviceId, 0);
+        } catch (Throwable $e) {
+            if (!self::isAlreadySubscribed($e)) {
+                throw $e;
+            }
+            $this->SendDebug('Push Subscribe', 'Already subscribed (OK) for ' . $deviceId, 0);
+        }
+        $subs[$deviceId] = ['at' => ThinQClock::now(), 'clientId' => $this->config->clientId];
+        $this->WriteAttributeString('PushDeviceSubs', (string)json_encode($subs, JSON_UNESCAPED_SLASHES));
+    }
+
+    /** @return array<string, array<string, mixed>> deviceId => {at, clientId} of the last successful push subscribe */
+    private function pushSubscriptions(): array
+    {
+        $subs = json_decode((string)$this->ReadAttributeString('PushDeviceSubs'), true);
+        return is_array($subs) ? $subs : [];
+    }
+
+    private function pushCooldownSeconds(): int
+    {
+        return max(1, (int)$this->ReadPropertyInteger('PushCooldownMin')) * 60;
+    }
+
+    /** LG answers a repeated push registration with 4001 (push/devices, spelled "Subscirbed") or 1207 (push/{id}/subscribe). */
+    private static function isAlreadySubscribed(Throwable $e): bool
+    {
+        return ($e instanceof ThinQApiException && in_array($e->apiCode, ['4001', '1207'], true))
+            || stripos($e->getMessage(), 'already subscribed') !== false;
     }
 
     public function UnsubscribeDevice(string $DeviceID, bool $Push = true, bool $Event = true): bool
@@ -500,6 +526,9 @@ class LGThinQBridge extends IPSModule
             $ok = $this->eventManager->unsubscribe($DeviceID) && $ok;
         }
         if ($Push) {
+            $subs = $this->pushSubscriptions();
+            unset($subs[$DeviceID]);
+            $this->WriteAttributeString('PushDeviceSubs', (string)json_encode((object)$subs, JSON_UNESCAPED_SLASHES));
             try {
                 $this->httpClient->request('DELETE', 'push/' . rawurlencode($DeviceID) . '/unsubscribe');
             } catch (Throwable $e) {
