@@ -44,6 +44,11 @@ final class ThinQMqttRouter
         }
 
         $payloadRaw = $env['Payload'] ?? ($env['payload'] ?? null);
+        if (is_string($payloadRaw) && $payloadRaw !== '' && strlen($payloadRaw) % 2 === 0 && ctype_xdigit($payloadRaw)) {
+            // An IPSModuleStrict child gets the payload from Symcon's MQTT Client hex-encoded (9.1),
+            // an IPSModule child as text; JSON itself is never pure hex
+            $payloadRaw = (string)hex2bin($payloadRaw);
+        }
         $payload = [];
         if (is_string($payloadRaw)) {
             $payload = json_decode($payloadRaw, true) ?? [];

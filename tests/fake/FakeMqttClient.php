@@ -6,9 +6,10 @@ declare(strict_types=1);
  * Symcon's MQTT Client for the test bench (a plain instance without PHP module). Only topics
  * the client subscribed to (property Subscriptions, as the setup wizard writes it) reach its
  * children, in the envelope Symcon uses: DataID, PacketType, QualityOfService, Retain, Topic,
- * Payload. The payload travels as text: the live Bridge decodes it with json_decode and gets
- * values (log 20.–25.09.2026). The MQTT Server sends hex according to sibling modules
- * (evccMQTT, HaSync) — $hexPayload replays that.
+ * Payload. How the payload travels depends on the child, as in Symcon 9.1: an IPSModule child
+ * gets it as text (the Bridge up to 0.1.7 decoded it with json_decode, log 20.–25.09.2026), an
+ * IPSModuleStrict child gets it hex-encoded (measured live on 25.09.2026 after the switch; the
+ * zigbee2mqtt module: "utf8_decode bei IPSModule, und hex2bin ab IPSModuleStrict").
  */
 final class FakeMqttClient
 {
@@ -16,7 +17,6 @@ final class FakeMqttClient
     public const RX = '{7F7632D9-FA40-4F38-8DEA-C83CD4325A32}';
 
     public array $published = [];
-    public bool $hexPayload = false;
 
     public function __construct(public int $id)
     {
@@ -33,8 +33,10 @@ final class FakeMqttClient
         if (!$this->subscribedTo($topic)) {
             return false;
         }
-        Kernel::sendToChildren($this->id, (string)json_encode(['DataID' => self::RX, 'PacketType' => 3, 'QualityOfService' => 0,
-            'Retain' => $retain, 'Topic' => $topic, 'Payload' => $this->hexPayload ? bin2hex($payload) : $payload], JSON_UNESCAPED_SLASHES));
+        $envelope = static fn(string $encoded): string => (string)json_encode(['DataID' => self::RX, 'PacketType' => 3, 'QualityOfService' => 0,
+            'Retain' => $retain, 'Topic' => $topic, 'Payload' => $encoded], JSON_UNESCAPED_SLASHES);
+        Kernel::sendToChildren($this->id, $envelope($payload),
+            static fn(object $child): string => $envelope($child instanceof IPSModuleStrict ? bin2hex($payload) : $payload));
         return true;
     }
 

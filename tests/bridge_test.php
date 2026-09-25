@@ -138,10 +138,14 @@ $lg['event']['deviceId'] = $did;
 $lg['event']['report'] = ['temperature' => ['currentTemperature' => 49]];
 World::mqtt(World::topic(), $lg);
 check(World::value($dev, 'TEMPERATURE_CURRENT_TEMPERATURE') === 49.0, 'LGs Beispielnachricht (event_message_example) wird verarbeitet');
+$lg['event']['report'] = ['temperature' => ['currentTemperature' => 51]];
+Kernel::runEntry(World::$bridge, static fn(IPSModuleBase $o) => $o->ReceiveData((string)json_encode(['DataID' => FakeMqttClient::RX, 'PacketType' => 3,
+    'QualityOfService' => 0, 'Retain' => false, 'Topic' => World::topic(), 'Payload' => json_encode($lg)], JSON_UNESCAPED_SLASHES)));
+check(World::value($dev, 'TEMPERATURE_CURRENT_TEMPERATURE') === 51.0, 'Nutzlast als Text (wie an IPSModule-Kinder) wird ebenso verstanden wie hex-kodiert');
 World::mqtt(World::topic(), ['event' => ['pushType' => 'DEVICE_STATUS', 'deviceId' => $did, 'report' => ['temperature' => ['currentTemperature' => 11]]]], true);
-check(World::value($dev, 'TEMPERATURE_CURRENT_TEMPERATURE') === 49.0, 'retained Nachricht wird ignoriert (IgnoreRetained)');
+check(World::value($dev, 'TEMPERATURE_CURRENT_TEMPERATURE') === 51.0, 'retained Nachricht wird ignoriert (IgnoreRetained)');
 World::mqtt(World::topic(), ['event' => ['pushType' => 'DEVICE_STATUS', 'deviceId' => 'fremdes-geraet', 'report' => ['temperature' => ['currentTemperature' => 12]]]]);
-check(World::value($dev, 'TEMPERATURE_CURRENT_TEMPERATURE') === 49.0, 'fremde deviceId erreicht das Gerät nicht');
+check(World::value($dev, 'TEMPERATURE_CURRENT_TEMPERATURE') === 51.0, 'fremde deviceId erreicht das Gerät nicht');
 $h = Kernel::$instances[World::$mqtt]['handler'];
 check($h->deliver('app/clients/andere/push', '{}') === false, 'nicht abonniertes Topic kommt gar nicht erst an');
 check(Kernel::$warnings === [], 'Routing ohne Warnungen');

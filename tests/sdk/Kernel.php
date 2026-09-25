@@ -445,7 +445,8 @@ final class Kernel
     }
 
     /** Delivers to every child connected to $parentId whose module implements the DataID. */
-    public static function sendToChildren(int $parentId, string $json): void
+    /** @param Closure(object): string|null $jsonFor the JSON a particular child gets (Symcon's I/O encodes per child) */
+    public static function sendToChildren(int $parentId, string $json, ?Closure $jsonFor = null): void
     {
         $data = json_decode($json, true);
         $dataId = (string)($data['DataID'] ?? '');
@@ -454,7 +455,8 @@ final class Kernel
                 continue;
             }
             if (self::$instances[$cid]['object'] instanceof IPSModuleBase) {
-                self::runEntry($cid, static fn(IPSModuleBase $o) => $o->ReceiveData($json));
+                $childJson = $jsonFor !== null ? $jsonFor(self::$instances[$cid]['object']) : $json;
+                self::runEntry($cid, static fn(IPSModuleBase $o) => $o->ReceiveData($childJson));
             } elseif (is_object(self::$instances[$cid]['handler']) && method_exists(self::$instances[$cid]['handler'], 'ReceiveData')) {
                 self::$instances[$cid]['handler']->ReceiveData($json);
             }
