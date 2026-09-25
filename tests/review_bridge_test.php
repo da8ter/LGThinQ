@@ -133,6 +133,17 @@ World::quiet();
 World::$cloud->deviceReports($wid, [['location' => ['locationName' => 'MAIN'], 'runState' => ['currentState' => 'RUNNING']]]);
 World::flushMqtt();
 check(World::value($w, 'RUN_STATE_CURRENT_STATE') === 'RUNNING', 'ein Status-Push über den neuen Client erreicht das Gerät');
+World::start();
+$first = World::$mqtt;
+Kernel::$instances[World::$bridge]['connection'] = 0; // Bridge without MQTT parent; the old client keeps Symcon12345
+IPS_SetProperty(World::$bridge, 'MQTTClientID', 0);
+IPS_ApplyChanges(World::$bridge);
+ob_start();
+LGTQ_UISetupMqttConnection(World::$bridge);
+ob_end_clean();
+$created = Kernel::$instances[World::$bridge]['connection'];
+check($created !== $first && $created > 0 && IPS_GetProperty($created, 'ClientID') !== IPS_GetProperty($first, 'ClientID'),
+    'neu angelegter Client bekommt eine eigene ClientID, nicht die eines anderen MQTT-Clients (' . IPS_GetProperty($created, 'ClientID') . ')');
 
 section('N1 Ländertabelle (behoben)');
 $sdk = json_decode((string)file_get_contents(__DIR__ . '/fixtures/sdk_regions.json'), true)['regions'];
