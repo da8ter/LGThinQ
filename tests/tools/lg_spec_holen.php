@@ -7,6 +7,9 @@ declare(strict_types=1);
  *
  *   php tests/tools/lg_spec_holen.php            Seiten laden, tests/fixtures/lg_examples.json neu schreiben
  *   php tests/tools/lg_spec_holen.php --pruefen  nur vergleichen, nichts schreiben (Exit 1 bei Abweichung)
+ *   php tests/tools/lg_spec_holen.php --openapi <Ordner>
+ *                                                zusätzlich beide OpenAPI-Dokumente als JSON ablegen
+ *                                                (thinq_connect_openapi.json, thinq_device_profiles_openapi.json)
  *
  * Die Entwicklerseiten von LG sind Next.js-Seiten; die OpenAPI steckt als "yamlJson" im
  * RSC-Datenstrom (self.__next_f.push). Übernommen werden je Gerätetyp das Profil-, das
@@ -98,6 +101,14 @@ function resolveExample(array $examples, string $name)
 
 $connect = extractOpenApi(fetchPage(PAGES['connect']), PAGES['connect']);
 $profiles = extractOpenApi(fetchPage(PAGES['profiles']), PAGES['profiles']);
+
+$openApiDir = ($i = array_search('--openapi', $argv, true)) !== false ? (string)($argv[$i + 1] ?? '') : '';
+if ($openApiDir !== '') {
+    foreach (['thinq_connect_openapi.json' => $connect, 'thinq_device_profiles_openapi.json' => $profiles] as $file => $doc) {
+        file_put_contents(rtrim($openApiDir, '/') . '/' . $file, json_encode($doc, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n");
+    }
+    echo "OpenAPI-Dokumente geschrieben nach $openApiDir\n";
+}
 $examples = $profiles['components']['examples'] ?? [];
 
 $devices = [];

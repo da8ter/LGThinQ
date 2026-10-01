@@ -105,9 +105,11 @@ class ThinQEnumTranslator
             'WIND_10' => ['de' => 'Stufe 10', 'en' => 'Level 10']
         ],
         // Wind Strength Detail / Level (fine-grained, device-specific)
-        'wind_strength_detail' => [
+        'wind_strength_detail' => [ // LG-Referenz 01.10.2026: BREEZE, NATURE, SLOW, SLOW_LOW, LOW, LOW_MID, MID, MID_HIGH, HIGH, POWER, AUTO
+            'BREEZE' => ['de' => 'Hauch', 'en' => 'Ultra Slow'],
             'NATURE' => ['de' => 'Natur', 'en' => 'Nature'],
             'SLOW' => ['de' => 'Sehr niedrig', 'en' => 'Slow'],
+            'SLOW_LOW' => ['de' => 'Sehr niedrig-Niedrig', 'en' => 'Slow-Low'],
             'LOW' => ['de' => 'Niedrig', 'en' => 'Low'],
             'LOW_MID' => ['de' => 'Niedrig-Mittel', 'en' => 'Low-Medium'],
             'MID' => ['de' => 'Mittel', 'en' => 'Medium'],
