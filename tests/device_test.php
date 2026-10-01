@@ -10,7 +10,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
 
-$pres = static fn(int $inst, string $ident): array => World::variable($inst, $ident)['customPresentation'] ?? [];
+$pres = static fn(int $inst, string $ident): array => World::variable($inst, $ident)['presentation'] ?? [];
 
 section('Einrichtung (Waschmaschine, LG-Beispiel)');
 World::start();
@@ -33,7 +33,9 @@ check(World::variable($w, 'RUN_STATE_CURRENT_STATE')['action'] === 0, 'nur lesba
 $p = $pres($w, 'OPERATION_WASHER_OPERATION_MODE');
 check(($p['PRESENTATION'] ?? '') === VARIABLE_PRESENTATION_ENUMERATION && array_column(json_decode($p['OPTIONS'], true), 'Value') === ['START', 'STOP', 'POWER_OFF'], 'Befehls-Enum als Aufzählung mit den Werten aus value.w');
 $p = $pres($w, 'TIMER_RELATIVE_HOUR_TO_START');
-check(($p['PRESENTATION'] ?? '') === VARIABLE_PRESENTATION_SLIDER && $p['MIN'] === 0.0 && $p['MAX'] === 19.0 && $p['STEP_SIZE'] === 1.0, 'Bereich als Schieberegler 0..19');
+$ganzzahl = World::variable($w, 'TIMER_RELATIVE_HOUR_TO_START')['type'] === VARIABLETYPE_INTEGER;
+check(($p['PRESENTATION'] ?? '') === VARIABLE_PRESENTATION_SLIDER && $p['MIN'] === ($ganzzahl ? 0 : 0.0) && $p['MAX'] === ($ganzzahl ? 19 : 19.0) && $p['STEP_SIZE'] === ($ganzzahl ? 1 : 1.0),
+    'Bereich als Schieberegler 0..19' . ($ganzzahl ? ' (Integer-Variable: ganzzahlige Grenzen, wie Symcon sie verlangt)' : ''));
 check(($pres($w, 'REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED')['PRESENTATION'] ?? '') === VARIABLE_PRESENTATION_SWITCH, 'Wahrheitswert als Schalter');
 check(isset(World::$cloud->eventSubs[$wid], World::$cloud->pushSubs[$wid]), 'Gerät ist für Events und Pushes angemeldet');
 
@@ -183,7 +185,7 @@ check(str_contains(LGTQD_CleanupVariables($w, false), 'deleted=0') && IPS_Variab
 check(str_contains(LGTQD_CleanupVariables($w, true), 'deleted=1') && !IPS_VariableExists($stray) && count(World::idents($w)) === 15, 'CleanupVariables(true) löscht nur sie');
 
 section('Darstellungen neu anwenden');
-IPS_SetVariableCustomPresentation(World::varId($w, 'TIMER_RELATIVE_HOUR_TO_START'), ['PRESENTATION' => VARIABLE_PRESENTATION_VALUE_PRESENTATION]);
+Kernel::$variables[World::varId($w, 'TIMER_RELATIVE_HOUR_TO_START')]['presentation'] = ['PRESENTATION' => VARIABLE_PRESENTATION_VALUE_PRESENTATION];
 LGTQD_ReapplyPresentations($w);
 check(($pres($w, 'TIMER_RELATIVE_HOUR_TO_START')['PRESENTATION'] ?? '') === VARIABLE_PRESENTATION_SLIDER, 'ReapplyPresentations stellt den Schieberegler wieder her');
 
@@ -195,7 +197,7 @@ $energyPres = $pres($ac, 'ENERGY_YESTERDAY');
 check(($energyPres['PRESENTATION'] ?? '') === VARIABLE_PRESENTATION_VALUE_PRESENTATION && ($energyPres['SUFFIX'] ?? '') === ' Wh' && ($energyPres['DIGITS'] ?? null) === 0
     && !array_key_exists('MULTILINE', $energyPres) && !array_key_exists('OPTIONS', $energyPres),
     'Energievariablen bekommen die Wh-Darstellung nur mit den Parametern, die Symcon 9.1 für Float kennt');
-IPS_SetVariableCustomPresentation(World::varId($ac, 'ENERGY_YESTERDAY'), ['PRESENTATION' => VARIABLE_PRESENTATION_VALUE_PRESENTATION]);
+Kernel::$variables[World::varId($ac, 'ENERGY_YESTERDAY')]['presentation'] = ['PRESENTATION' => VARIABLE_PRESENTATION_VALUE_PRESENTATION];
 LGTQD_ReapplyPresentations($ac);
 check(($pres($ac, 'ENERGY_YESTERDAY')['SUFFIX'] ?? '') === ' Wh', 'ReapplyPresentations setzt auch die Energie-Darstellung neu');
 $stringPres = $pres($ac, 'ERROR_LAST');
@@ -209,6 +211,24 @@ check(World::variable($ac, 'ENERGY_YESTERDAY')['name'] === 'Energie Gestern' && 
     && World::variable($ac, 'TEMPERATURE_CURRENT_TEMPERATURE')['name'] === World::variable($ac, 'TEMPERATURE_CURRENT_TEMPERATURE')['name'],
     'Danach tragen sie die aktuellen deutschen Namen');
 check(LGTQD_ReapplyNames($ac) === 0, 'Ein zweiter Aufruf ändert nichts mehr');
+
+check(($pres($ac, 'RUN_STATE_CURRENT_STATE')['PRESENTATION'] ?? '') === VARIABLE_PRESENTATION_VALUE_PRESENTATION
+    && str_contains((string)($pres($ac, 'RUN_STATE_CURRENT_STATE')['OPTIONS'] ?? ''), '"ColorActive"') && !str_contains((string)($pres($ac, 'RUN_STATE_CURRENT_STATE')['OPTIONS'] ?? ''), '"ColorDisplay"'),
+    'Zustandstexte bekommen die Wertdarstellung mit Optionen, deren Unterparameter Symcon kennt');
+
+section('Darstellungsebene');
+$vidEnergy = World::varId($ac, 'ENERGY_YESTERDAY');
+check(World::variable($ac, 'ENERGY_YESTERDAY')['customPresentation'] === [] && ($pres($ac, 'ENERGY_YESTERDAY')['SUFFIX'] ?? '') === ' Wh',
+    'Das Modul schreibt die Modul-Darstellung, nicht die benutzerdefinierte');
+// Eine Vorversion hatte die Wertdarstellung als benutzerdefinierte Darstellung geschrieben
+IPS_SetVariableCustomPresentation($vidEnergy, ['PRESENTATION' => VARIABLE_PRESENTATION_VALUE_PRESENTATION, 'SUFFIX' => ' Wh', 'DIGITS' => 0]);
+LGTQD_ReapplyPresentations($ac);
+check(World::variable($ac, 'ENERGY_YESTERDAY')['customPresentation'] === [], 'Die Darstellung der Vorversion auf der Nutzerebene wird einmalig entfernt');
+// Eine eigene Anpassung des Nutzers (andere Darstellungsart) bleibt
+IPS_SetVariableCustomPresentation($vidEnergy, ['PRESENTATION' => VARIABLE_PRESENTATION_SLIDER, 'MIN' => 0, 'MAX' => 5000, 'STEP_SIZE' => 1]);
+LGTQD_ReapplyPresentations($ac);
+check((World::variable($ac, 'ENERGY_YESTERDAY')['customPresentation']['PRESENTATION'] ?? '') === VARIABLE_PRESENTATION_SLIDER,
+    'Eine eigene Darstellung des Nutzers bleibt erhalten');
 
 section('Support-Paket');
 World::quiet();

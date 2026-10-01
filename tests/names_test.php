@@ -20,7 +20,7 @@ function texts(int $inst): array
     $out = [];
     foreach (World::idents($inst) as $ident) {
         $v = World::variable($inst, $ident);
-        $p = $v['customPresentation'] ?? [];
+        $p = $v['presentation'] ?? [];
         $p = is_string($p) ? (json_decode($p, true) ?: []) : (array)$p;
         $captions = [];
         foreach (['PREFIX', 'SUFFIX', 'CAPTION_ON', 'CAPTION_OFF'] as $key) {

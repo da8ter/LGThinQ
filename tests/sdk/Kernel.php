@@ -281,14 +281,19 @@ final class Kernel
     }
 
     /** Presentation arrays accept scalars only; OPTIONS/INTERVALS travel as JSON strings (measured). */
-    /** Parameters of the value presentation per variable type (Symcon 9.1, measured 01.10.2026). */
-    private const VALUE_PRESENTATION_KEYS = [
-        0 => ['ICON', 'COLOR', 'PERCENTAGE', 'PREFIX', 'SUFFIX', 'USAGE_TYPE', 'OPTIONS'],
-        1 => ['ICON', 'COLOR', 'PERCENTAGE', 'PREFIX', 'SUFFIX', 'USAGE_TYPE', 'DIGITS', 'DECIMAL_SEPARATOR', 'THOUSANDS_SEPARATOR', 'MIN', 'MAX', 'INTERVALS_ACTIVE', 'INTERVALS'],
-        2 => ['ICON', 'COLOR', 'PERCENTAGE', 'PREFIX', 'SUFFIX', 'USAGE_TYPE', 'DIGITS', 'DECIMAL_SEPARATOR', 'THOUSANDS_SEPARATOR', 'MIN', 'MAX', 'INTERVALS_ACTIVE', 'INTERVALS'],
-        3 => ['ICON', 'COLOR', 'PERCENTAGE', 'PREFIX', 'SUFFIX', 'USAGE_TYPE', 'MULTILINE', 'OPTIONS'],
+    /** Parameters per presentation and variable type (Symcon 9.1, measured 01.10.2026); value presentation per type. */
+    private const PRESENTATION_KEYS = [
+        '{3319437D-7CDE-699D-750A-3C6A3841FA75}' => [
+            0 => ['ICON', 'COLOR', 'PERCENTAGE', 'PREFIX', 'SUFFIX', 'USAGE_TYPE', 'OPTIONS'],
+            1 => ['ICON', 'COLOR', 'PERCENTAGE', 'PREFIX', 'SUFFIX', 'USAGE_TYPE', 'DIGITS', 'DECIMAL_SEPARATOR', 'THOUSANDS_SEPARATOR', 'MIN', 'MAX', 'INTERVALS_ACTIVE', 'INTERVALS'],
+            2 => ['ICON', 'COLOR', 'PERCENTAGE', 'PREFIX', 'SUFFIX', 'USAGE_TYPE', 'DIGITS', 'DECIMAL_SEPARATOR', 'THOUSANDS_SEPARATOR', 'MIN', 'MAX', 'INTERVALS_ACTIVE', 'INTERVALS'],
+            3 => ['ICON', 'COLOR', 'PERCENTAGE', 'PREFIX', 'SUFFIX', 'USAGE_TYPE', 'MULTILINE', 'OPTIONS'],
+        ],
+        '{60AE6B26-B3E2-BDB1-A3A1-BE232940664B}' => [0 => ['USE_ICON_FALSE', 'ICON_TRUE', 'ICON_FALSE', 'GLOW_COLOR', 'GLOW_INTENSITY', 'USAGE_TYPE']],
     ];
+    private const VALUE_OPTION_KEYS = ['Value', 'Caption', 'IconActive', 'IconValue', 'ColorActive', 'ColorValue', 'ContentColorActive', 'ContentColorValue'];
 
+    /** Like Symcon 9.1: a parameter the presentation does not define, an unknown option sub-parameter or MIN/MAX as float on an INTEGER variable fail the whole call. */
     public static function acceptPresentation(array $presentation, int $variableType = -1): bool
     {
         foreach ($presentation as $v) {
@@ -297,14 +302,23 @@ final class Kernel
                 return false;
             }
         }
-        // Like Symcon 9.1: a parameter the presentation does not define for this variable type
-        // fails the whole call ("Der Parameter MULTILINE ist für diese Darstellung nicht definiert")
-        if (($presentation['PRESENTATION'] ?? '') === '{3319437D-7CDE-699D-750A-3C6A3841FA75}' && isset(self::VALUE_PRESENTATION_KEYS[$variableType])) {
-            foreach (array_keys($presentation) as $key) {
-                if ($key !== 'PRESENTATION' && !in_array($key, self::VALUE_PRESENTATION_KEYS[$variableType], true)) {
-                    self::warn(sprintf('Der Parameter %s ist für diese Darstellung nicht definiert', $key));
-                    return false;
-                }
+        $allowed = self::PRESENTATION_KEYS[$presentation['PRESENTATION'] ?? ''][$variableType] ?? null;
+        foreach ($allowed === null ? [] : array_keys($presentation) as $key) {
+            if ($key !== 'PRESENTATION' && !in_array($key, $allowed, true)) {
+                self::warn(sprintf('Der Parameter %s ist für diese Darstellung nicht definiert', $key));
+                return false;
+            }
+        }
+        foreach ($allowed === null ? [] : (json_decode((string)($presentation['OPTIONS'] ?? '[]'), true) ?: []) as $option) {
+            if (array_diff(array_keys((array)$option), self::VALUE_OPTION_KEYS) !== []) {
+                self::warn('Der Eintrag im Parameter OPTIONS enthält unbekannte Unterparameter');
+                return false;
+            }
+        }
+        foreach (['MIN', 'MAX'] as $key) {
+            if ($variableType === 1 && isset($presentation[$key]) && !is_int($presentation[$key])) {
+                self::warn(sprintf('Der Parameter %s hat einen falschen Typ.', $key));
+                return false;
             }
         }
         return true;

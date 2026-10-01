@@ -25,7 +25,7 @@ Das Modul `LG ThinQ Device` repräsentiert ein einzelnes LG ThinQ Gerät in IP�
 ## Bedienung
 - Die erzeugten Variablen bilden Gerätezustände und Bedienelemente ab. Änderungen an bedienbaren Variablen senden automatisch Befehle an die Bridge/Cloud.
 - Über die Aktion „Update status“ kann der aktuelle Status manuell abgefragt werden.
-- `LGTQD_ReapplyPresentations($id)` setzt die Darstellungen aller Variablen neu, auch die der Energievariablen.
+- `LGTQD_ReapplyPresentations($id)` setzt die Darstellungen aller Variablen neu, auch die der Energievariablen. Das Modul setzt die Modul-Darstellung (wie bei RegisterVariable); eine eigene Darstellung, die du einer Variable gibst, bleibt erhalten. Die Darstellung, die Versionen vor 0.2.1 auf dieser Nutzerebene abgelegt hatten, wird beim Update einmalig entfernt.
 - `LGTQD_ReapplyNames($id)` setzt die Namen bestehender Variablen auf die aktuellen Namen in der Sprache des Symcon (die Einrichtung benennt bestehende Variablen nie um). Liefert die Zahl der umbenannten Variablen.
 
 ## Energieverbrauch

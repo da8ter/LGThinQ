@@ -299,6 +299,12 @@ class LGThinQDevice extends IPSModuleStrict
         return $this->getProfileManager()->fetchDeviceProfile($deviceId);
     }
 
+    /**
+     * Sets the module presentation of an existing variable via MaintainVariable, as the SDK
+     * intends it (name, type and position stay those of the variable). Earlier versions wrote
+     * the presentation as the user's custom presentation; such a leftover of the same presentation
+     * kind is removed once, a custom presentation of another kind is the user's and stays.
+     */
     private function applyPresentation(int $vid, string $ident, array $presentation, array $flatProfile, string $type): void
     {
         $builder = new ThinQPresentationBuilder(
@@ -306,7 +312,20 @@ class LGThinQDevice extends IPSModuleStrict
             fn(string $s) => $this->Translate($s),
             fn(string $tag, string $msg) => $this->SendDebug($tag, $msg, 0)
         );
-        $builder->applyPresentation($vid, $ident, $presentation, $flatProfile, $type);
+        $payload = $builder->build($vid, $ident, $presentation, $flatProfile, $type);
+        $var = @IPS_GetVariable($vid);
+        $object = @IPS_GetObject($vid);
+        if ($payload === [] || !is_array($var) || !is_array($object)) {
+            return;
+        }
+        @IPS_SetVariableCustomProfile($vid, ''); // profile of a version before the presentations
+        $this->MaintainVariable($ident, (string)$object['ObjectName'], (int)$var['VariableType'], $payload, (int)$object['ObjectPosition'], true);
+        $custom = $var['VariableCustomPresentation'] ?? [];
+        $custom = is_string($custom) ? (json_decode($custom, true) ?: []) : (array)$custom;
+        if ($custom !== [] && (string)($custom['PRESENTATION'] ?? '') === (string)$payload['PRESENTATION']) {
+            @IPS_SetVariableCustomPresentation($vid, []);
+            $this->SendDebug('Presentation', 'ident=' . $ident . ': custom presentation of an earlier version removed', 0);
+        }
     }
 
     private function doAutoSubscribe(string $deviceId): void

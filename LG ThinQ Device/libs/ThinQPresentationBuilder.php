@@ -40,18 +40,35 @@ class ThinQPresentationBuilder
         ($this->debugCallback)($tag, $msg);
     }
 
-    public function applyPresentation(int $vid, string $ident, array $presentation, array $flatProfile, string $type): void
+    /**
+     * The presentation array of a plan entry for MaintainVariable (OPTIONS/INTERVALS JSON-encoded),
+     * [] when the entry brings none.
+     *
+     * @param array<string, mixed> $presentation
+     * @param array<string, mixed> $flatProfile
+     * @return array<string, mixed>
+     */
+    public function build(int $vid, string $ident, array $presentation, array $flatProfile, string $type): array
     {
         $kind = strtolower((string)($presentation['kind'] ?? ''));
         if ($kind === '') {
-            return;
+            return [];
         }
 
         $payload = [];
         if ($kind === 'switch') {
+            // Symcon's switch has no captions (only icons, glow and usage type); the plan's captionOn/Off are not sent
             $payload['PRESENTATION'] = self::PRES_SWITCH;
-            $payload['CAPTION_ON'] = $this->t((string)($presentation['captionOn'] ?? $this->t('On')));
-            $payload['CAPTION_OFF'] = $this->t((string)($presentation['captionOff'] ?? $this->t('Off')));
+            if (array_key_exists('usageType', $presentation) || array_key_exists('usage_type', $presentation)) {
+                $payload['USAGE_TYPE'] = (int)($presentation['usageType'] ?? $presentation['usage_type']);
+            }
+            if (isset($presentation['iconTrue']) && (string)$presentation['iconTrue'] !== '') {
+                $payload['ICON_TRUE'] = (string)$presentation['iconTrue'];
+                if (isset($presentation['iconFalse']) && (string)$presentation['iconFalse'] !== '') {
+                    $payload['ICON_FALSE'] = (string)$presentation['iconFalse'];
+                    $payload['USE_ICON_FALSE'] = true;
+                }
+            }
         } elseif ($kind === 'slider') {
             $payload['PRESENTATION'] = self::PRES_SLIDER;
             $range = $presentation['range'] ?? [];
@@ -142,18 +159,19 @@ class ThinQPresentationBuilder
                 $options = [];
                 foreach ($presentation['options'] as $op) {
                     if (!is_array($op) || !array_key_exists('value', $op) || !array_key_exists('caption', $op)) continue;
-                    $opt = [
+                    // Sub-parameters of a value-presentation option (Symcon 9.1 rejects others such as Color/ColorDisplay)
+                    $colorValue = isset($op['colorValue']) ? (int)$op['colorValue'] : (isset($op['color']) ? (int)$op['color'] : -1);
+                    $options[] = [
                         'Value'   => is_numeric($op['value']) ? (float)$op['value'] + 0 :
                                      ((is_bool($op['value'])) ? ((bool)$op['value'] ? 1 : 0) : (string)$op['value']),
                         'Caption' => $this->t((string)$op['caption']),
                         'IconActive' => isset($op['iconActive']) ? (bool)$op['iconActive'] : false,
                         'IconValue'  => isset($op['iconValue']) ? (string)$op['iconValue'] : '',
-                        'Color'      => isset($op['color']) ? (int)$op['color'] : -1,
+                        'ColorActive' => array_key_exists('colorActive', $op) ? (bool)$op['colorActive'] : $colorValue !== -1,
+                        'ColorValue'  => $colorValue,
+                        'ContentColorActive' => false,
+                        'ContentColorValue'  => -1,
                     ];
-                    if (array_key_exists('colorActive', $op)) { $opt['ColorActive'] = (bool)$op['colorActive']; }
-                    if (array_key_exists('colorValue', $op)) { $opt['ColorValue'] = (int)$op['colorValue']; }
-                    if (array_key_exists('colorDisplay', $op)) { $opt['ColorDisplay'] = (int)$op['colorDisplay']; }
-                    $options[] = $opt;
                 }
                 if (!empty($options)) { $payload['OPTIONS'] = $options; }
             }
@@ -179,44 +197,34 @@ class ThinQPresentationBuilder
                     if (!array_key_exists('IconValue', $op)) { $op['IconValue'] = ''; }
                     if (!array_key_exists('ColorActive', $op)) { $op['ColorActive'] = false; }
                     if (!array_key_exists('ColorValue', $op)) { $op['ColorValue'] = -1; }
-                    if (!array_key_exists('Color', $op)) { $op['Color'] = -1; }
-                    if (!array_key_exists('ColorDisplay', $op)) { $op['ColorDisplay'] = -1; }
+                    if (!array_key_exists('ContentColorActive', $op)) { $op['ContentColorActive'] = false; }
+                    if (!array_key_exists('ContentColorValue', $op)) { $op['ContentColorValue'] = -1; }
+                    unset($op['Color'], $op['ColorDisplay']);
                 }
                 unset($op);
             }
         }
 
         if (empty($payload)) {
-            return;
+            return [];
         }
-
         $payload = $this->translatePresentationPayload($payload);
-        $this->dbg('Presentation', 'Preparing ident=' . $ident . ' kind=' . $kind . ' payload=' . json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-
-        @IPS_SetVariableCustomProfile($vid, '');
-
-        if (function_exists('IPS_SetVariableCustomPresentation')) {
-            $payloadEncoded = $payload;
-            $hadOptionsArray = isset($payload['OPTIONS']) && is_array($payload['OPTIONS']);
-            if ($hadOptionsArray) {
-                $payloadEncoded['OPTIONS'] = json_encode($payload['OPTIONS'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        // An INTEGER variable takes MIN, MAX and a whole STEP_SIZE only as integers (Symcon 9.1: "falscher Typ")
+        if (ThinQValue::typeOf($vid) === VARIABLETYPE_INTEGER) {
+            foreach (['MIN', 'MAX', 'STEP_SIZE'] as $key) {
+                if (isset($payload[$key]) && is_float($payload[$key]) && floor($payload[$key]) === $payload[$key]) {
+                    $payload[$key] = (int)$payload[$key];
+                }
             }
-            $hadIntervalsArray = isset($payload['INTERVALS']) && is_array($payload['INTERVALS']);
-            if ($hadIntervalsArray) {
-                $payloadEncoded['INTERVALS'] = json_encode($payload['INTERVALS'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-            }
-            @IPS_SetVariableCustomPresentation($vid, $payloadEncoded);
-            $varInfo = @IPS_GetVariable($vid);
-            $post = is_array($varInfo) && array_key_exists('VariableCustomPresentation', $varInfo) ? $varInfo['VariableCustomPresentation'] : null;
-            $this->dbg('Presentation', 'Applied ident=' . $ident . ' post=' . (is_string($post) ? $post : json_encode($post)));
-            $notApplied = ($post === null || $post === '' || $post === false);
-            if ($notApplied && ($hadOptionsArray || $hadIntervalsArray)) {
-                $this->dbg('Presentation', 'Retry ident=' . $ident . ' with array fields (OPTIONS/INTERVALS) unencoded (compatibility attempt)');
-                @IPS_SetVariableCustomPresentation($vid, $payload);
-            }
-        } else {
-            $this->dbg('Presentation', 'IPS_SetVariableCustomPresentation not available; skipping ident=' . $ident);
         }
+        // Symcon takes OPTIONS and INTERVALS only as JSON strings (an array fails the whole call)
+        foreach (['OPTIONS', 'INTERVALS'] as $key) {
+            if (isset($payload[$key]) && is_array($payload[$key])) {
+                $payload[$key] = json_encode($payload[$key], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+        }
+        $this->dbg('Presentation', 'ident=' . $ident . ' kind=' . $kind . ' payload=' . json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        return $payload;
     }
 
     /**
@@ -242,8 +250,6 @@ class ThinQPresentationBuilder
 
     public function translatePresentationPayload(array $payload): array
     {
-        if (isset($payload['CAPTION_ON'])) { $payload['CAPTION_ON'] = $this->t((string)$payload['CAPTION_ON']); }
-        if (isset($payload['CAPTION_OFF'])) { $payload['CAPTION_OFF'] = $this->t((string)$payload['CAPTION_OFF']); }
         if (isset($payload['SUFFIX'])) { $payload['SUFFIX'] = $this->t((string)$payload['SUFFIX']); }
         if (isset($payload['OPTIONS']) && is_array($payload['OPTIONS'])) {
             foreach ($payload['OPTIONS'] as &$option) {

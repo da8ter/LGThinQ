@@ -143,6 +143,9 @@ class ThinQSupportBundle
                 'CustomProfile' => (string)($var['VariableCustomProfile'] ?? ''),
                 'CustomAction'  => (int)($var['VariableCustomAction'] ?? 0)
             ];
+            if (isset($var['VariablePresentation'])) {
+                $entry['Presentation'] = $var['VariablePresentation'];
+            }
             if (function_exists('IPS_GetVariableCustomPresentation')) {
                 $pres = @IPS_GetVariableCustomPresentation($childId);
                 if (is_array($pres)) {

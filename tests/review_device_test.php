@@ -223,10 +223,11 @@ IPS_SetParent($vid, $ac);
 IPS_SetIdent($vid, 'TEMPERATURE_TARGET_TEMPERATURE');
 IPS_SetVariableCustomPresentation($vid, ['PRESENTATION' => VARIABLE_PRESENTATION_SLIDER, 'MIN' => 18.0, 'MAX' => 30.0, 'STEP_SIZE' => 0.5, 'DIGITS' => 1]);
 IPS_ApplyChanges($ac);
-$pres = IPS_GetVariable($vid)['VariableCustomPresentation'];
+$pres = IPS_GetVariable($vid)['VariablePresentation'];
 $pres = is_string($pres) ? json_decode($pres, true) : $pres;
 check(World::varId($ac, 'TEMPERATURE_TARGET_TEMPERATURE') === $vid && World::variable($ac, 'TEMPERATURE_TARGET_TEMPERATURE')['type'] === VARIABLETYPE_INTEGER
-    && (float)($pres['STEP_SIZE'] ?? 0) >= 1.0 && (int)($pres['DIGITS'] ?? -1) === 0, 'bestehende Integer-Variable bleibt (ID und Historie), ihr Regler bekommt ganze Schritte');
+    && (float)($pres['STEP_SIZE'] ?? 0) >= 1.0 && (int)($pres['DIGITS'] ?? -1) === 0 && IPS_GetVariable($vid)['VariableCustomPresentation'] === [],
+    'bestehende Integer-Variable bleibt (ID und Historie), ihr Regler bekommt ganze Schritte als Modul-Darstellung, der alte Regler auf der Nutzerebene verschwindet');
 $push($acid, ['temperature' => ['targetTemperature' => 23.5]]);
 check(World::value($ac, 'TEMPERATURE_TARGET_TEMPERATURE') === 24, 'bestehende Integer-Variable: gemeldete 23,5 erscheinen gerundet als 24 statt gar nicht');
 World::quiet();

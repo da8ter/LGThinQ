@@ -215,7 +215,7 @@ trait IPSModuleCore
             }
             $profileOrPresentation = $profile;
         }
-        if (is_array($profileOrPresentation) && !Kernel::acceptPresentation($profileOrPresentation)) {
+        if (is_array($profileOrPresentation) && !Kernel::acceptPresentation($profileOrPresentation, $type)) {
             return 0;
         }
         $vid = Kernel::findIdent($this->InstanceID, $ident);

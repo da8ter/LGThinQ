@@ -69,11 +69,7 @@
             "\"POWER_OFF\"=Ausschalten",
             "\"POWER_ON\"=Einschalten"
         ],
-        "POWER_SAVE_POWER_SAVE_ENABLED": [
-            "Energiesparmodus",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "POWER_SAVE_POWER_SAVE_ENABLED": "Energiesparmodus",
         "PUSH_LAST": [
             "Letzte Push-Nachricht",
             "\"WATER_IS_FULL\"=Water Is Full"
@@ -129,41 +125,13 @@
             "Heiz-Zieltemperatur",
             "SUFFIX= °C"
         ],
-        "TWO_SET_TEMPERATURE_TWO_SET_ENABLED": [
-            "Two Set Enabled",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
-        "WIND_DIRECTION_AIR_GUIDE_WIND": [
-            "Luftführung",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
-        "WIND_DIRECTION_AUTO_FIT_WIND": [
-            "Auto-Anpassung",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
-        "WIND_DIRECTION_CONCENTRATION_WIND": [
-            "Konzentrierter Wind",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
-        "WIND_DIRECTION_FOREST_WIND": [
-            "Waldwind",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
-        "WIND_DIRECTION_HIGH_CEILING_WIND": [
-            "Hohe Decke",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
-        "WIND_DIRECTION_SWIRL_WIND": [
-            "Wirbelwind",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ]
+        "TWO_SET_TEMPERATURE_TWO_SET_ENABLED": "Two Set Enabled",
+        "WIND_DIRECTION_AIR_GUIDE_WIND": "Luftführung",
+        "WIND_DIRECTION_AUTO_FIT_WIND": "Auto-Anpassung",
+        "WIND_DIRECTION_CONCENTRATION_WIND": "Konzentrierter Wind",
+        "WIND_DIRECTION_FOREST_WIND": "Waldwind",
+        "WIND_DIRECTION_HIGH_CEILING_WIND": "Hohe Decke",
+        "WIND_DIRECTION_SWIRL_WIND": "Wirbelwind"
     },
     "air_purifier": {
         "AIR_FLOW_WIND_STRENGTH": [
@@ -486,11 +454,7 @@
             "\"LOCK\"=Sperre"
         ],
         "LEFT_FRONT_POWER_POWER_LEVEL": "Left front Leistungsstufe",
-        "LEFT_FRONT_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
-            "Left front Fernsteuerung",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "LEFT_FRONT_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": "Left front Fernsteuerung",
         "LEFT_FRONT_TIMER_REMAIN_HOUR": [
             "Left front Verbleibende Stunden",
             "SUFFIX= h"
@@ -507,11 +471,7 @@
             "\"LOCK\"=Sperre"
         ],
         "LEFT_REAR_POWER_POWER_LEVEL": "Left rear Leistungsstufe",
-        "LEFT_REAR_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
-            "Left rear Fernsteuerung",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "LEFT_REAR_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": "Left rear Fernsteuerung",
         "LEFT_REAR_TIMER_REMAIN_HOUR": [
             "Left rear Verbleibende Stunden",
             "SUFFIX= h"
@@ -533,11 +493,7 @@
             "\"LOCK\"=Sperre"
         ],
         "RIGHT_FRONT_POWER_POWER_LEVEL": "Right front Leistungsstufe",
-        "RIGHT_FRONT_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
-            "Right front Fernsteuerung",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "RIGHT_FRONT_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": "Right front Fernsteuerung",
         "RIGHT_FRONT_TIMER_REMAIN_HOUR": [
             "Right front Verbleibende Stunden",
             "SUFFIX= h"
@@ -641,11 +597,7 @@
             "\"MACHINE_CLEAN\"=Machine Clean",
             "\"DOWNLOAD_CYCLE\"=Download Cycle"
         ],
-        "DISH_WASHING_STATUS_RINSE_REFILL": [
-            "Rinse Refill",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "DISH_WASHING_STATUS_RINSE_REFILL": "Rinse Refill",
         "DOOR_STATUS_DOOR_STATE": [
             "Türstatus",
             "\"CLOSE\"=Geschlossen",
@@ -820,11 +772,7 @@
             "\"DRYING_IS_COMPLETE\"=Drying Is Complete",
             "\"DRYING_FAILED\"=Drying Failed"
         ],
-        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
-            "Fernsteuerung",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": "Fernsteuerung",
         "RUN_STATE_CURRENT_STATE": [
             "Betriebszustand",
             "\"INITIAL\"=Bereit",
@@ -1141,11 +1089,7 @@
         "TIMER_ABSOLUTE_STOP_TIMER": "Timer Absolut Stop"
     },
     "idu": {
-        "AIR_FLOW_WIND_DIRECTION": [
-            "Wind Direction",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "AIR_FLOW_WIND_DIRECTION": "Wind Direction",
         "AIR_FLOW_WIND_STRENGTH": [
             "Windstärke",
             "\"AUTO\"=Automatik",
@@ -1153,18 +1097,10 @@
             "\"MED\"=Med",
             "\"LOW\"=Niedrig"
         ],
-        "ALARM_FILTER_REPLACEMENT_ALARM": [
-            "Filter Replacement Alarm",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "ALARM_FILTER_REPLACEMENT_ALARM": "Filter Replacement Alarm",
         "ERROR_LAST": "Letzter Fehler",
         "INFO": "Info",
-        "JOB_MODE_HEATER_JOB_MODE": [
-            "Heater Job Mode",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "JOB_MODE_HEATER_JOB_MODE": "Heater Job Mode",
         "JOB_MODE_IDU_JOB_MODE": [
             "Idu Job Mode",
             "\"AUTO\"=Auto",
@@ -1174,26 +1110,10 @@
             "\"HEAT\"=Heizen"
         ],
         "LASTUPDATE": "Letzte Aktualisierung",
-        "LOCK_FAN_LOCK": [
-            "Fan Lock",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
-        "LOCK_LOCK": [
-            "Sperre",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
-        "LOCK_MODE_LOCK": [
-            "Mode Lock",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
-        "LOCK_TEMPERATURE_LOCK": [
-            "Temperature Lock",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "LOCK_FAN_LOCK": "Fan Lock",
+        "LOCK_LOCK": "Sperre",
+        "LOCK_MODE_LOCK": "Mode Lock",
+        "LOCK_TEMPERATURE_LOCK": "Temperature Lock",
         "OPERATION_HEATER_OPERATION_MODE": [
             "Heater Operation Mode",
             "\"POWER_ON\"=Einschalten",
@@ -1204,21 +1124,9 @@
             "\"POWER_ON\"=Einschalten",
             "\"POWER_OFF\"=Ausschalten"
         ],
-        "OUTDOOR_HEATER_OUTDOOR_HEATER": [
-            "Outdoor Heater",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
-        "OUTDOOR_HEATER_OUTDOOR_HEAT_PUMP": [
-            "Outdoor Heat Pump",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
-        "POWER_SAVE_POWER_SAVE_ENABLED": [
-            "Energiesparmodus",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "OUTDOOR_HEATER_OUTDOOR_HEATER": "Outdoor Heater",
+        "OUTDOOR_HEATER_OUTDOOR_HEAT_PUMP": "Outdoor Heat Pump",
+        "POWER_SAVE_POWER_SAVE_ENABLED": "Energiesparmodus",
         "POWER_SAVE_POWER_SAVE_STEP": [
             "Power Save Step",
             "\"POWERSAVE_LEVEL_1\"=Powersave Level 1",
@@ -1356,11 +1264,7 @@
             "\"ERROR_DURING_WASHING\"=Error During Washing",
             "\"DRYING_FAILED\"=Drying Failed"
         ],
-        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
-            "Fernsteuerung",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": "Fernsteuerung",
         "RUN_STATE_CURRENT_STATE": [
             "Betriebszustand",
             "\"POWER_OFF\"=Ausgeschaltet",
@@ -1477,11 +1381,7 @@
             "\"WASHING_IS_COMPLETE\"=Washing Is Complete",
             "\"ERROR_DURING_WASHING\"=Error During Washing"
         ],
-        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
-            "Fernsteuerung",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": "Fernsteuerung",
         "RUN_STATE_CURRENT_STATE": [
             "Betriebszustand",
             "\"END\"=Fertig",
@@ -1568,11 +1468,7 @@
             "\"ERROR_HAS_OCCURRED\"=Error Has Occurred",
             "\"TIME_TO_CLEAN\"=Time To Clean"
         ],
-        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
-            "Fernsteuerung",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": "Fernsteuerung",
         "RUN_STATE_CURRENT_STATE": [
             "Betriebszustand",
             "\"COOLING\"=Abkühlen",
@@ -1779,11 +1675,7 @@
             "\"DOOR_IS_OPEN\"=Door Is Open",
             "\"FROZEN_IS_COMPLETE\"=Frozen Is Complete"
         ],
-        "REFRIGERATION_EXPRESS_MODE": [
-            "Express Mode",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "REFRIGERATION_EXPRESS_MODE": "Express Mode",
         "REFRIGERATION_EXPRESS_MODE_NAME": [
             "Expressmodus-Name",
             "\"FREEZER\"=Freezer"
@@ -1896,11 +1788,7 @@
             "9=09"
         ],
         "AUDIO_VOLUME": "Volume",
-        "AUDIO_VOLUME_MUTE": [
-            "Volume Mute",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "AUDIO_VOLUME_MUTE": "Volume Mute",
         "DISPLAY_BACKLIGHT": "Backlight",
         "DISPLAY_BRIGHTNESS": "Helligkeit",
         "DISPLAY_COLOR": "Color",
@@ -2017,16 +1905,8 @@
             "3=03",
             "4=04"
         ],
-        "POWER_NO_IR_POWER_OFF": [
-            "No Ir Power Off",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
-        "POWER_NO_SIGNAL_POWER_OFF": [
-            "No Signal Power Off",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "POWER_NO_IR_POWER_OFF": "No Ir Power Off",
+        "POWER_NO_SIGNAL_POWER_OFF": "No Signal Power Off",
         "POWER_PM_MODE": [
             "Pm Mode",
             "0=00",
@@ -2036,11 +1916,7 @@
             "4=04",
             "5=05"
         ],
-        "POWER_POWER": [
-            "Power",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "POWER_POWER": "Power",
         "POWER_POWER_ON_DELAY": "Power On Delay",
         "POWER_POWER_ON_STATUS": [
             "Power On Status",
@@ -2053,11 +1929,7 @@
             "\"SCREEN_ON\"=Screen On",
             "\"SCREEN_OFF\"=Screen Off"
         ],
-        "POWER_WOL": [
-            "Wol",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "POWER_WOL": "Wol",
         "PUSH_LAST": "Letzte Push-Nachricht",
         "STATUS": "Status"
     },
@@ -2100,11 +1972,7 @@
             "\"COLOR\"=Color",
             "\"SCENE\"=Scene"
         ],
-        "MODE_SCENE_MODE": [
-            "Scene Mode",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "MODE_SCENE_MODE": "Scene Mode",
         "PUSH_LAST": "Letzte Push-Nachricht",
         "RUN_STATE_CURRENT_STATE": [
             "Betriebszustand",
@@ -2185,11 +2053,7 @@
             "\"STYLING_IS_COMPLETE\"=Styling Is Complete",
             "\"ERROR_HAS_OCCURRED\"=Error Has Occurred"
         ],
-        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
-            "Fernsteuerung",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": "Fernsteuerung",
         "RUN_STATE_CURRENT_STATE": [
             "Betriebszustand",
             "\"SLEEP\"=Schlafmodus",
@@ -2580,11 +2444,7 @@
             "\"WASHING_IS_COMPLETE\"=Washing Is Complete",
             "\"ERROR_DURING_WASHING\"=Error During Washing"
         ],
-        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
-            "Fernsteuerung",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": "Fernsteuerung",
         "RUN_STATE_CURRENT_STATE": [
             "Betriebszustand",
             "\"RUNNING\"=Läuft",
@@ -2633,11 +2493,7 @@
             "\"STOP\"=Stoppen",
             "\"POWER_OFF\"=Ausschalten"
         ],
-        "DRYER_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
-            "Dryer Fernsteuerung",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "DRYER_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": "Dryer Fernsteuerung",
         "DRYER_RUN_STATE_CURRENT_STATE": [
             "Dryer Betriebszustand",
             "\"DETECTING\"=Erkennung",
@@ -2679,11 +2535,7 @@
             "\"STOP\"=Stoppen",
             "\"POWER_OFF\"=Ausschalten"
         ],
-        "WASHER_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
-            "Washer Fernsteuerung",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "WASHER_REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": "Washer Fernsteuerung",
         "WASHER_RUN_STATE_CURRENT_STATE": [
             "Washer Betriebszustand",
             "\"FROZEN_PREVENT_PAUSE\"=Frozen Prevent Pause",
@@ -2762,11 +2614,7 @@
             "\"DRYING_IS_COMPLETE\"=Drying Is Complete",
             "\"DRYING_FAILED\"=Drying Failed"
         ],
-        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
-            "Fernsteuerung",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": "Fernsteuerung",
         "RUN_STATE_CURRENT_STATE": [
             "Betriebszustand",
             "\"INITIAL\"=Bereit",
@@ -2834,11 +2682,7 @@
             "\"WASHING_IS_COMPLETE\"=Washing Is Complete",
             "\"ERROR_DURING_WASHING\"=Error During Washing"
         ],
-        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": [
-            "Fernsteuerung",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "REMOTE_CONTROL_ENABLE_REMOTE_CONTROL_ENABLED": "Fernsteuerung",
         "RUN_STATE_CURRENT_STATE": [
             "Betriebszustand",
             "\"POWER_OFF\"=Ausgeschaltet",
@@ -3011,11 +2855,7 @@
             "\"POWER_OFF\"=Ausschalten",
             "\"POWER_ON\"=Einschalten"
         ],
-        "POWER_SAVE_POWER_SAVE_ENABLED": [
-            "Energiesparmodus",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
+        "POWER_SAVE_POWER_SAVE_ENABLED": "Energiesparmodus",
         "PUSH_LAST": "Letzte Push-Nachricht",
         "RUN_STATE_CURRENT_STATE": [
             "Betriebszustand",
@@ -3058,15 +2898,7 @@
         ],
         "TIMER_RELATIVE_START_TIMER": "Timer Relativ Start",
         "TIMER_RELATIVE_STOP_TIMER": "Timer Relativ Stop",
-        "WIND_DIRECTION_ROTATE_LEFT_RIGHT": [
-            "Horizontal schwenken",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ],
-        "WIND_DIRECTION_ROTATE_UP_DOWN": [
-            "Vertikal schwenken",
-            "CAPTION_ON=An",
-            "CAPTION_OFF=Aus"
-        ]
+        "WIND_DIRECTION_ROTATE_LEFT_RIGHT": "Horizontal schwenken",
+        "WIND_DIRECTION_ROTATE_UP_DOWN": "Vertikal schwenken"
     }
 }

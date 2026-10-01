@@ -275,7 +275,7 @@ final class ThinQDeviceSetup
     private function presentationOutdated(int $vid, array $presentation): bool
     {
         $var = @IPS_GetVariable($vid);
-        $custom = is_array($var) ? ($var['VariableCustomPresentation'] ?? null) : null;
+        $custom = is_array($var) ? ($var['VariablePresentation'] ?? null) : null; // module presentation (MaintainVariable)
         if (empty($custom)) {
             return true;
         }
