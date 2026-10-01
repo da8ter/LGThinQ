@@ -17,13 +17,13 @@
         "AIR_FLOW_WIND_STRENGTH_DETAIL": [
             "Windstärke Detail",
             "\"LOW\"=Niedrig",
-            "\"LOW_MID\"=Low Mid",
+            "\"LOW_MID\"=Niedrig-Mittel",
             "\"MID\"=Mittel",
-            "\"MID_HIGH\"=Mid High",
+            "\"MID_HIGH\"=Mittel-Hoch",
             "\"HIGH\"=Hoch",
             "\"POWER\"=Maximum",
             "\"AUTO\"=Automatik",
-            "\"NATURE\"=Nature"
+            "\"NATURE\"=Natur"
         ],
         "AIR_QUALITY_SENSOR_HUMIDITY": [
             "Luftfeuchte",
@@ -2839,11 +2839,11 @@
         ],
         "AIR_FLOW_WIND_STRENGTH_DETAIL": [
             "Windstärke Detail",
-            "\"NATURE\"=Nature",
+            "\"NATURE\"=Natur",
             "\"LOW\"=Niedrig",
             "\"MID\"=Mittel",
             "\"HIGH\"=Hoch",
-            "\"LOW_MID\"=Low Mid"
+            "\"LOW_MID\"=Niedrig-Mittel"
         ],
         "ENERGY_LAST_MONTH": [
             "Energie Letzter Monat",

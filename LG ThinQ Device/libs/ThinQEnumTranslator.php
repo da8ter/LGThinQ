@@ -106,9 +106,12 @@ class ThinQEnumTranslator
         ],
         // Wind Strength Detail / Level (fine-grained, device-specific)
         'wind_strength_detail' => [
+            'NATURE' => ['de' => 'Natur', 'en' => 'Nature'],
             'SLOW' => ['de' => 'Sehr niedrig', 'en' => 'Slow'],
             'LOW' => ['de' => 'Niedrig', 'en' => 'Low'],
+            'LOW_MID' => ['de' => 'Niedrig-Mittel', 'en' => 'Low-Medium'],
             'MID' => ['de' => 'Mittel', 'en' => 'Medium'],
+            'MID_HIGH' => ['de' => 'Mittel-Hoch', 'en' => 'Medium-High'],
             'HIGH' => ['de' => 'Hoch', 'en' => 'High'],
             'AUTO' => ['de' => 'Automatik', 'en' => 'Auto'],
             'POWER' => ['de' => 'Maximum', 'en' => 'Power'],
