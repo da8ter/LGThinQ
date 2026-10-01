@@ -361,8 +361,13 @@ class ThinQProfileParser
         }
         
         if ($type === 'enum') {
-            $values = $meta['value']['w'] ?? $meta['value']['r'] ?? [];
-            if (is_array($values) && !empty($values)) {
+            // Writeable values first (they become the buttons), then the states LG lists only as readable;
+            // otherwise a reported read-only state shows as "-"
+            $values = array_values(array_unique(array_merge(
+                is_array($meta['value']['w'] ?? null) ? array_map('strval', $meta['value']['w']) : [],
+                is_array($meta['value']['r'] ?? null) ? array_map('strval', $meta['value']['r']) : []
+            )));
+            if (!empty($values)) {
                 $options = [];
                 foreach ($values as $val) {
                     // Use the actual enum string as value (for string variables)

@@ -154,6 +154,7 @@ class CapabilityPlanBuilder
         $capability = [
             'ident' => $ident,
             'name' => $autoEntry['name'],
+            'property' => (string)($autoEntry['property'] ?? ''),
             'type' => $this->ipsTypeToCapType($autoEntry['type']),
             'location' => $autoEntry['location'] ?? null,
             'legacyIdent' => $autoEntry['legacyIdent'] ?? null,

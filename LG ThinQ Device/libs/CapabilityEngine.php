@@ -11,6 +11,7 @@ require_once __DIR__ . '/CapabilityProfileExtractor.php';
 require_once __DIR__ . '/CapabilityPlanBuilder.php';
 require_once __DIR__ . '/CapabilityVarManager.php';
 require_once __DIR__ . '/CapabilityControlBuilder.php';
+require_once __DIR__ . '/CapabilityOptionStates.php';
 
 /**
  * CapabilityEngine
@@ -311,6 +312,8 @@ class CapabilityEngine
                 $value = $this->readValue($cap, $this->flatStatus);
                 if ($value !== null) {
                     $entry['initialValue'] = $value;
+                    $entry['presentation'] = CapabilityOptionStates::extend($entry['presentation'], $value, $this->getVarId($ident),
+                        fn(string $state): string => $this->getParser()->naming()->caption((string)($cap['property'] ?? ''), $state));
                 }
             }
 
@@ -318,6 +321,26 @@ class CapabilityEngine
         }
 
         return $plan;
+    }
+
+    /**
+     * Idents whose variable reports a value its options do not contain (a state outside LG's lists):
+     * ensureVariables() then brings the extended presentation.
+     *
+     * @return array<int, string>
+     */
+    public function unknownOptionValues(): array
+    {
+        $out = [];
+        foreach ($this->caps as $cap) {
+            $ident = (string)($cap['ident'] ?? '');
+            $vid = $ident !== '' ? $this->getVarId($ident) : 0;
+            if ($vid > 0 && is_array($cap['presentation']['options'] ?? null)
+                && CapabilityOptionStates::unknown($vid, $this->readValue($cap, $this->flatStatus))) {
+                $out[] = $ident;
+            }
+        }
+        return $out;
     }
 
     /**

@@ -192,7 +192,7 @@ check(($pres($w, 'TIMER_RELATIVE_HOUR_TO_START')['PRESENTATION'] ?? '') === VARI
 section('Energie-Darstellung und Namen neu setzen');
 World::start();
 Kernel::$language = 'de';
-[$ac] = World::liveAc();
+[$ac, $acid] = World::liveAc();
 $energyPres = $pres($ac, 'ENERGY_YESTERDAY');
 check(($energyPres['PRESENTATION'] ?? '') === VARIABLE_PRESENTATION_VALUE_PRESENTATION && ($energyPres['SUFFIX'] ?? '') === ' Wh' && ($energyPres['DIGITS'] ?? null) === 0
     && !array_key_exists('MULTILINE', $energyPres) && !array_key_exists('OPTIONS', $energyPres),
@@ -215,6 +215,15 @@ check(LGTQD_ReapplyNames($ac) === 0, 'Ein zweiter Aufruf ändert nichts mehr');
 check(($pres($ac, 'RUN_STATE_CURRENT_STATE')['PRESENTATION'] ?? '') === VARIABLE_PRESENTATION_VALUE_PRESENTATION
     && str_contains((string)($pres($ac, 'RUN_STATE_CURRENT_STATE')['OPTIONS'] ?? ''), '"ColorActive"') && !str_contains((string)($pres($ac, 'RUN_STATE_CURRENT_STATE')['OPTIONS'] ?? ''), '"ColorDisplay"'),
     'Zustandstexte bekommen die Wertdarstellung mit Optionen, deren Unterparameter Symcon kennt');
+
+section('Gemeldete Zustände außerhalb der LG-Listen');
+$opts = static fn(int $inst, string $ident): array => array_map('strval', array_column(json_decode((string)($pres($inst, $ident)['OPTIONS'] ?? '[]'), true) ?: [], 'Value'));
+check(in_array('LOW_MID', $opts($ac, 'AIR_FLOW_WIND_STRENGTH_DETAIL'), true) && World::value($ac, 'AIR_FLOW_WIND_STRENGTH_DETAIL') === 'LOW_MID',
+    'Die Klimaanlage meldet windStrengthDetail LOW_MID, das LGs Profil nicht listet: der Wert steht in den Optionen');
+World::$cloud->deviceReports($acid, ['airFlow' => ['windStrengthDetail' => 'MID_HIGH']]);
+World::flushMqtt();
+check(in_array('MID_HIGH', $opts($ac, 'AIR_FLOW_WIND_STRENGTH_DETAIL'), true) && in_array('LOW_MID', $opts($ac, 'AIR_FLOW_WIND_STRENGTH_DETAIL'), true),
+    'Ein per Push gemeldeter neuer Zustand erweitert die Optionen, die bisherigen bleiben');
 
 section('Darstellungsebene');
 $vidEnergy = World::varId($ac, 'ENERGY_YESTERDAY');

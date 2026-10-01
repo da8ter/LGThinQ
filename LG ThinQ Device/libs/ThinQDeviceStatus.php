@@ -112,8 +112,9 @@ final class ThinQDeviceStatus
         if ($type !== '' && $profile !== []) {
             $engine = ($this->engine)();
             $engine->buildPlan($type, $profile, $merged);
-            if ($needsSetup || $engine->missingStatusVariables() !== []) {
-                // New properties, or variables that only appear with a status value (timer SET)
+            if ($needsSetup || $engine->missingStatusVariables() !== [] || $engine->unknownOptionValues() !== []) {
+                // New properties, variables that only appear with a status value (timer SET),
+                // or a reported state the options do not list yet
                 ($this->setup)()->ensureVariables($profile, $merged, $type);
             } else {
                 $engine->applyStatus($merged);

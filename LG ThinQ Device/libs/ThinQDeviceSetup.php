@@ -283,8 +283,13 @@ final class ThinQDeviceSetup
         if (!is_array($current)) {
             return is_string($custom) && !empty($presentation['options']) && strpos($custom, 'OPTIONS') === false;
         }
-        if (!empty($presentation['options']) && empty($current['OPTIONS'])) {
-            return true;
+        if (!empty($presentation['options'])) {
+            $have = array_map('strval', array_column(json_decode((string)($current['OPTIONS'] ?? '[]'), true) ?: [], 'Value'));
+            foreach ($presentation['options'] as $option) {
+                if (!in_array((string)($option['value'] ?? ''), $have, true)) {
+                    return true; // the plan brings an option the variable lacks
+                }
+            }
         }
         return ($presentation['kind'] ?? '') === 'slider' && is_numeric($current['STEP_SIZE'] ?? null) && (float)$current['STEP_SIZE'] < 1
             && ThinQValue::typeOf($vid) === VARIABLETYPE_INTEGER;

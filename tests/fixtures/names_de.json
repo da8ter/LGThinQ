@@ -4,13 +4,15 @@
             "Betriebsmodus",
             "\"AIR_DRY\"=Entfeuchten",
             "\"COOL\"=Kühlen",
-            "\"AIR_CLEAN\"=Luftreinigung"
+            "\"AIR_CLEAN\"=Luftreinigung",
+            "\"AUTO\"=Automatik"
         ],
         "AIR_FLOW_WIND_STRENGTH": [
             "Windstärke",
             "\"HIGH\"=Hoch",
             "\"LOW\"=Niedrig",
-            "\"MID\"=Mittel"
+            "\"MID\"=Mittel",
+            "\"AUTO\"=Automatik"
         ],
         "AIR_FLOW_WIND_STRENGTH_DETAIL": [
             "Windstärke Detail",
@@ -20,7 +22,8 @@
             "\"MID_HIGH\"=Mid High",
             "\"HIGH\"=Hoch",
             "\"POWER\"=Maximum",
-            "\"AUTO\"=Automatik"
+            "\"AUTO\"=Automatik",
+            "\"NATURE\"=Nature"
         ],
         "AIR_QUALITY_SENSOR_HUMIDITY": [
             "Luftfeuchte",
@@ -225,7 +228,8 @@
             "Betriebsmodus",
             "\"SPOT_CLEAN\"=Spot Clean",
             "\"SPACE_CLEAN\"=Space Clean",
-            "\"DIRECT_CLEAN\"=Direct Clean"
+            "\"DIRECT_CLEAN\"=Direct Clean",
+            "\"UP_FEATURE\"=Up Feature"
         ],
         "AIR_FLOW_WARM_MODE": [
             "Warm Mode",
@@ -381,7 +385,8 @@
         "MODE_LIGHT_MODE": [
             "Light Mode",
             "\"WHITE\"=White",
-            "\"COLOR\"=Color"
+            "\"COLOR\"=Color",
+            "\"SCENE\"=Scene"
         ],
         "PUSH_LAST": "Letzte Push-Nachricht",
         "RUN_STATE_CURRENT_STATE": [
@@ -702,7 +707,8 @@
         ],
         "DOOR_STATE_CURRENT_STATE": [
             "Türstatus",
-            "\"OPEN\"=Offen"
+            "\"OPEN\"=Offen",
+            "\"CLOSE\"=Close"
         ],
         "ERROR_LAST": "Letzter Fehler",
         "INFO": "Info",
@@ -975,7 +981,8 @@
             "\"POWER\"=Maximum",
             "\"HIGH\"=Hoch",
             "\"MID\"=Mittel",
-            "\"LOW\"=Niedrig"
+            "\"LOW\"=Niedrig",
+            "\"AUTO\"=Automatik"
         ],
         "AIR_QUALITY_SENSOR_HUMIDITY": [
             "Luftfeuchte",
@@ -1213,7 +1220,8 @@
         "MODE_LIGHT_MODE": [
             "Light Mode",
             "\"WHITE\"=White",
-            "\"COLOR\"=Color"
+            "\"COLOR\"=Color",
+            "\"SCENE\"=Scene"
         ],
         "PUSH_LAST": "Letzte Push-Nachricht",
         "RUN_STATE_CURRENT_STATE": [
@@ -1643,7 +1651,8 @@
         ],
         "DOOR_STATE_CURRENT_STATE": [
             "Türstatus",
-            "\"OPEN\"=Offen"
+            "\"OPEN\"=Offen",
+            "\"CLOSE\"=Close"
         ],
         "ERROR_LAST": "Letzter Fehler",
         "INFO": "Info",
@@ -1815,7 +1824,6 @@
             "\"98\"=98",
             "\"a8\"=A8",
             "\"99\"=99",
-            "\"a9\"=A9",
             "\"c0\"=C0",
             "\"d0\"=D0",
             "\"c1\"=C1",
@@ -2156,7 +2164,9 @@
         "MODE_LIGHT_MODE": [
             "Light Mode",
             "\"COLOR\"=Color",
-            "\"MUSIC\"=Music"
+            "\"MUSIC\"=Music",
+            "\"SCENE\"=Scene",
+            "\"VIDEO\"=Video"
         ],
         "MODE_MUSIC_MODE": [
             "Music Mode",
@@ -2202,7 +2212,8 @@
             "Light Mode",
             "\"WHITE\"=White",
             "\"COLOR\"=Color",
-            "\"MUSIC\"=Music"
+            "\"MUSIC\"=Music",
+            "\"SCENE\"=Scene"
         ],
         "PUSH_LAST": "Letzte Push-Nachricht",
         "RUN_STATE_CURRENT_STATE": [
@@ -2831,7 +2842,8 @@
             "\"NATURE\"=Nature",
             "\"LOW\"=Niedrig",
             "\"MID\"=Mittel",
-            "\"HIGH\"=Hoch"
+            "\"HIGH\"=Hoch",
+            "\"LOW_MID\"=Low Mid"
         ],
         "ENERGY_LAST_MONTH": [
             "Energie Letzter Monat",
