@@ -53,7 +53,11 @@ final class ThinQDeviceSetup
 
         $fresh = $this->profiles->fetchDeviceProfile($deviceId);
         if ($fresh !== []) {
-            $this->ctx->writeAttributeString('LastProfile', (string)json_encode($fresh, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $freshJson = (string)json_encode($fresh, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if ($freshJson !== $this->ctx->attributeString('LastProfile')) {
+                (new ThinQControlGuard($this->ctx))->clear(); // a changed profile may provide what LG refused
+            }
+            $this->ctx->writeAttributeString('LastProfile', $freshJson);
         }
         $profile = $fresh !== [] ? $fresh : $this->profiles->readStoredProfile();
         $type = $this->profiles->resolveDeviceType($deviceId, $profile);
@@ -298,6 +302,9 @@ final class ThinQDeviceSetup
 
     private function enableAction(string $ident): void
     {
+        if ((new ThinQControlGuard($this->ctx))->isBlocked($ident)) {
+            return; // LG refused this control for the device (2201); stays read-only until the profile changes
+        }
         try {
             $this->ctx->enableAction($ident);
         } catch (\Throwable $e) {

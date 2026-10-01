@@ -74,6 +74,8 @@ class CapabilityEngine
      * Lazy-init CapabilityControlBuilder for current state.
      * Re-created on each call so it always has fresh caps/profile/status.
      */
+    private ?string $controlRefusal = null;
+
     private function getControlBuilder(): CapabilityControlBuilder
     {
         return new CapabilityControlBuilder(
@@ -410,10 +412,19 @@ class CapabilityEngine
         }
     }
 
+    /** Why the last buildControlPayload() returned null although the variable has an action, else null. */
+    public function controlRefusal(): ?string
+    {
+        return $this->controlRefusal;
+    }
+
     /** @return array<string, mixed>|null */
     public function buildControlPayload(string $ident, $value): ?array
     {
-        return $this->getControlBuilder()->buildControlPayload($ident, $value);
+        $builder = $this->getControlBuilder();
+        $payload = $builder->buildControlPayload($ident, $value);
+        $this->controlRefusal = $builder->lastRefusal();
+        return $payload;
     }
 
     // ---------- Helpers ----------

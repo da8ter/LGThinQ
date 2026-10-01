@@ -260,6 +260,49 @@ unlink($tmp);
 check(in_array('20_profile_response.json', $names, true) && in_array('40_variables.json', $names, true), 'Inhalt: ' . implode(', ', $names));
 check(!str_contains($all, $wid) && !str_contains($all, World::$cloud->pat), 'deviceId und PAT sind im Paket anonymisiert');
 
+section('Timer-Schalter und abgelehnte Befehle (Sleeptimer der Klimaanlage, gemessen 01.10.2026)');
+World::start();
+[$ac, $acid] = World::liveAc();
+$sw = World::variable($ac, 'SLEEP_TIMER_RELATIVE_STOP_TIMER');
+check($sw !== null && $sw['action'] === $ac && ($sw['presentation']['PRESENTATION'] ?? '') === ThinQPresentationBuilder::PRES_SWITCH,
+    'Sleeptimer ist ein Schalter mit Aktion (Profil: w = [UNSET])');
+check(World::variable($ac, 'TIMER_RELATIVE_START_TIMER')['action'] === $ac && World::variable($ac, 'TIMER_RELATIVE_STOP_TIMER')['action'] === $ac,
+    'die anderen Timer-Schalter der Klimaanlage ebenso');
+World::quiet();
+check(RequestAction(World::varId($ac, 'SLEEP_TIMER_RELATIVE_STOP_TIMER'), false) === true, 'Ausschalten per Schalter');
+check(sameJson(World::$cloud->calls('POST devices/{id}/control')[0]['body'] ?? [], ['sleepTimer' => ['relativeStopTimer' => 'UNSET']]),
+    'Befehl sleepTimer.relativeStopTimer = UNSET');
+World::quiet();
+check(RequestAction(World::varId($ac, 'SLEEP_TIMER_RELATIVE_STOP_TIMER'), true) === true && World::$cloud->calls('POST devices/{id}/control') === [],
+    'Einschalten: kein Befehl, keine Ausnahme');
+check(str_contains((string)World::value($ac, 'ERROR_LAST'), 'nur das Ausschalten') && World::value($ac, 'SLEEP_TIMER_RELATIVE_STOP_TIMER') === false,
+    'Letzter Fehler erklärt es, der Schalter bleibt aus: ' . World::value($ac, 'ERROR_LAST'));
+// LG refuses hours+minutes with 2201 NOT_PROVIDED_FEATURE although the profile marks them writable
+World::quiet();
+$hourId = World::varId($ac, 'SLEEP_TIMER_RELATIVE_HOUR_TO_STOP');
+$before = World::value($ac, 'SLEEP_TIMER_RELATIVE_HOUR_TO_STOP');
+World::$cloud->fail('POST devices/{id}/control', 400, '{"messageId":"m","timestamp":"t","error":{"code":"2201","message":"Not provided feature"}}');
+check(RequestAction($hourId, 3) === true && World::value($ac, 'SLEEP_TIMER_RELATIVE_HOUR_TO_STOP') === $before,
+    'Stunden setzen: LGs 2201 wirft keine Ausnahme, der Wert bleibt');
+check(str_contains((string)World::value($ac, 'ERROR_LAST'), '2201') && !str_contains((string)World::value($ac, 'ERROR_LAST'), $acid),
+    'Letzter Fehler trägt LGs Code ohne die Geräte-ID: ' . World::value($ac, 'ERROR_LAST'));
+check(World::variable($ac, 'SLEEP_TIMER_RELATIVE_HOUR_TO_STOP')['action'] === 0 && World::variable($ac, 'SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP')['action'] === 0,
+    'Stunden und Minuten verlieren ihre Aktion');
+check(sameJson(json_decode((string)World::attr($ac, 'BlockedIdents'), true), ['SLEEP_TIMER_RELATIVE_HOUR_TO_STOP', 'SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP']),
+    'gemerkt im Attribut BlockedIdents');
+check(World::variable($ac, 'SLEEP_TIMER_RELATIVE_STOP_TIMER')['action'] === $ac && World::variable($ac, 'TEMPERATURE_TARGET_TEMPERATURE')['action'] === $ac,
+    'der Schalter und die anderen Variablen behalten ihre Aktion');
+IPS_ApplyChanges($ac);
+check(World::variable($ac, 'SLEEP_TIMER_RELATIVE_HOUR_TO_STOP')['action'] === 0, 'ApplyChanges mit unverändertem Profil lässt sie ohne Aktion');
+World::$cloud->devices[$acid]['profile']['property']['sleepTimer']['relativeStopTimer']['value']['w'] = ['SET', 'UNSET'];
+IPS_ApplyChanges($ac);
+check(World::variable($ac, 'SLEEP_TIMER_RELATIVE_HOUR_TO_STOP')['action'] === $ac && World::attr($ac, 'BlockedIdents') === '[]',
+    'ein geändertes Profil gibt die Aktion zurück');
+World::quiet();
+check(RequestAction(World::varId($ac, 'SLEEP_TIMER_RELATIVE_STOP_TIMER'), true) === true
+    && sameJson(World::$cloud->calls('POST devices/{id}/control')[0]['body'] ?? [], ['sleepTimer' => ['relativeStopTimer' => 'SET']]),
+    'erlaubt das Profil SET, schaltet der Schalter auch ein');
+
 check(Kernel::$warnings === [], 'keine Warnungen' . (Kernel::$warnings === [] ? '' : ': ' . implode(' | ', Kernel::$warnings)));
 
 done();

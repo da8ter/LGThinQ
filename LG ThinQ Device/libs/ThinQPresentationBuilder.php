@@ -12,7 +12,7 @@ declare(strict_types=1);
 class ThinQPresentationBuilder
 {
     private const PRES_VALUE    = '{3319437D-7CDE-699D-750A-3C6A3841FA75}';
-    private const PRES_SWITCH   = '{60AE6B26-B3E2-BDB1-A3A1-BE232940664B}';
+    public const PRES_SWITCH    = '{60AE6B26-B3E2-BDB1-A3A1-BE232940664B}';
     private const PRES_SLIDER   = '{6B9CAEEC-5958-C223-30F7-BD36569FC57A}';
     private const PRES_BUTTONS  = '{52D9E126-D7D2-2CBB-5E62-4CF7BA7C5D82}';
 

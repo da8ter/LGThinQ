@@ -13,6 +13,7 @@ class CapabilityControlBuilder
 {
     /** @var callable|null */
     private $debugCallback;
+    private ?string $refusal = null;
 
     public function __construct(
         private array $caps,
@@ -42,8 +43,14 @@ class CapabilityControlBuilder
      * @param mixed  $value   New value (bool, int, float, or string)
      * @return array<string, mixed>|null
      */
+    public function lastRefusal(): ?string
+    {
+        return $this->refusal;
+    }
+
     public function buildControlPayload(string $ident, $value): ?array
     {
+        $this->refusal = null;
         $cap = $this->caps[$ident] ?? null;
         if (!is_array($cap)) {
             $this->dbg(sprintf('buildControlPayload: Capability not found for ident=%s (available: %s)', $ident, implode(', ', array_keys($this->caps))));
@@ -84,6 +91,12 @@ class CapabilityControlBuilder
                     }
                 }
                 return $out;
+            }
+            if (isset($cap['write']['timerSwitch'])) {
+                // SET/UNSET timer: the profile lists only the values LG takes (an air conditioner's sleep timer: UNSET)
+                $this->refusal = 'LG allows this timer only to be switched ' . ($value ? 'off' : 'on');
+                $this->dbg(sprintf('buildControlPayload: %s=%s not writeable per profile', $ident, json_encode($value)));
+                return null;
             }
         }
         // attribute: generic builder

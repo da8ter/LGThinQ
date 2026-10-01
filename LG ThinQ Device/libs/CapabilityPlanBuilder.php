@@ -127,12 +127,15 @@ class CapabilityPlanBuilder
             $readCfg = ['sources' => [$autoEntry['path']]];
         }
 
-        // Special handling for Timer Control variables (*_STOP_TIMER, *_START_TIMER)
-        // According to official SDK: These are READ-ONLY status fields, not writable controls
+        // Timer Control variables (*_STOP_TIMER, *_START_TIMER): a switch that only takes the values the
+        // profile lists as writable. LG's air conditioners allow UNSET alone (measured 01.10.2026: SET and
+        // hours+minutes are refused with 2201), so the switch can turn the timer off but not on.
         $isTimerControl = preg_match('/_(?:STOP|START)_TIMER$/i', $ident);
 
         if ($isTimerControl && ($autoEntry['meta']['type'] ?? '') === 'enum') {
-            return [
+            $writable = array_map('strval', (array)($autoEntry['meta']['value']['w'] ?? []));
+            $allowed = ['set' => in_array('SET', $writable, true), 'unset' => in_array('UNSET', $writable, true)];
+            $cap = [
                 'ident' => $ident,
                 'name' => $autoEntry['name'],
                 'type' => 'boolean',
@@ -144,11 +147,26 @@ class CapabilityPlanBuilder
                     'keys' => [$autoEntry['path']]
                 ],
                 'action' => [
-                    'enableWhen' => 'never',
+                    'enableWhen' => ($allowed['set'] || $allowed['unset']) ? 'always' : 'never',
                     'writeableKeys' => [],
-                    'reassertOn' => []
+                    'reassertOn' => ($allowed['set'] || $allowed['unset']) ? ['setup'] : []
                 ]
             ];
+            if ($allowed['set'] || $allowed['unset']) {
+                $write = $this->inferWriteConfig($autoEntry); // enumMap keyed SET/UNSET, incl. zone address
+                $map = is_array($write['enumMap'] ?? null) ? $write['enumMap'] : [];
+                $write['enumMap'] = [];
+                if ($allowed['unset'] && isset($map['UNSET'])) {
+                    $write['enumMap']['false'] = $map['UNSET'];
+                }
+                if ($allowed['set'] && isset($map['SET'])) {
+                    $write['enumMap']['true'] = $map['SET'];
+                }
+                $write['timerSwitch'] = $allowed;
+                $cap['write'] = $write;
+                $cap['presentation'] = ['kind' => 'switch'];
+            }
+            return $cap;
         }
 
         $capability = [

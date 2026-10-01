@@ -36,6 +36,7 @@ trait ThinQModuleTrait
             maintainVariable: fn(string $ident, string $name, int $type, string|array $presentation, int $position, bool $keep): bool
                 => (bool)$this->MaintainVariable($ident, $name, $type, $presentation, $position, $keep),
             enableAction: fn(string $ident) => $this->EnableAction($ident),
+            disableAction: fn(string $ident) => $this->DisableAction($ident),
             setTimerInterval: fn(string $ident, int $milliseconds) => $this->SetTimerInterval($ident, $milliseconds),
             hasActiveParent: fn(): bool => (bool)$this->HasActiveParent()
         );

@@ -23,6 +23,7 @@ final class ThinQModuleContext
         private Closure $log,
         private Closure $maintainVariable,
         private Closure $enableAction,
+        private Closure $disableAction,
         private Closure $setTimerInterval,
         private Closure $hasActiveParent
     ) {
@@ -102,6 +103,11 @@ final class ThinQModuleContext
     public function enableAction(string $ident): void
     {
         ($this->enableAction)($ident);
+    }
+
+    public function disableAction(string $ident): void
+    {
+        ($this->disableAction)($ident);
     }
 
     public function setTimerInterval(string $ident, int $milliseconds): void

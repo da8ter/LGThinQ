@@ -13,6 +13,7 @@ require_once __DIR__ . '/libs/ThinQDeviceUtil.php';
 require_once __DIR__ . '/libs/ThinQDeviceSetup.php';
 require_once __DIR__ . '/libs/ThinQDeviceStatus.php';
 require_once __DIR__ . '/libs/ThinQCleanup.php';
+require_once __DIR__ . '/libs/ThinQControlGuard.php';
 
 class LGThinQDevice extends IPSModuleStrict
 {
@@ -33,6 +34,7 @@ class LGThinQDevice extends IPSModuleStrict
         $this->RegisterAttributeString('DeviceType', '');
         $this->RegisterAttributeString('LastProfile', '');
         $this->RegisterAttributeString('EnergyProfile', '');
+        $this->RegisterAttributeString(ThinQControlGuard::ATTRIBUTE, '[]');
         // Timer registered at 0 (disabled); interval is set in ApplyChanges when needed
         $this->RegisterTimer('InitialUpdateStatus', 0, 'LGTQD_InitialSetup($_IPS[\'TARGET\']);');
         $this->RegisterTimer('UpdateEnergy', 0, 'LGTQD_UpdateEnergy($_IPS[\'TARGET\']);');
@@ -208,16 +210,33 @@ class LGThinQDevice extends IPSModuleStrict
         $payload = $engine->buildControlPayload($Ident, $Value);
         $this->SendDebug('RequestAction', sprintf('buildControlPayload returned: %s', $payload === null ? 'NULL' : 'array'), 0);
         if (!is_array($payload)) {
+            $refusal = $engine->controlRefusal();
+            if ($refusal !== null) {
+                // the plan knows LG will not take it (e.g. a timer that can only be switched off)
+                $this->controlGuard()->refused($Ident, $refusal);
+                return;
+            }
             throw new Exception($this->t('Unknown action') . ': ' . $Ident);
         }
 
         $payloadJson = (string)json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $this->SendDebug('RequestAction', sprintf('Ident=%s, Value=%s, Payload=%s', $Ident, json_encode($Value), $payloadJson), 0);
-        
-        $ok = $this->ControlDevice($payloadJson);
+
+        try {
+            $ok = $this->ControlDevice($payloadJson);
+        } catch (\Throwable $e) {
+            // LG's refusal goes to ERROR_LAST and the log; the variable keeps its value
+            $this->controlGuard()->refused($Ident, $e->getMessage());
+            return;
+        }
         if ($ok) {
             $this->setValueByVarType($Ident, $Value);
         }
+    }
+
+    private function controlGuard(): ThinQControlGuard
+    {
+        return new ThinQControlGuard($this->moduleContext());
     }
 
     public function ReceiveData(string $JSONString): string
