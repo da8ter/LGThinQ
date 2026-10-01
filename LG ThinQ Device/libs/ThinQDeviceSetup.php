@@ -284,10 +284,11 @@ final class ThinQDeviceSetup
             return is_string($custom) && !empty($presentation['options']) && strpos($custom, 'OPTIONS') === false;
         }
         if (!empty($presentation['options'])) {
-            $have = array_map('strval', array_column(json_decode((string)($current['OPTIONS'] ?? '[]'), true) ?: [], 'Value'));
+            $have = array_column(json_decode((string)($current['OPTIONS'] ?? '[]'), true) ?: [], 'Caption', 'Value');
             foreach ($presentation['options'] as $option) {
-                if (!in_array((string)($option['value'] ?? ''), $have, true)) {
-                    return true; // the plan brings an option the variable lacks
+                $value = (string)($option['value'] ?? '');
+                if (!array_key_exists($value, $have) || (string)$have[$value] !== $this->ctx->t((string)($option['caption'] ?? ''))) {
+                    return true; // the plan brings an option the variable lacks, or a caption changed (translation)
                 }
             }
         }

@@ -11,7 +11,7 @@ final class CapabilityOptionStates
 {
     /**
      * The plan presentation of a capability with the states its variable already lists (reported
-     * earlier or by an older profile, with their captions) and the reported value appended.
+     * earlier or by an older profile, with the current captions) and the reported value appended.
      *
      * @param array<string, mixed>|null $presentation plan presentation (kind, options…)
      * @param Closure $caption fn(string $value): string
@@ -23,9 +23,10 @@ final class CapabilityOptionStates
             return $presentation;
         }
         $have = array_map(static fn($option) => (string)($option['value'] ?? ''), $presentation['options']);
-        foreach (self::variableOptions($vid) as $known => $knownCaption) {
+        foreach (array_keys(self::variableOptions($vid)) as $known) {
+            $known = (string)$known; // PHP turns numeric option values into integer keys
             if (!in_array($known, $have, true)) {
-                $presentation['options'][] = ['value' => $known, 'caption' => $knownCaption];
+                $presentation['options'][] = ['value' => $known, 'caption' => $caption($known)]; // current translation
                 $have[] = $known;
             }
         }
