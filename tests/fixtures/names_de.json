@@ -91,7 +91,7 @@
             "Stoppzeit Sleeptimer Relativ (Minuten)",
             "SUFFIX= min"
         ],
-        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleep Timer",
+        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleeptimer",
         "STATUS": "Status",
         "TEMPERATURE_CURRENT_TEMPERATURE": [
             "Ist-Temperatur",
@@ -231,7 +231,7 @@
             "Stoppzeit Sleeptimer Relativ (Minuten)",
             "SUFFIX= min"
         ],
-        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleep Timer",
+        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleeptimer",
         "STATUS": "Status",
         "TIMER_ABSOLUTE_HOUR_TO_START": [
             "Startzeit Absolut (Stunden)",
@@ -357,7 +357,7 @@
             "Stoppzeit Sleeptimer Relativ (Minuten)",
             "SUFFIX= min"
         ],
-        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleep Timer",
+        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleeptimer",
         "STATUS": "Status",
         "TIMER_ABSOLUTE_HOUR_TO_START": [
             "Startzeit Absolut (Stunden)",
@@ -1119,7 +1119,7 @@
             "Stoppzeit Sleeptimer Relativ (Minuten)",
             "SUFFIX= min"
         ],
-        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleep Timer",
+        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleeptimer",
         "STATUS": "Status",
         "TIMER_ABSOLUTE_HOUR_TO_START": [
             "Startzeit Absolut (Stunden)",
@@ -2522,7 +2522,7 @@
             "Stoppzeit Sleeptimer Relativ (Minuten)",
             "SUFFIX= min"
         ],
-        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleep Timer",
+        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleeptimer",
         "STATUS": "Status",
         "TEMPERATURE_CURRENT_TEMPERATURE": [
             "Ist-Temperatur",
@@ -3030,7 +3030,7 @@
             "Stoppzeit Sleeptimer Relativ (Minuten)",
             "SUFFIX= min"
         ],
-        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleep Timer",
+        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleeptimer",
         "STATUS": "Status",
         "TEMPERATURE_CURRENT_TEMPERATURE": [
             "Ist-Temperatur",

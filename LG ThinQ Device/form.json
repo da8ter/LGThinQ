@@ -11,6 +11,7 @@
     { "type": "Label", "label": "Note: if a device does not work correctly, you can create a diagnostic file. It only contains device-specific data; personal data such as the device ID or tokens is anonymized.", "visible": false },
     { "type": "Button", "caption": "Create support package (ZIP)", "download": "LGThinQ_Device_Support.zip", "onClick": ["echo LGTQD_UIExportSupportBundle($id);"], "visible": false  },
     { "type": "Button", "caption": "Reapply Presentations", "onClick": "LGTQD_ReapplyPresentations($id);", "visible": false },
+    { "type": "Button", "caption": "Reapply Names", "confirm": "Variable names are set to the current names in the language of this Symcon. Continue?", "onClick": "echo LGTQD_ReapplyNames($id);", "visible": false },
     { "type": "Button", "caption": "1. Show cleanup preview", "onClick": ["echo LGTQD_UICleanupPreview($id);"] , "visible": false },
     { "type": "Button", "caption": "2. Clean up variables", "confirm": "Variables that are not part of the plan will be deleted. Continue?", "onClick": "echo LGTQD_CleanupVariables($id, true);", "visible": false }
   ],

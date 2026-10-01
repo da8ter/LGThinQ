@@ -81,15 +81,31 @@ class ThinQEnergyManager
         $this->ctx->maintainVariable('ENERGY_LAST_MONTH', $this->ctx->t('Energy Last Month'), VARIABLETYPE_FLOAT, '', 902, $hasEnergy);
 
         if ($hasEnergy) {
-            foreach (['ENERGY_YESTERDAY', 'ENERGY_THIS_MONTH', 'ENERGY_LAST_MONTH'] as $ident) {
-                $vid = ($this->getVarIdCallback)($ident);
-                if ($vid > 0) {
-                    ($this->applyPresentationCallback)($vid, $ident, [
-                        'kind' => 'value',
-                        'suffix' => ' Wh',
-                        'digits' => 0
-                    ], [], 'FLOAT');
-                }
+            $this->reapplyPresentations();
+        }
+    }
+
+    /** Names of the ENERGY_* variables in the current language, by ident. */
+    public function names(): array
+    {
+        return [
+            'ENERGY_YESTERDAY'  => $this->ctx->t('Energy Yesterday'),
+            'ENERGY_THIS_MONTH' => $this->ctx->t('Energy This Month'),
+            'ENERGY_LAST_MONTH' => $this->ctx->t('Energy Last Month'),
+        ];
+    }
+
+    /** The Wh presentation on the existing ENERGY_* variables (setup and "Reapply Presentations"). */
+    public function reapplyPresentations(): void
+    {
+        foreach (array_keys($this->names()) as $ident) {
+            $vid = ($this->getVarIdCallback)($ident);
+            if ($vid > 0) {
+                ($this->applyPresentationCallback)($vid, $ident, [
+                    'kind' => 'value',
+                    'suffix' => ' Wh',
+                    'digits' => 0
+                ], [], 'FLOAT');
             }
         }
     }

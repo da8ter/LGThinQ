@@ -60,6 +60,17 @@ class LGThinQDevice extends IPSModuleStrict
         }
     }
 
+    /** Sets the names of the existing variables to the current names (plan, energy, generic). */
+    public function ReapplyNames(): int
+    {
+        try {
+            return $this->setup()->reapplyNames();
+        } catch (\Throwable $e) {
+            $this->logThrowable('ReapplyNames', $e);
+            return 0;
+        }
+    }
+
     public function Destroy(): void
     {
         parent::Destroy();

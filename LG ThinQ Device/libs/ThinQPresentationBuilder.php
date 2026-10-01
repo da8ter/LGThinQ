@@ -157,16 +157,19 @@ class ThinQPresentationBuilder
                 }
                 if (!empty($options)) { $payload['OPTIONS'] = $options; }
             }
-            $defaults = [
-                'DIGITS' => 2, 'SUFFIX' => '', 'INTERVALS_ACTIVE' => false, 'INTERVALS' => [],
-                'ICON' => '', 'DECIMAL_SEPARATOR' => 'Client', 'COLOR' => -1, 'MULTILINE' => false,
-                'MAX' => 100, 'THOUSANDS_SEPARATOR' => '', 'MIN' => 0, 'PERCENTAGE' => false,
-                'PREFIX' => '', 'USAGE_TYPE' => 0,
-            ];
+            // Symcon 9.1 rejects the whole call when a parameter is not defined for the presentation of
+            // this variable type ("Der Parameter MULTILINE ist für diese Darstellung nicht definiert",
+            // measured 01.10.2026): only the keys of the type are sent, foreign ones are dropped.
+            $defaults = self::valueDefaults($type);
             foreach ($defaults as $k => $v) {
                 if (!array_key_exists($k, $payload)) { $payload[$k] = $v; }
             }
-            if (!isset($payload['OPTIONS']) || !is_array($payload['OPTIONS'])) { $payload['OPTIONS'] = []; }
+            foreach (array_keys($payload) as $k) {
+                if ($k !== 'PRESENTATION' && !array_key_exists($k, $defaults)) {
+                    $this->dbg('Presentation', 'Dropping ' . $k . ' for ident=' . $ident . ': not defined for ' . strtoupper($type) . ' value presentation');
+                    unset($payload[$k]);
+                }
+            }
             if (isset($payload['OPTIONS']) && is_array($payload['OPTIONS'])) {
                 foreach ($payload['OPTIONS'] as &$op) {
                     if (!is_array($op)) { $op = []; }
@@ -214,6 +217,27 @@ class ThinQPresentationBuilder
         } else {
             $this->dbg('Presentation', 'IPS_SetVariableCustomPresentation not available; skipping ident=' . $ident);
         }
+    }
+
+    /**
+     * Parameters of the value presentation per variable type, as Symcon 9.1 accepts them
+     * (every other parameter makes IPS_SetVariableCustomPresentation fail).
+     *
+     * @return array<string, mixed> parameter => default
+     */
+    public static function valueDefaults(string $type): array
+    {
+        $type = strtoupper($type);
+        $defaults = ['ICON' => '', 'COLOR' => -1, 'PERCENTAGE' => false, 'PREFIX' => '', 'SUFFIX' => '', 'USAGE_TYPE' => 0];
+        if ($type === 'INTEGER' || $type === 'FLOAT') {
+            $defaults += ['DIGITS' => 2, 'DECIMAL_SEPARATOR' => 'Client', 'THOUSANDS_SEPARATOR' => '', 'MIN' => 0, 'MAX' => 100,
+                'INTERVALS_ACTIVE' => false, 'INTERVALS' => []];
+        } elseif ($type === 'STRING') {
+            $defaults += ['MULTILINE' => false, 'OPTIONS' => []];
+        } else { // BOOLEAN
+            $defaults += ['OPTIONS' => []];
+        }
+        return $defaults;
     }
 
     public function translatePresentationPayload(array $payload): array

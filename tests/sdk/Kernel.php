@@ -281,12 +281,30 @@ final class Kernel
     }
 
     /** Presentation arrays accept scalars only; OPTIONS/INTERVALS travel as JSON strings (measured). */
-    public static function acceptPresentation(array $presentation): bool
+    /** Parameters of the value presentation per variable type (Symcon 9.1, measured 01.10.2026). */
+    private const VALUE_PRESENTATION_KEYS = [
+        0 => ['ICON', 'COLOR', 'PERCENTAGE', 'PREFIX', 'SUFFIX', 'USAGE_TYPE', 'OPTIONS'],
+        1 => ['ICON', 'COLOR', 'PERCENTAGE', 'PREFIX', 'SUFFIX', 'USAGE_TYPE', 'DIGITS', 'DECIMAL_SEPARATOR', 'THOUSANDS_SEPARATOR', 'MIN', 'MAX', 'INTERVALS_ACTIVE', 'INTERVALS'],
+        2 => ['ICON', 'COLOR', 'PERCENTAGE', 'PREFIX', 'SUFFIX', 'USAGE_TYPE', 'DIGITS', 'DECIMAL_SEPARATOR', 'THOUSANDS_SEPARATOR', 'MIN', 'MAX', 'INTERVALS_ACTIVE', 'INTERVALS'],
+        3 => ['ICON', 'COLOR', 'PERCENTAGE', 'PREFIX', 'SUFFIX', 'USAGE_TYPE', 'MULTILINE', 'OPTIONS'],
+    ];
+
+    public static function acceptPresentation(array $presentation, int $variableType = -1): bool
     {
         foreach ($presentation as $v) {
             if (is_array($v) || is_object($v)) {
                 self::warn('Cannot auto-convert value for parameter Presentation (Type is not supported)');
                 return false;
+            }
+        }
+        // Like Symcon 9.1: a parameter the presentation does not define for this variable type
+        // fails the whole call ("Der Parameter MULTILINE ist für diese Darstellung nicht definiert")
+        if (($presentation['PRESENTATION'] ?? '') === '{3319437D-7CDE-699D-750A-3C6A3841FA75}' && isset(self::VALUE_PRESENTATION_KEYS[$variableType])) {
+            foreach (array_keys($presentation) as $key) {
+                if ($key !== 'PRESENTATION' && !in_array($key, self::VALUE_PRESENTATION_KEYS[$variableType], true)) {
+                    self::warn(sprintf('Der Parameter %s ist für diese Darstellung nicht definiert', $key));
+                    return false;
+                }
             }
         }
         return true;

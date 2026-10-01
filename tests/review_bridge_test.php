@@ -167,7 +167,7 @@ section('N4 Exportierte Funktionen (behoben)');
 $api = ['lgtq_controldevice', 'lgtq_getdeviceprofile', 'lgtq_getdevicestatus', 'lgtq_getdevices', 'lgtq_renewall', 'lgtq_renewevents',
     'lgtq_subscribeall', 'lgtq_subscribedevice', 'lgtq_syncdevices', 'lgtq_testconnection', 'lgtq_uigeneratemqttclientcerts',
     'lgtq_uisetupmqttconnection', 'lgtq_unsubscribeall', 'lgtq_unsubscribedevice', 'lgtq_update',
-    'lgtqd_autosubscribe', 'lgtqd_cleanupvariables', 'lgtqd_controldevice', 'lgtqd_initialsetup', 'lgtqd_reapplypresentations',
+    'lgtqd_autosubscribe', 'lgtqd_cleanupvariables', 'lgtqd_controldevice', 'lgtqd_initialsetup', 'lgtqd_reapplynames', 'lgtqd_reapplypresentations',
     'lgtqd_uicleanuppreview', 'lgtqd_uiexportsupportbundle', 'lgtqd_updateenergy', 'lgtqd_updatestatus'];
 $exported = array_map('strtolower', Kernel::exportedFunctions());
 check(array_diff($api, $exported) === [], 'Modul-API bleibt als LGTQ_-/LGTQD_-Funktionen erhalten');

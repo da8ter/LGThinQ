@@ -155,7 +155,7 @@ function IPS_SetVariableCustomPresentation(int $VariableID, array $Presentation)
         Kernel::warn(sprintf('Variable #%d existiert nicht', $VariableID));
         return false;
     }
-    if (!Kernel::acceptPresentation($Presentation)) {
+    if (!Kernel::acceptPresentation($Presentation, (int)Kernel::$variables[$VariableID]['type'])) {
         return false;
     }
     Kernel::$variables[$VariableID]['customPresentation'] = $Presentation;

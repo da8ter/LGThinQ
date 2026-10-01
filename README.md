@@ -75,6 +75,7 @@ Prinzipiell werden alle LG ThinQ-fähigen Geräte unterstützt: Variablen, Werte
 | `LGTQD_ControlDevice($id, $json)` | Steuerbefehl im LG-Format senden |
 | `LGTQD_CleanupVariables($id, $delete)` | Verwaiste Variablen aufräumen |
 | `LGTQD_ReapplyPresentations($id)` | Darstellungen der Variablen neu setzen |
+| `LGTQD_ReapplyNames($id)` | Namen bestehender Variablen auf die aktuellen Namen setzen |
 
 Bedienbare Variablen schaltet man wie üblich mit `RequestAction($variablenId, $wert)`.
 

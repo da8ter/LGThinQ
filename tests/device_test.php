@@ -187,6 +187,29 @@ IPS_SetVariableCustomPresentation(World::varId($w, 'TIMER_RELATIVE_HOUR_TO_START
 LGTQD_ReapplyPresentations($w);
 check(($pres($w, 'TIMER_RELATIVE_HOUR_TO_START')['PRESENTATION'] ?? '') === VARIABLE_PRESENTATION_SLIDER, 'ReapplyPresentations stellt den Schieberegler wieder her');
 
+section('Energie-Darstellung und Namen neu setzen');
+World::start();
+Kernel::$language = 'de';
+[$ac] = World::liveAc();
+$energyPres = $pres($ac, 'ENERGY_YESTERDAY');
+check(($energyPres['PRESENTATION'] ?? '') === VARIABLE_PRESENTATION_VALUE_PRESENTATION && ($energyPres['SUFFIX'] ?? '') === ' Wh' && ($energyPres['DIGITS'] ?? null) === 0
+    && !array_key_exists('MULTILINE', $energyPres) && !array_key_exists('OPTIONS', $energyPres),
+    'Energievariablen bekommen die Wh-Darstellung nur mit den Parametern, die Symcon 9.1 für Float kennt');
+IPS_SetVariableCustomPresentation(World::varId($ac, 'ENERGY_YESTERDAY'), ['PRESENTATION' => VARIABLE_PRESENTATION_VALUE_PRESENTATION]);
+LGTQD_ReapplyPresentations($ac);
+check(($pres($ac, 'ENERGY_YESTERDAY')['SUFFIX'] ?? '') === ' Wh', 'ReapplyPresentations setzt auch die Energie-Darstellung neu');
+$stringPres = $pres($ac, 'ERROR_LAST');
+check(($stringPres['PRESENTATION'] ?? '') === VARIABLE_PRESENTATION_VALUE_PRESENTATION && array_key_exists('MULTILINE', $stringPres) && !array_key_exists('DIGITS', $stringPres),
+    'String-Variablen bekommen die Wertdarstellung mit MULTILINE, ohne Zahlenparameter');
+IPS_SetName(World::varId($ac, 'ENERGY_YESTERDAY'), 'Energy Yesterday');
+IPS_SetName(World::varId($ac, 'TEMPERATURE_CURRENT_TEMPERATURE'), 'Current Temperature');
+IPS_SetName(World::varId($ac, 'INFO'), 'Info (alt)');
+check(LGTQD_ReapplyNames($ac) === 3, 'ReapplyNames benennt genau die drei abweichenden Variablen um');
+check(World::variable($ac, 'ENERGY_YESTERDAY')['name'] === 'Energie Gestern' && World::variable($ac, 'INFO')['name'] === 'Info'
+    && World::variable($ac, 'TEMPERATURE_CURRENT_TEMPERATURE')['name'] === World::variable($ac, 'TEMPERATURE_CURRENT_TEMPERATURE')['name'],
+    'Danach tragen sie die aktuellen deutschen Namen');
+check(LGTQD_ReapplyNames($ac) === 0, 'Ein zweiter Aufruf ändert nichts mehr');
+
 section('Support-Paket');
 World::quiet();
 $zip = LGTQD_UIExportSupportBundle($w);

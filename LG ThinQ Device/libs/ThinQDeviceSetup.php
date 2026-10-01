@@ -227,6 +227,43 @@ final class ThinQDeviceSetup
                 ($this->applyPresentation)($vid, (string)$ident, $entry['presentation'], $flatProfile, (string)($entry['type'] ?? 'STRING'));
             }
         }
+        ($this->energy)()->reapplyPresentations();
+    }
+
+    /**
+     * Sets the names of the existing variables to the current names of the plan, the ENERGY_*
+     * and the generic variables (current language). Setup never renames: a variable keeps the
+     * name it got when created, so renamed or translated names reach older instances only here.
+     * Returns the number of renamed variables.
+     */
+    public function reapplyNames(): int
+    {
+        $names = [
+            'INFO'       => $this->ctx->t('Info'),
+            'STATUS'     => $this->ctx->t('Status'),
+            'LASTUPDATE' => $this->ctx->t('Last Update'),
+        ];
+        $type = trim($this->ctx->attributeString('DeviceType'));
+        if ($type !== '') {
+            $profile = $this->profiles->readStoredProfile();
+            foreach (($this->engine)()->buildPlan($type, $profile, $this->profiles->readLastStatus()) as $ident => $entry) {
+                $name = trim((string)($entry['name'] ?? ''));
+                if ($name !== '') {
+                    $names[(string)$ident] = $name;
+                }
+            }
+        }
+        $names += ($this->energy)()->names();
+        $renamed = 0;
+        foreach ($names as $ident => $name) {
+            $vid = $this->varId($ident);
+            if ($vid > 0 && IPS_GetName($vid) !== $name) {
+                IPS_SetName($vid, $name);
+                $renamed++;
+            }
+        }
+        $this->ctx->debug('ReapplyNames', sprintf('%d renamed of %d', $renamed, count($names)));
+        return $renamed;
     }
 
     /**
