@@ -1,7 +1,7 @@
 {
     "air_conditioner": {
-        "variablen": 39,
-        "gelesen": 25,
+        "variablen": 36,
+        "gelesen": 24,
         "warnungen": 0,
         "fehler": 0,
         "idents": [
@@ -25,9 +25,6 @@
             "POWER_SAVE_POWER_SAVE_ENABLED",
             "PUSH_LAST",
             "RUN_STATE_CURRENT_STATE",
-            "SLEEP_TIMER_RELATIVE_HOUR_TO_STOP",
-            "SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP",
-            "SLEEP_TIMER_RELATIVE_STOP_TIMER",
             "TEMPERATURE_CURRENT_TEMPERATURE",
             "TEMPERATURE_TARGET_TEMPERATURE",
             "TIMER_RELATIVE_HOUR_TO_START",
@@ -1236,8 +1233,8 @@
         ]
     },
     "live_ac": {
-        "variablen": 26,
-        "gelesen": 15,
+        "variablen": 23,
+        "gelesen": 14,
         "warnungen": 0,
         "fehler": 0,
         "idents": [
@@ -1254,9 +1251,6 @@
             "POWER_SAVE_POWER_SAVE_ENABLED",
             "PUSH_LAST",
             "RUN_STATE_CURRENT_STATE",
-            "SLEEP_TIMER_RELATIVE_HOUR_TO_STOP",
-            "SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP",
-            "SLEEP_TIMER_RELATIVE_STOP_TIMER",
             "TEMPERATURE_CURRENT_TEMPERATURE",
             "TEMPERATURE_TARGET_TEMPERATURE",
             "TIMER_RELATIVE_HOUR_TO_START",

@@ -82,15 +82,6 @@
             "\"NORMAL\"=Normal",
             "\"ERROR\"=Fehler"
         ],
-        "SLEEP_TIMER_RELATIVE_HOUR_TO_STOP": [
-            "Stoppzeit Sleeptimer Relativ (Stunden)",
-            "SUFFIX= h"
-        ],
-        "SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP": [
-            "Stoppzeit Sleeptimer Relativ (Minuten)",
-            "SUFFIX= min"
-        ],
-        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleeptimer",
         "STATUS": "Status",
         "TEMPERATURE_CURRENT_TEMPERATURE": [
             "Ist-Temperatur",
@@ -2874,15 +2865,6 @@
             "\"NORMAL\"=Normal",
             "\"ERROR\"=Fehler"
         ],
-        "SLEEP_TIMER_RELATIVE_HOUR_TO_STOP": [
-            "Stoppzeit Sleeptimer Relativ (Stunden)",
-            "SUFFIX= h"
-        ],
-        "SLEEP_TIMER_RELATIVE_MINUTE_TO_STOP": [
-            "Stoppzeit Sleeptimer Relativ (Minuten)",
-            "SUFFIX= min"
-        ],
-        "SLEEP_TIMER_RELATIVE_STOP_TIMER": "Sleeptimer",
         "STATUS": "Status",
         "TEMPERATURE_CURRENT_TEMPERATURE": [
             "Ist-Temperatur",

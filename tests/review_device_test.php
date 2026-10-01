@@ -257,10 +257,10 @@ check(in_array('RUN_STATE_CURRENT_STATE', World::idents($w4), true) && isset(Wor
 
 section('N2 Timer UNSET setzt Stunden und Minuten zurück (behoben)');
 World::start();
-[$ac, $acid] = World::liveAc();
-SetValueFloat(World::varId($ac, 'SLEEP_TIMER_RELATIVE_HOUR_TO_STOP'), 2.0);
-$push($acid, ['sleepTimer' => ['relativeStopTimer' => 'UNSET']]);
-check(World::value($ac, 'SLEEP_TIMER_RELATIVE_HOUR_TO_STOP') === 0.0, 'Sleep-Timer UNSET setzt die Stunden (Float-Variable) auf 0');
+[$ac, $acid] = World::liveAc(); // the air conditioner's sleep timer is not created any more (2201); its relative stop timer behaves alike
+SetValueFloat(World::varId($ac, 'TIMER_RELATIVE_HOUR_TO_STOP'), 2.0);
+$push($acid, ['timer' => ['relativeStopTimer' => 'UNSET']]);
+check(World::value($ac, 'TIMER_RELATIVE_HOUR_TO_STOP') === 0.0, 'Timer UNSET setzt die Stunden (Float-Variable) auf 0');
 
 section('N3 MaintainReferences (behoben)');
 World::start();

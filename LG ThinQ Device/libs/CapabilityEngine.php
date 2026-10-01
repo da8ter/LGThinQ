@@ -287,7 +287,7 @@ class CapabilityEngine
             $this->getExtractor(),
             $this->getParser()
         );
-        $builder->run($profile);
+        $builder->run($profile, $deviceType);
 
         // 3. Build final plan (existing logic)
         $plan = [];

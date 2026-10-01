@@ -17,6 +17,13 @@ class CapabilityPlanBuilder
     /** @var callable|null */
     private $debugCallback;
 
+    /** Resources the Connect API does not serve for the type: the air conditioner's sleep timer is readable,
+     *  but SET and hours+minutes get 2201 "Not provided feature" (measured 01.10.2026). Not created; existing
+     *  variables go with "Clean up variables". */
+    private const HIDDEN_RESOURCES = [
+        'DEVICE_AIR_CONDITIONER' => ['sleepTimer'],
+    ];
+
     public function __construct(
         private array &$caps,
         private array $flatProfile,
@@ -40,8 +47,9 @@ class CapabilityPlanBuilder
      *
      * @param array<string, mixed> $profile
      */
-    public function run(array $profile): void
+    public function run(array $profile, string $deviceType = ''): void
     {
+        $hidden = self::HIDDEN_RESOURCES[$deviceType] ?? [];
         // Auto-discover from profile
         try {
             $autoPlan = $this->parser->parseProfile($profile);
@@ -51,6 +59,10 @@ class CapabilityPlanBuilder
                 // Skip UNIT variables (e.g., TEMPERATURE_UNIT, TIME_UNIT)
                 if (preg_match('/_UNIT$/i', $ident)) {
                     $this->dbg(sprintf('Skipping UNIT variable: %s', $ident));
+                    continue;
+                }
+                if (in_array((string)($autoEntry['resource'] ?? ''), $hidden, true)) {
+                    $this->dbg(sprintf('Skipping %s: resource %s is not usable via the Connect API for %s', $ident, $autoEntry['resource'], $deviceType));
                     continue;
                 }
 
